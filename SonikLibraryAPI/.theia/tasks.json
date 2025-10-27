@@ -1,0 +1,120 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "2.0.0",
+	"tasks": [
+        {
+            "label": "Ninja Debug Build",
+            "type": "shell",
+            "command": "D:/Development/Ninja/ninja",
+            "args": [
+                "-C",
+                "Debug_x64"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": [
+                "Cmake Debug Configure"
+            ]
+        },
+        {
+            "label": "Ninja Debug ReBuild",
+            "type": "shell",
+            "command": "D:/Development/Ninja/ninja",
+            "args": [
+                "-C",
+                "Debug_x64"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": [
+                "Ninja Debug Clean",
+                "Cmake Debug Configure"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Ninja Release Build",
+            "type": "shell",
+            "command": "D:/Development/Ninja/ninja",
+            "args": [
+                "-C",
+                "Release_x64"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": [
+                "Cmake Release Configure"
+            ]
+        },
+        {
+            "label": "Ninja Release ReBuild",
+            "type": "shell",
+            "command": "D:/Development/Ninja/ninja",
+            "args": [
+                "-C",
+                "Release_x64"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": [
+                "Ninja Release Clean",
+                "Cmake Release Configure"
+            ],
+        },
+        {
+            "label": "Cmake Debug Configure",
+            "type": "shell",
+            "command": "D:/Development/Cmake/bin/cmake",
+            "args": [
+                "-G",
+                "Ninja",
+                "-DCMAKE_BUILD_TYPE=Debug",
+                "-B",
+                "Debug_x64",
+                "."
+            ]
+        },
+        {
+            "label": "Cmake Release Configure",
+            "type": "shell",
+            "command": "D:/Development/Cmake/bin/cmake",
+            "args": [
+                "-G",
+                "Ninja",
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-B",
+                "Release_x64",
+                "."
+            ]
+        },
+        {
+            "label": "Ninja Debug Clean",
+            "type": "shell",
+            "command": "D:/Development/Ninja/ninja",
+            "args": [
+                "-C",
+                "Debug_x64",
+                "clean"
+            ]
+        },
+        {
+            "label": "Ninja Release Clean",
+            "type": "shell",
+            "command": "D:/Development/Ninja/ninja",
+            "args": [
+                "-C",
+                "Release_x64",
+                "clean"
+            ]
+        }
+    ]
+}

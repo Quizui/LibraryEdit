@@ -1,0 +1,105 @@
+cmake_minimum_required(VERSION 3.10)
+
+#プロジェクトネーム変数設定
+set(V_ProjectName "SonikLibraryAPI")
+project(${V_ProjectName})
+
+set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_COMPILER "D:/Development/MSYS64/clang64/bin/clang++.exe")
+
+##ビルド除外ターゲット
+list(FILTER SOURCES EXCLUDE REGEX ".*CMakeCXXCompilerId.cpp")
+
+#include directory
+include_directories(${MINGW_HOME}/include)
+
+#共通define
+add_definitions(-D__SONIK_x86_64__)
+
+#環境別define
+if(WIN32)
+#window環境
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        #windows 64bit
+        message("WINDOWS 64bit Compilled.")
+        message("ADD DefineList:")
+        message("Define To _WIN64")
+        add_definitions(-D_WIN64)
+
+    else()
+        #windows 32bit
+    
+    endif()
+
+elseif(UNIX)
+#unix or linux
+
+elseif(APPLE)
+#macOS
+
+else()
+#other
+    message("Unoknow System Compiled")
+endif()
+
+
+#Debug_set_arg
+#デバッグ時に有効にするフラグ
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+message("Debug Setting Compiled [DBG_MESSAGE]}")
+
+#set EXPORT_COMPILE_COMMANDS
+#compile_commands.json の出力をONにする。
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+#define set
+add_definitions(-D_DEBUG)
+add_definitions(-D__cplusplus=202002L)
+add_definitions(-DSLIB_SMTPTR_ASSERTOFF)
+
+
+#debug build
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -std=c++20 -fmessage-length=0 -finput-charset=UTF-8 -fexec-charset=UTF-8 -fno-omit-frame-pointer -Wall")
+
+endif()
+
+#Release_set_arg
+#リリース時に有効にするフラグ
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+
+message("Release Setting Compiled [RELEASE_MESSAGE]}")
+#set EXPORT_COMPILE_COMMANDS
+#compile_commands.json の出力をONにする。
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+#define set
+add_definitions(-D_RELEASE)
+add_definitions(-D__cplusplus=202002L)
+
+#release build
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -std=c++20 -fmessage-length=0 -Wall")
+
+endif()
+
+
+
+# Ninjaのパスを明示的に指定
+set(CMAKE_MAKE_PROGRAM "D:/Development/Ninja/ninja")
+
+#ビルドターゲット
+file(GLOB_RECURSE SOURCES "./*.cpp")
+
+#ビルド除外ターゲット
+list(FILTER SOURCES EXCLUDE REGEX "Allocator/back/.*")
+
+#ビルド
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+add_library(Dx64_${V_ProjectName} STATIC ${SOURCES})
+
+else(CMAKE_BUILD_TYPE STREQUAL "Release")
+add_library(Rx64_${V_ProjectName} STATIC ${SOURCES})
+
+endif()
+
+
+#add_executable(TestBuild ${SOURCES})
