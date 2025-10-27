@@ -6,7 +6,7 @@
 #include "../SmartPointer/SonikSmartPointer.hpp"
 #include "../SonikString/SonikString.h"
 
-#include <stdint.h>
+#include <cstdint>
 
  //前方宣言
 namespace SonikLib

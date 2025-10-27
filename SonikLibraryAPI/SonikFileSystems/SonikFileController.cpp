@@ -160,13 +160,13 @@ namespace SonikLib
         int32_t SonikFileSystemController::InnerFileSystemFunction::OpenFunction_Read(char* _buffer_, uint64_t _size_)
         {
 #if defined(_WIN64)
-            uint32_t l_split_cnt = _size_ / UINT32_MAX;
+            uint64_t l_split_cnt = _size_ / UINT32_MAX;
             DWORD l_err = 0;
 
-            for (uint32_t i = 0; i < l_split_cnt; ++i)
+            for (uint64_t i = 0; i < l_split_cnt; ++i)
             {
                 SetLastError(0);
-                ReadFile(m_file, _buffer_, _size_, nullptr, nullptr);
+                ReadFile(m_file, _buffer_, static_cast<unsigned long>(_size_), nullptr, nullptr);
 
                 l_err = GetLastError();
 
@@ -179,7 +179,7 @@ namespace SonikLib
                 _size_ -= UINT32_MAX;
             };
 
-            ReadFile(m_file, _buffer_, _size_, nullptr, nullptr);
+            ReadFile(m_file, _buffer_, static_cast<unsigned long>(_size_), nullptr, nullptr);
             return 0;
 
 #elif defined(__linux__)
@@ -190,16 +190,16 @@ namespace SonikLib
         void SonikFileSystemController::InnerFileSystemFunction::OpenFunction_Write(char* _writevalue_, uint64_t _writesize_)
         {
 #if defined(_WIN64)
-            uint32_t l_split_cnt = _writesize_ / UINT32_MAX;
+            uint64_t l_split_cnt = _writesize_ / UINT32_MAX;
 
-            for (uint32_t i = 0; i < l_split_cnt; ++i)
+            for (uint64_t i = 0; i < l_split_cnt; ++i)
             {
-                WriteFile(m_file, _writevalue_, _writesize_, nullptr, nullptr);
+                WriteFile(m_file, _writevalue_, static_cast<unsigned long>(_writesize_), nullptr, nullptr);
                 _writevalue_ += UINT32_MAX;
                 _writesize_ -= UINT32_MAX;
             };
 
-            WriteFile(m_file, _writevalue_, _writesize_, nullptr, nullptr);
+            WriteFile(m_file, _writevalue_, static_cast<unsigned long>(_writesize_), nullptr, nullptr);
 
 #elif defined(__linux__)
             //linux definition
@@ -208,10 +208,18 @@ namespace SonikLib
 
         void SonikFileSystemController::InnerFileSystemFunction::OpenFunction_Write_char(SonikLib::SonikString& _writevalue_)
         {
-#if defined(_WIN64)
             uint64_t l_size = 0;
             l_size = _writevalue_.GetCpy_str_c(nullptr);
 
+            //長さ0 文字列だったら処理
+            if (l_size == 0)
+            {
+                //何も書き込まず終了
+                return;
+            };
+
+            //長さ0以外処理続行
+#if defined(_WIN64)
             char* l_buffer = new(std::nothrow) char[l_size] {};
             if (l_buffer == nullptr)
             {
@@ -220,17 +228,17 @@ namespace SonikLib
 
             _writevalue_.GetCpy_str_c(l_buffer);
 
-            uint32_t l_split_cnt = l_size / UINT32_MAX;
+            uint64_t l_split_cnt = l_size / UINT32_MAX;
             char* l_buf_control = l_buffer;
 
-            for (uint32_t i = 0; i < l_split_cnt; ++i)
+            for (uint64_t i = 0; i < l_split_cnt; ++i)
             {
                 WriteFile(m_file, l_buf_control, UINT32_MAX, nullptr, nullptr);
                 l_buf_control += UINT32_MAX;
                 l_size -= UINT32_MAX;
             };
 
-            WriteFile(m_file, l_buf_control, l_size, nullptr, nullptr);
+            WriteFile(m_file, l_buf_control, static_cast<unsigned long>(l_size), nullptr, nullptr);
             delete[] l_buffer;
 
 #elif defined(__linux__)
@@ -244,6 +252,14 @@ namespace SonikLib
             uint64_t l_size = 0;
             l_size = _writevalue_.GetCpy_str_utf8(nullptr);
 
+            //長さ0 文字列だったら処理
+            if (l_size == 0)
+            {
+                //何も書き込まず終了
+                return;
+            };
+
+            //長さ0以外はこっち
             void* l_allocbuffer = m_allocator->memal(sizeof(char) * l_size);
             if (l_allocbuffer == nullptr)
             {
@@ -253,17 +269,17 @@ namespace SonikLib
             char* l_buffer = new(l_allocbuffer) char[l_size] {};
             _writevalue_.GetCpy_str_utf8(reinterpret_cast<utf8_t*>(l_buffer));
 
-            uint32_t l_split_cnt = l_size / UINT32_MAX;
+            uint64_t l_split_cnt = l_size / UINT32_MAX;
             char* l_buf_control = l_buffer;
 
-            for (uint32_t i = 0; i < l_split_cnt; ++i)
+            for (uint64_t i = 0; i < l_split_cnt; ++i)
             {
                 WriteFile(m_file, l_buf_control, UINT32_MAX, nullptr, nullptr);
                 l_buf_control += UINT32_MAX;
                 l_size -= UINT32_MAX;
             };
 
-            WriteFile(m_file, l_buf_control, l_size, nullptr, nullptr);
+            WriteFile(m_file, l_buf_control, static_cast<unsigned long>(l_size), nullptr, nullptr);
             
             m_allocator->memdel(l_buffer);
 
@@ -274,9 +290,18 @@ namespace SonikLib
 
         void SonikFileSystemController::InnerFileSystemFunction::OpenFunction_Write_UTF16(SonikLib::SonikString& _writevalue_)
         {
-#if defined(_WIN64)
             uint64_t l_size = 0;
             l_size = _writevalue_.GetCpy_str_utf16(nullptr);
+
+            //長さ0 文字列だったら処理
+            if (l_size == 0)
+            {
+                //何も書き込まず終了
+                return;
+            };
+
+            //長さ0以外処理続行
+#if defined(_WIN64)
 
             void* l_allocbuffer = m_allocator->memal(sizeof(char) * l_size);
             if (l_allocbuffer == nullptr)
@@ -287,17 +312,17 @@ namespace SonikLib
             char* l_buffer = new(l_allocbuffer) char[l_size] {};
             _writevalue_.GetCpy_str_utf16(reinterpret_cast<char16_t*>(l_buffer));
 
-            uint32_t l_split_cnt = l_size / UINT32_MAX;
+            uint64_t l_split_cnt = l_size / UINT32_MAX;
             char* l_buf_control = l_buffer;
 
-            for (uint32_t i = 0; i < l_split_cnt; ++i)
+            for (uint64_t i = 0; i < l_split_cnt; ++i)
             {
                 WriteFile(m_file, l_buf_control, UINT32_MAX, nullptr, nullptr);
                 l_buf_control += UINT32_MAX;
                 l_size -= UINT32_MAX;
             };
 
-            WriteFile(m_file, l_buf_control, l_size, nullptr, nullptr);
+            WriteFile(m_file, l_buf_control, static_cast<unsigned long>(l_size), nullptr, nullptr);
             
             m_allocator->memdel(l_buffer);
 

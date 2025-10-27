@@ -8,59 +8,7 @@
 #ifndef SONIKBALANCEDTREE_RB_SONIKRBTREE_H_
 #define SONIKBALANCEDTREE_RB_SONIKRBTREE_H_
 
-//コンパイラ別キーワード定義=================
-#if defined(__INTEL_COMPILER) //ICC/ICPC（Intel Compiler Classic）
-	#define DEF_FORCE_INLINE __forceinline
-	
-	//CPP17以上なら定義実行されるがIntelコンパイラは特に独自の[[nodiscard]]に変わる何かがあるわけではないのでスルー
-	//#if defined(DEF_SOLIB_IDs_CPP17)   
-	//#endif
 
-#elif defined(__INTEL_LLVM_COMPILER) //oneAPI ICX/ICPX（LLVM ベース）
-	#define DEF_FORCE_INLINE __forceinline
-	//これもインテルコンパイラなので↑と一緒
-	//#if defined(DEF_SOLIB_IDs_CPP17)   
-	//#endif
-
-#elif defined(_MSC_VER) // Microsoft Visual C++ (および Windows 向け Intel C++ も _MSC_VER が立つ)
-	#define DEF_FORCE_INLINE __forceinline
-
-	//[[nodiscard]]置換定義
-	#if __cplusplus >= 201703L
-		//CPP17以上なら[[nodiscard]]を定義
-		#define DEF_NO_DISCARD [[nodiscard]]
-
-	#else
-		//17以下ならコンパイラ固有定義
-		#if !defined(_Check_return_)
-			//_Check_return_が定義されていなければインクルードする必要があるためインクルード
-			#include <specstrings.h>
-		#endif
-
-		//[[nodiscard]]代替定義
-		#define DEF_NO_DISCARD _Check_return_
-
-	#endif
-
-#elif defined(__GNUC__) || defined(__clang__) //GCC or clang
-	#define DEF_FORCE_INLINE inline __attribute__((always_inline)) __attribute__((gnu_inline))
-
-		//[[nodiscard]]置換定義
-		#if __cplusplus >= 201703L
-			//CPP17以上なら[[nodiscard]]を定義
-			#define DEF_NO_DISCARD [[nodiscard]]
-
-		#else
-			//17以下ならコンパイラ固有定義
-			#define DEF_NO_DISCARD __attribute__((warn_unused_result))
-		#endif
-
-#else	//どのコンパイラにも引っかからなかった場合
-
-	#define DEF_FORCE_INLINE inline
-	#define DEF_NO_DISCARD
-
-#endif
 
 
 #include <utility>
@@ -71,6 +19,7 @@
 
 #include "../SonikCAS/SonikAtomicLock.h"
 #include "../SmartPointer/SonikSmartPointer.hpp"
+#include "../CompilersPreProcesser.h"
 
  //赤黒木
 namespace SonikLib

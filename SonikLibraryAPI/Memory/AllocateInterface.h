@@ -3,6 +3,7 @@
 
 #include <new>
 #include <type_traits>
+#include "../CompilersPreProcesser.h"
 
 namespace SonikLib
 {
@@ -36,57 +37,68 @@ namespace SonikLib
 
 	private:
 		//自分のとこのポインタかチェックします。
-		inline virtual int8_t __INNER_IS_ADDR__(void* _checkpointer_)
+		DEF_FORCE_INLINE virtual int8_t __INNER_IS_ADDR__(void* _checkpointer_)
 		{
 			return 0; //デフォルトの証
 		};
 		//配列サイズを確認します。
-		inline virtual uint32_t __INNER_ARRAYSIZECHECK__(void* _checkpointer_)
+		DEF_FORCE_INLINE virtual uint32_t __INNER_ARRAYSIZECHECK__(void* _checkpointer_)
 		{
 			return 0; //デフォルトの証
 		};
 
+	protected:
+		virtual void __vfunc_memdel__(void* _pfree_)
+		{
+			::operator delete(_pfree_);
+		};
+		
+		virtual void __vfung_memdelarray__(void* _pfree_)
+		{
+			::operator delete[](_pfree_);
+		};
+
 	public:
-		inline SLibAllocateInterface(void) noexcept
+		DEF_FORCE_INLINE SLibAllocateInterface(void) noexcept
 			:m_enabled_state(SLibAllocEnums::EnableRet::ENABLE_DEFAULT)
 		{
 			//no porcess;
 		};
 
 		//コピーコンストラクタ
-		inline SLibAllocateInterface(const SLibAllocateInterface& _copy_) noexcept
+		DEF_FORCE_INLINE SLibAllocateInterface(const SLibAllocateInterface& _copy_) noexcept
 			:m_enabled_state(SLibAllocEnums::EnableRet::ENABLE_DEFAULT)
 		{
 			//no process;
 		};
 
 		//ムーヴコンストラクタ
-		inline SLibAllocateInterface(SLibAllocateInterface&& _move_) noexcept
+		DEF_FORCE_INLINE SLibAllocateInterface(SLibAllocateInterface&& _move_) noexcept
 			:m_enabled_state(SLibAllocEnums::EnableRet::ENABLE_DEFAULT)
 		{
 			//no process;
 		};
 
 		//デストラクタ
-		inline virtual ~SLibAllocateInterface(void)
+		DEF_FORCE_INLINE virtual ~SLibAllocateInterface(void)
 		{
 			//no process
 		};
 
 		//operator = copy
-		inline SLibAllocateInterface& operator =(const SLibAllocateInterface& _copy_) noexcept
+		DEF_FORCE_INLINE SLibAllocateInterface& operator =(const SLibAllocateInterface& _copy_) noexcept
 		{
 			return (*this);
 		};
 
 		//operator = move
-		inline SLibAllocateInterface& operator =(SLibAllocateInterface& _move_) noexcept
+		DEF_FORCE_INLINE SLibAllocateInterface& operator =(SLibAllocateInterface& _move_) noexcept
 		{
 			return (*this);
 		};
 
 		//現在の有効状態を取得します。
-		inline SLibAllocEnums::EnableRet GetNowEnabledState(void) noexcept
+		DEF_FORCE_INLINE SLibAllocEnums::EnableRet GetNowEnabledState(void) noexcept
 		{
 			return m_enabled_state;
 		};
@@ -116,46 +128,75 @@ namespace SonikLib
 
 		};
 
-		inline virtual void* memal(size_t _size_) noexcept
+		DEF_FORCE_INLINE virtual void* memal(size_t _size_) noexcept
 		{
 			return ::operator new(_size_, std::nothrow);
 		};
-		inline virtual void* memal(size_t _size_, SLibAllocEnums::EnableRet& _errcode_) noexcept//エラーコード出力バージョン
+		DEF_FORCE_INLINE virtual void* memal(size_t _size_, SLibAllocEnums::EnableRet& _errcode_) noexcept//エラーコード出力バージョン
 		{
 			void* ret = ::operator new(_size_, std::nothrow);
 			_errcode_ = (ret == nullptr) ? SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE : SLibAllocEnums::EnableRet::ENABLED_OK;
 
 			return ret;
 		};
-		inline virtual void* memal_Exception(size_t _size_)//例外throw
+		DEF_FORCE_INLINE virtual void* memal_Exception(size_t _size_)//例外throw
 		{
 			return ::operator new(_size_);
 		};
 
-		inline virtual void* memalArray(size_t _size_, size_t _elem_) noexcept
+		DEF_FORCE_INLINE virtual void* memalArray(size_t _size_, size_t _elem_) noexcept
 		{
 			return ::operator new[](_size_* _elem_, std::nothrow);
 		};
-		inline virtual void* memalArray(size_t _size_, size_t _elem_, SLibAllocEnums::EnableRet& _errcode_) noexcept//エラーコード出力バージョン
+		DEF_FORCE_INLINE virtual void* memalArray(size_t _size_, size_t _elem_, SLibAllocEnums::EnableRet& _errcode_) noexcept//エラーコード出力バージョン
 		{
 			void* ret = ::operator new[](_size_* _elem_, std::nothrow);
 			_errcode_ = (ret == nullptr) ? SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE : SLibAllocEnums::EnableRet::ENABLED_OK;
 
 			return ret;
 		}
-		inline virtual void* memalArray_Exception(size_t _size_, size_t _elem_)//例外throw
+		DEF_FORCE_INLINE virtual void* memalArray_Exception(size_t _size_, size_t _elem_)//例外throw
 		{
 			return ::operator new[](_size_* _elem_);
 		};
 
-		inline virtual void memdel(void* _del_)
+		template <class Type>
+		DEF_FORCE_INLINE void memdel(Type* _del_)
 		{
-			::operator delete(_del_);
+			if(_del_ == nullptr)
+			{
+				return;
+			};
+
+			_del_->~Type();
+			__vfunc_memdel__(_del_);
+		};
+		template<>
+		DEF_FORCE_INLINE void memdel<void>(void* _del_)
+		{
+			if(_del_ == nullptr)
+			{
+				return;
+			};
+
+			__vfunc_memdel__(_del_);
 		};
 
-		inline virtual void memdelArray(void* _del_)
+		template <class Type>
+		DEF_FORCE_INLINE void memdelArray(Type* _del_, uint32_t index_size)
 		{
-			::operator delete[](_del_);
+			if(_del_ == nullptr)
+			{
+				return;
+			};
+
+			//回数分デストラクタをコール
+			for (uint32_t i = 0; i < index_size; ++i)
+			{
+				_del_[i].~Type();
+			}
+
+			 __vfung_memdelarray__(_del_);
 		};
 	};
 

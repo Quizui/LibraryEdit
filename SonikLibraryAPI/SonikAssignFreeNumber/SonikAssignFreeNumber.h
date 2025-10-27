@@ -42,8 +42,14 @@ namespace SonikLib
     public:
         ~SonikAssignFreeNumber(void);
 
+        //通常のオブジェクトを生成します。
         static bool CreateObject(SonikLib::SharedSmtPtr<SonikAssignFreeNumber>& _get_);
         static bool CreateObject(SonikLib::SharedSmtPtr<SonikAssignFreeNumber>& _get_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
+        
+        //シングルトンオブジェクトを生成します。
+        //どこでコールされるかわからないのでアロケータは使用不可能です。
+        static SonikAssignFreeNumber& CreateSingletonObject(void);
+
 
         //空き番号の貸出
         //最大値はint64_t型で0x7FFFFFFFFFFFFFFF(実値:9223372036854775807)

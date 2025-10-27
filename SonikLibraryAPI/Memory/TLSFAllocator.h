@@ -2,7 +2,7 @@
 #ifndef __SONIKLIB_MEMORYLIBRARY_TLSFMEMORY_ALLOCATOR_H__
 #define __SONIKLIB_MEMORYLIBRARY_TLSFMEMORY_ALLOCATOR_H__
 
-#include <stdint.h>
+#include <cstdint>
 
 #include "./AllocateInterface.h"
 #include "../SonikCAS/SonikAtomicLock.h"
@@ -39,8 +39,7 @@ namespace SonikLib
 
 	private:
 		uint8_t* mp_main_memblock;		//メインメモリブロックの先頭
-		uint8_t* mp_freelistblock;		//(フリーリストビット列 + フリーリスト実領域)全体の先頭
-		uint8_t* mp_FreelistAreaTop;	//フリーリスト実領域の先頭
+		uint8_t* mp_freelistblock;		//(フリーリストビット列 + フリーリストアドレス域)全体の先頭
 		SonikLib::S_CAS::SonikAtomicLock* m_lock; //マルチスレッドロック
 		uint32_t mem_block_size;
 
@@ -71,8 +70,8 @@ namespace SonikLib
 		void* memalArray(size_t _sizeof_, size_t _elemcnt_ = 1) noexcept override;
 		void* memalArray(size_t _sizeof_, size_t _elemcnt_, SLibAllocEnums::EnableRet& _errcode_) noexcept override;//エラーコード出力バージョン
 		void* memalArray_Exception(size_t _sizeof_, size_t _elemcnt_ = 1) override; //例外送出版
-		void memdel(void* _pfree_) noexcept override;
-		void memdelArray(void* _pfree_) noexcept override;
+		void __vfunc_memdel__(void* _pfree_) noexcept override;
+		void __vfung_memdelarray__(void* _pfree_) noexcept override;
 
 	};
 

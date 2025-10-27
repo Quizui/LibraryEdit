@@ -150,8 +150,8 @@ namespace SonikLib
 				//Queue内のオブジェクトの破棄までの責任は持たないので、そのまま配列delete
 				if (m_QueueAllocArea != nullptr)
 				{
-					m_allocator->CallDestructor_Array(m_QueueAllocArea, Queue_RoundCount);
-					m_allocator->memdelArray(m_QueueAllocArea);
+					//m_allocator->CallDestructor_Array(m_QueueAllocArea, Queue_RoundCount);
+					m_allocator->memdelArray(m_QueueAllocArea, Queue_RoundCount);
 				};
 
 			};

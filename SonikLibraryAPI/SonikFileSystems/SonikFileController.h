@@ -7,7 +7,7 @@
 #include "../SonikCAS/SonikAtomicLock.h"
 #include "../SmartPointer/SonikSmartPointer.hpp"
 
-#include <stdint.h>
+#include <cstdint>
 
  //前方宣言============================
 namespace SonikLib

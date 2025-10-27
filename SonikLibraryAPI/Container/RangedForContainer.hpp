@@ -285,6 +285,7 @@ namespace SonikLib
 					};
 
 					m_allocator->memdel(AllocAreaPtr);
+					AllocAreaPtr = nullptr;
 				};
 
 			};

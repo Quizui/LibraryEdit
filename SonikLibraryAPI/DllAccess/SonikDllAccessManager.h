@@ -4,7 +4,7 @@
 #define SONIKDLLACCESSMANAGER_H_
 
 #include <stdint.h>
-#include "../SonikString/SonikString.h"
+#include "../SonikString/SonikStringDefinition.h"
 #include "../SmartPointer/SonikSmartPointer.hpp"
 #include "../SonikCAS/SonikAtomicLock.h"
 

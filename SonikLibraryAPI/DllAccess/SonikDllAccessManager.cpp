@@ -1,6 +1,4 @@
 
-#include <map>
-
 #include "SonikDllAccessManager.h"
 #include "SonikDllLoader.h"
 

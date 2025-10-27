@@ -4,17 +4,7 @@
 
 #include "./SonikStringEnums.h"
 #include "../SmartPointer/SonikSmartPointer.hpp"
-
- //C++20 以前はchar8_t が無いので。
-#if __cplusplus < 202002L
-	//C++20 以前であれば　char8_t は uint8_t
-#include <stdint.h>
-using utf8_t = uint8_t;
-#else
-using utf8_t = char8_t;
-
-#endif
-
+#include "TypePermissibleTemplate.hpp"
 
 namespace SonikLib
 {	//スプリット用クラス(Stringクラスそのままコピーはマルチスレッドアクセスでのnewでロックがかかってしまって遅くなるので..。
@@ -49,9 +39,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	public:
 		~SonikStringBase(void);
-
-		//ロケールを設定します。
-		bool SetStringLocale(SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
 
 		//SJIS形式に変換して取得します。(バッファタイプも書き換わります。)
 		const char* str_c(void);

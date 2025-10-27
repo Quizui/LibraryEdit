@@ -1,63 +1,204 @@
 #include "TLSFAllocator.h"
-#include "../MathBit/MathBit.h"
+#include "../MathBit/MathBit.hpp"
+#include "AllocateInterface.h"
 
 #include <new>
 #include <utility>
 #include <cstdlib>
 #include <atomic>
 
-#define SLIB_TLSF_CONST_BIT_ONE 0b00000000000000000000000000000001	//0x01
-#define SLIB_TLSF_CONST_BIT_FIVE 0b00000000000000000000000000011111 //0x1F
-#define SLIB_TLSF_CONST_BIT_32_ONBIT 0b11111111111111111111111111111111 //0xFFFFFFFF
-#define SLIB_TLSF_CONST_BIT_64_DW32ONBIT 0b000000000000000000000000000000011111111111111111111111111111111ULL //0x00000000FFFFFFFF
-#define SLIB_TLSF_CONST_BIT_64_UP32ONBIT 0b111111111111111111111111111111110000000000000000000000000000000ULL //0xFFFFFFFF00000000
-#define SLIB_TLSF_CONST_BIT_64_ALLBITON 0b1111111111111111111111111111111111111111111111111111111111111111ULL //0xFFFFFFFFFFFFFFFF
+#include <cassert>
+#include <cstdint>
+#include <cstring>
+
+#define SLIB_TLSF_CONST_BIT_ONE			 0x00000001u //0b00000000000000000000000000000001
+#define SLIB_TLSF_CONST_BIT_FIVE		 0x0000001Fu //0b00000000000000000000000000011111
+#define SLIB_TLSF_CONST_BIT_32_ONBIT	 0xFFFFFFFFu //0b11111111111111111111111111111111
+#define SLIB_TLSF_CONST_BIT_64_DW32ONBIT 0x00000000FFFFFFFFULL //0b000000000000000000000000000000011111111111111111111111111111111ULL
+#define SLIB_TLSF_CONST_BIT_64_UP32ONBIT 0xFFFFFFFF00000000ULL //0b111111111111111111111111111111110000000000000000000000000000000ULL
+#define SLIB_TLSF_CONST_BIT_64_ALLBITON  0xFFFFFFFFFFFFFFFFULL //0b1111111111111111111111111111111111111111111111111111111111111111ULL
 
 namespace SonikLib
 {
 	//各種アクセス、設定用クラス(ポインタ解釈としてしか使わない。
 	//＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+	static constexpr uint32_t SLIB_TLSF_CATEGORY_BIT_CNT = 32;
+	static constexpr uint32_t SLIB_TLSF_FREELIST_ADDRESS_BLOCK_CNT = (SLIB_TLSF_CATEGORY_BIT_CNT * SLIB_TLSF_CATEGORY_BIT_CNT); //FirstCategory分 * SecondCategory分
+
+	// 静的チェック（サイズが極端に大きくなっていないか確認）
+	static_assert(SLIB_TLSF_CATEGORY_BIT_CNT == 32u, "Category bit count must be 32");
+	static_assert(SLIB_TLSF_FREELIST_ADDRESS_BLOCK_CNT == 1024u, "Free list address block count must be 1024");
+
+
+	//front, back や next, prev 操作時にそれぞれ加算する固定値。
+	static constexpr uint8_t S_CONST_PLUS_PREV = 1;
+	static constexpr uint8_t S_CONST_PLUS_NEXT = 2;
+
+
 	class SLIB_TLSF_MEMBLOCK
 	{
 	public:
-		SLIB_TLSF_MEMBLOCK* prev;
-		SLIB_TLSF_MEMBLOCK* next;
+		SLIB_TLSF_MEMBLOCK* front; //前方
+		SLIB_TLSF_MEMBLOCK* back;
 		uint32_t BlockSize;
 		uint8_t IsUse;
 
 	};
+	static constexpr uint32_t SLIB_TLSF_LOWLIMIT_ALLOCATESIZE = sizeof(SLIB_TLSF_MEMBLOCK) + 32; //最低アロケートサイズ
 
-	class SLIB_TLSF_FREELISTMEMBLOCK
+	class SLIB_TLSF_FREELISTMEMBLOCK : public SLIB_TLSF_MEMBLOCK
 	{
 	public:
-		SLIB_TLSF_MEMBLOCK* phys_prev;
-		SLIB_TLSF_MEMBLOCK* phys_next;
-		uint32_t BlockSize;
-		uint8_t IsUse;
-		SLIB_TLSF_FREELISTMEMBLOCK* free_prev;
 		SLIB_TLSF_FREELISTMEMBLOCK* free_next;
-		uint8_t IsLast;
 
 	};
 
 	class SLIB_TLSF_BITCOLUMBLOCK
 	{
 	public:
-		uint32_t* mp_FirstCategoryBit;
-		uint32_t* mp_SecondCategoryBit;
+		uint32_t  FirstCategoryBit;											  //ファーストカテゴリのビット列
+		uint32_t  SecondCategoryBit[SLIB_TLSF_CATEGORY_BIT_CNT];			  //セカンドカテゴリのビット列
+		uint32_t  dummy_is_pading;											  //パディング領域
+		uintptr_t FreeAreaAddressBlock[SLIB_TLSF_FREELIST_ADDRESS_BLOCK_CNT]; //ビット列に対応した、「フリーエリアへのアドレスを管理するアドレスブロック」。最大1024アドレスを同時に管理できる。
 	};
 
 	//＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+
+
+	//__________________________________________________________
+	//															|
+	//		重複する処理をinlineグローバル関数でまとめる		|
+	//__________________________________________________________|
+	namespace SLIB_TLSF_GLOBAL_FUNC
+	{
+		//マージ処理時に同じ処理が入るためグローバル関数に一つにまとめる。
+		DEF_FORCE_INLINE void AdjustMemBlock(SonikLib::SLIB_TLSF_FREELISTMEMBLOCK* _target_, SLIB_TLSF_BITCOLUMBLOCK* _free_bit_) noexcept
+		{
+			uint32_t l_delsize_fcat = 0; //サイズに対する第１カテゴリを取得
+			uint32_t l_fcat = 0;		 //実使用フリーリスト第１カテゴリ
+			uint32_t l_scat = 0;		 //実使用フリーリスト第２カテゴリ
+			uint32_t FreeBlockAddresIndex = 0;		//フリーリストインデックス
+			uint32_t freelist_bit_update_mask = 0;	//マスクに使用
+
+
+			//大元の第１カテゴリの取得
+			l_delsize_fcat = static_cast<uint32_t>(SonikMathBit::GetMSB(_target_->BlockSize));
+			//フリーリスト対応の第１カテゴリを取得
+			//mask = 0xFFFFFFFF << l_fcat;
+			//mask &= lp_freelist_bit->FirstCategoryBit;
+			//l_fcat = static_cast<uint32_t>( SonikMathBit::GetMSB(mask) );
+			//↑の1行書き。
+			l_fcat = static_cast<uint32_t>(SonikMathBit::GetLSB(_free_bit_->FirstCategoryBit & (0xFFFFFFFFu << l_delsize_fcat)));
+
+			//第２カテゴリを取得(ここで0が来ることはない。)
+			//リクエストサイズから直接算出したファーストカテゴリー番号と、フリーリストと照らし合わせて算出した使用可能なファーストカテゴリー番号が同じ値ならリクエストサイズから計算
+			l_scat = (l_delsize_fcat == l_fcat)
+					 ? (_target_->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE						 //2^5 ということで MSB - 5 オフセット
+					 : static_cast<uint32_t>(SonikMathBit::GetLSB(_free_bit_->SecondCategoryBit[l_fcat])); //上位のファーストカテゴリならどの場所でも入るので最小位置を取得
+
+			 //位置特定できたのでフリーリスト調整処理
+			FreeBlockAddresIndex = (SLIB_TLSF_CATEGORY_BIT_CNT * l_fcat) + l_scat;
+
+			//フリーブロックの位置から一旦抜けるため、先頭ブロックをnextへ変更する。
+			_free_bit_->FreeAreaAddressBlock[FreeBlockAddresIndex] = reinterpret_cast<uintptr_t>(_target_->free_next);
+
+			//ビット演算でFreeListが0(nullptr)になっていないかチェック。
+			//リストがnullptr(0)になっていれば該当箇所のセカンドカテゴリビットを下ろす。
+			freelist_bit_update_mask = (1u << l_scat) & -(_free_bit_->FreeAreaAddressBlock[FreeBlockAddresIndex] == 0);
+			_free_bit_->SecondCategoryBit[l_fcat] &= (~freelist_bit_update_mask);
+
+			//セカンドカテゴリビットの変化でファーストカテゴリビット列も更新が必要なので全く同じように計算し、フラグを更新する。
+			freelist_bit_update_mask = (1u << l_fcat) & -(_free_bit_->SecondCategoryBit[l_fcat] == 0);
+			_free_bit_->FirstCategoryBit &= (~freelist_bit_update_mask);
+		
+			return;
+		};
+#if false
+		//対象のfree_prev, free_nextのポインタをチェックし、以下の値を返却します。
+		//0：prev, next 共にnullptr
+		//1：prevが存在、nextがnullptr
+		//2：prevがnullptr、nextが存在
+		//3：prev, next 共に存在
+		DEF_FORCE_INLINE int32_t Prev_Next_Pointer_Check(SonikLib::SLIB_TLSF_FREELISTMEMBLOCK* _target_) noexcept
+		{
+			//!!_target_->free_prev(or next) -> !でブール値(0 or 1)に変換。!のみだとnullptr = 1, それ以外 = 0 になるのでこの結果を更に !で反転させるために !! を使う。
+			int32_t prev = (-(!!_target_->free_prev)) & S_CONST_PLUS_PREV; //反転した結果に - をつけることで　-1 * 反転結果になり、結果 0のとき -1 * 0 = 0, 結果 1のとき -1 * 1 = -1 になる。
+			int32_t next = (-(!!_target_->free_prev)) & S_CONST_PLUS_NEXT;
+
+			return (prev | next);
+		};
+
+		//フリーリストから対象を外します。
+		DEF_FORCE_INLINE bool RemoveFreeList(SonikLib::SLIB_TLSF_FREELISTMEMBLOCK* _target_, SLIB_TLSF_BITCOLUMBLOCK* _freelist_bit_) noexcept
+		{
+			uint32_t l_switch_value = 0;
+
+			//対象のfree_prev, free_nextの有無を確認。
+			l_switch_value = Prev_Next_Pointer_Check(_target_);
+
+			//後方オブジェクトのカテゴリ番号を取得
+			//第１カテゴリ番号の取得
+			int32_t l_fcat = SonikMathBit::GetMSB(_target_->BlockSize);
+			//第２カテゴリ番号の取得
+			int32_t l_scat = (_target_->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
+
+			//switchで処理分岐
+			switch (l_switch_value)
+			{
+			case 0: //free_prev, free_next 共にnullptr
+				//フリーリスト最後なので外す。
+				_freelist_bit_->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_fcat) + l_scat] = 0;
+				//現地点の最後のフリーブロックだったのでフラグを下ろす。
+				_freelist_bit_->SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
+				//下ろした結果該当のセカンドビット値が0(すべてOFF)になった場合は対応するファーストカテゴリのビットも下ろす。
+				if (_freelist_bit_->SecondCategoryBit[l_fcat] == 0)
+				{
+					_freelist_bit_->FirstCategoryBit &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
+				};
+
+				break;
+
+			case 1: //free_prev のみ存在
+				//フリーリスト最終ではないので外れるだけ
+				_target_->free_prev->free_next = nullptr; //自分を指しているprevのnextポインタをnullptrへ。
+
+				//該当ビット位置の最終要素ではないためビット操作はせず終了。
+				break;
+
+			case 2: //free_next のみ存在
+				//そのビット位置のフリーリストの先頭なので、nextに先頭を譲り脱退。
+				_freelist_bit_->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_fcat) + l_scat] = reinterpret_cast<uintptr_t>(_target_->free_next);
+				_target_->free_next->free_prev = nullptr; //自分を指しているnextのprevポインタをnullptrへ。
+
+				//該当ビット位置の最終要素ではないためビット操作はせず終了。
+				break;
+
+			case 3: //free_prev, free_next どちらも存在
+				//間から抜けるためにポインタを付け替えるだけ。
+				_target_->free_prev->free_next = _target_->free_next;
+				_target_->free_next->free_prev = _target_->free_prev;
+
+				//該当ビット位置の最終要素ではないためビット操作はせず終了。
+				break;
+
+			default:
+				//エラー。ソースコード変えない限り0~3の範囲を超えることがないので不要かとは思うが...。
+				return false;
+			};
+
+			return true;
+		};
+#endif
+	};//end namespace SLIB_TLSF_GLOBAL_FUNC
+
 
 
 	//クラス実装================================================================================
 	TLSFAllocator::TLSFAllocator(void) noexcept
 		:mp_main_memblock(nullptr)
 		, mp_freelistblock(nullptr)
-		, mp_FreelistAreaTop(nullptr)
 		, m_lock(nullptr)
 		, mem_block_size(0)
-		//		, m_RefCnt(nullptr)
 	{
 		//no process
 	};
@@ -65,14 +206,11 @@ namespace SonikLib
 	TLSFAllocator::TLSFAllocator(const TLSFAllocator& _copy_) noexcept
 		:mp_main_memblock(_copy_.mp_main_memblock)
 		, mp_freelistblock(_copy_.mp_freelistblock)
-		, mp_FreelistAreaTop(_copy_.mp_FreelistAreaTop)
 		, m_lock(_copy_.m_lock)
 		, mem_block_size(_copy_.mem_block_size)
-		//		, m_RefCnt(_copy_.m_RefCnt)
 	{
 		this->m_enabled_state = _copy_.m_enabled_state;
 
-		//		__RefCntAddRef__();
 	};
 
 	//すべてリテラル/ポインタ型で、オブジェクト型はないためstd::move不要。
@@ -80,20 +218,16 @@ namespace SonikLib
 	TLSFAllocator::TLSFAllocator(TLSFAllocator&& _move_) noexcept
 		:mp_main_memblock(_move_.mp_main_memblock)
 		, mp_freelistblock(_move_.mp_freelistblock)
-		, mp_FreelistAreaTop(_move_.mp_FreelistAreaTop)
 		, m_lock(_move_.m_lock)
 		, mem_block_size(_move_.mem_block_size)
-		//		, m_RefCnt(_move_.m_RefCnt)
 	{
 		this->m_enabled_state = _move_.m_enabled_state;
 
 		_move_.mp_main_memblock = nullptr;
 		_move_.mp_freelistblock = nullptr;
-		_move_.mp_FreelistAreaTop = nullptr;
 		_move_.m_enabled_state = SLibAllocEnums::EnableRet::ENABLE_DEFAULT;
 		_move_.m_lock = nullptr;
 		_move_.mem_block_size = 0;
-		//		_move_.m_RefCnt = nullptr;
 	};
 
 	TLSFAllocator& TLSFAllocator::operator =(const TLSFAllocator& _copy_) noexcept
@@ -104,20 +238,15 @@ namespace SonikLib
 			TLSFAllocator lsp;
 			lsp.mp_main_memblock = mp_main_memblock;
 			lsp.mp_freelistblock = mp_freelistblock;
-			lsp.mp_FreelistAreaTop = mp_FreelistAreaTop;
 			lsp.m_enabled_state = m_enabled_state;
 			lsp.mem_block_size = mem_block_size;
-			//			lsp.m_RefCnt = m_RefCnt;
 
 			mp_main_memblock = _copy_.mp_main_memblock;
 			mp_freelistblock = _copy_.mp_freelistblock;
-			mp_FreelistAreaTop = _copy_.mp_FreelistAreaTop;
 			m_enabled_state = _copy_.m_enabled_state;
 			m_lock = _copy_.m_lock;
 			mem_block_size = _copy_.mem_block_size;
-			//			m_RefCnt = _copy_.m_RefCnt;
 
-			//			__RefCntAddRef__();
 		};
 
 		return (*this);
@@ -131,30 +260,23 @@ namespace SonikLib
 			TLSFAllocator lsp;
 			lsp.mp_main_memblock = mp_main_memblock;
 			lsp.mp_freelistblock = mp_freelistblock;
-			lsp.mp_FreelistAreaTop = mp_FreelistAreaTop;
 			lsp.m_enabled_state = m_enabled_state;
 			lsp.mem_block_size = mem_block_size;
-			//			lsp.m_RefCnt = m_RefCnt;
 
-						//すべてリテラル/ポインタ型で、オブジェクト型はないためstd::move不要。
-						//してもいいけど、std::move分のオーバーヘッドコストが発生するのでしなくていいならしないほうがいい。
+			//すべてリテラル/ポインタ型で、オブジェクト型はないためstd::move不要。
+			//してもいいけど、std::move分のオーバーヘッドコストが発生するのでしなくていいならしないほうがいい。
 			mp_main_memblock = _move_.mp_main_memblock;
 			mp_freelistblock = _move_.mp_freelistblock;
-			mp_FreelistAreaTop = _move_.mp_FreelistAreaTop;
 			m_enabled_state = _move_.m_enabled_state;
 			m_lock = _move_.m_lock;
 			mem_block_size = _move_.mem_block_size;
-			//			m_RefCnt = _move_.m_RefCnt;
 
 			_move_.mp_main_memblock = nullptr;
 			_move_.mp_freelistblock = nullptr;
-			_move_.mp_FreelistAreaTop = nullptr;
 			_move_.m_enabled_state = SLibAllocEnums::EnableRet::ENABLE_DEFAULT;
 			_move_.m_lock = nullptr;
 			_move_.mem_block_size = 0;
-			//			_move_.m_RefCnt = nullptr;
 
-						//moveなのでAddref()をコールする必要はない。
 		};
 
 		return (*this);
@@ -162,12 +284,6 @@ namespace SonikLib
 
 	TLSFAllocator::~TLSFAllocator(void)
 	{
-		/*
-		if (!__RefCntRelease__())
-		{
-			return;
-		};
-		*/
 
 		if (mp_main_memblock != nullptr)
 		{
@@ -188,6 +304,7 @@ namespace SonikLib
 #endif
 
 #endif
+
 		};
 
 		if (mp_freelistblock != nullptr)
@@ -210,61 +327,16 @@ namespace SonikLib
 #endif
 
 #endif
+
+#ifdef __SLIB_TLSF_DEBUG_REPORT_USED__ 
+			gl_write_text = "============================== CloseLog ==============================\n";
+			gl_tlsf_fcon->Write_UTF8(gl_write_text);
+			gl_tlsf_fcon->CloseFile();
+#endif
+
 		};
 
 	};
-
-	/*
-		//参照カウンタの加算
-		void TLSFAllocator::__RefCntAddRef__(void) noexcept
-		{
-			if (m_RefCnt == nullptr)
-			{
-				return;
-			};
-
-			uint64_t TmpCnt = m_RefCnt->load(std::memory_order_acquire);
-			while (!m_RefCnt->compare_exchange_strong(TmpCnt, TmpCnt + 1, std::memory_order_acq_rel))
-			{
-				//no process
-			};
-		};
-
-		//参照カウンタの減算
-		bool TLSFAllocator::__RefCntRelease__(void) noexcept
-		{
-			//Release処理
-			if (m_RefCnt == nullptr)
-			{
-				return false;
-			};
-
-			uint64_t TmpCnt = m_RefCnt->load(std::memory_order_acquire);
-			if (TmpCnt == 1)
-			{
-				delete m_RefCnt;
-				m_RefCnt = nullptr;
-
-				return true;
-			};
-
-			while (!m_RefCnt->compare_exchange_strong(TmpCnt, TmpCnt - 1, std::memory_order_acq_rel))
-			{
-				//no process
-			};
-
-			if (TmpCnt == 1)
-			{
-				delete m_RefCnt;
-				m_RefCnt = nullptr;
-
-				return true;
-			};
-
-			return false;
-
-		};
-	*/
 
 	//アロケータの有効化設定を行います。
 	//失敗の場合はサイズ調整の上で再度実施してみてください。
@@ -276,62 +348,72 @@ namespace SonikLib
 		//失敗時は別途自前でdelete等をする必要はない。してもいいけどnullptr入れ忘れるとクラッシュする可能性もあるため
 		//何もしないほうがいい。
 
+		//作成依頼されているメモリサイズが32Byte以下なら 固定で32Byteのフリーブロック+管理ブロック区域を作成する。
 		if (_CreateMemorySize_ <= 32)
 		{
 			//最低32Byte + sizeof(SLIB_TLSF_MEMBLOCK)分を確保する。
 			_CreateMemorySize_ = 32 + sizeof(SLIB_TLSF_MEMBLOCK);
 		};
 
+		//メモリサイズに対してセンチネル領域をプラスして作成する。
+		_CreateMemorySize_ += sizeof(SLIB_TLSF_MEMBLOCK) * 2;
+
+		//ローカルオブジェクト(本体)を生成
 		TLSFAllocator* local_object = new(std::nothrow) TLSFAllocator;
 
-		/*
-				local_object->m_RefCnt = new(std::nothrow) std::atomic<uint64_t>(1);
-				if (local_object->m_RefCnt == nullptr)
-				{
-					return SLibAllocEnums::EnableRet::HEEPALLOCERR_REFCNT;
-				};
-		*/
 		local_object->m_lock = new(std::nothrow) SonikLib::S_CAS::SonikAtomicLock;
 		if (local_object->m_lock == nullptr)
 		{
 			return SLibAllocEnums::EnableRet::HEEPALLOCERR_MTBLOCK;
 		};
 
+		//実フリーリストビット列領域 + 実フリーリストへのポインタ保持領域
+		uint64_t l_aling_malloc_size = sizeof(SLIB_TLSF_BITCOLUMBLOCK);
+
 #if defined(_WIN64)
 		//windows
 		local_object->mp_main_memblock = reinterpret_cast<uint8_t*>(_aligned_malloc(static_cast<size_t>(_CreateMemorySize_), 32));
 		if (local_object->mp_main_memblock == nullptr)
 		{
+			delete local_object->m_lock;
+			delete local_object;
 			return SLibAllocEnums::EnableRet::HEEPALLOCERR_MAINBLOCK;
 		};
 
 		memset(local_object->mp_main_memblock, 0, _CreateMemorySize_);
 
-		//フリーリストビット列へのポインタ保持領域(縦分1個*横分1個) + 実フリーリストビット列領域 + 実フリーリストへのポインタ保持領域
-		local_object->mp_freelistblock = reinterpret_cast<uint8_t*>(_aligned_malloc(static_cast<size_t>((sizeof(uintptr_t) * 2) + (sizeof(uint32_t) * 33) + (sizeof(uintptr_t) * 1024)), 32));
+		local_object->mp_freelistblock = reinterpret_cast<uint8_t*>(_aligned_malloc(l_aling_malloc_size, 32));
 		if (local_object->mp_freelistblock == nullptr)
 		{
+			delete local_object->m_lock;
+			delete local_object;
 			return SLibAllocEnums::EnableRet::HEEPALLOCERR_FREEBLOCK;
 		};
 
-		memset(local_object->mp_freelistblock, 0, (sizeof(uintptr_t) * 2) + (sizeof(uint32_t) * 33) + (sizeof(uintptr_t) * 1024));
+		memset(local_object->mp_freelistblock, 0, l_aling_malloc_size);
 
 #elif defined(__linux__)
 		//linux
 		if (posix_memalign(&local_object->mp_main_memblock, 32, _CreateMemorySize_) != 0)
 		{
+			delete local_object->m_lock;
+			delete local_object;
+
 			return SLibAllocEnums::EnableRet::HEEPALLOCERR_MAINBLOCK;
 		};
 
 		memset(local_object->mp_main_memblock, 0, _CreateMemorySize_);
 
 		//フリーリストビット列へのポインタ保持領域(縦分1個*横分1個) + 実フリーリストビット列領域 + 実フリーリストへのポインタ保持領域
-		if (posix_memalign(&local_object->mp_freelistblock, 32, (sizeof(uintptr_t) * 2) + (sizeof(uint32_t) * 33) + (sizeof(uintptr_t) * 1024)) != 0)
+		if (posix_memalign(&local_object->mp_freelistblock, 32, l_aling_malloc_size) != 0)
 		{
+			delete local_object->m_lock;
+			delete local_object;
+
 			return SLibAllocEnums::EnableRet::HEEPALLOCERR_FREEBLOCK;
 		};
 
-		memset(local_object->mp_freelistblock, 0, (sizeof(uintptr_t) * 2) + (sizeof(uint32_t) * 33) + (sizeof(uintptr_t) * 1024));
+		memset(local_object->mp_freelistblock, 0, l_aling_malloc_size);
 
 #else
 
@@ -340,33 +422,45 @@ namespace SonikLib
 		local_object->mp_main_memblock = reinterpret_cast<uint8_t*>(std::aligned_alloc(32, static_cast<size_t>(_CreateMemorySize_)));
 		if (local_object->mp_main_memblock == nullptr)
 		{
+			delete local_object->m_lock;
+			delete local_object;
+
 			return SLibAllocEnums::EnableRet::HEEPALLOCERR_MAINBLOCK;
 		};
 
 		memset(local_object->mp_main_memblock, 0, _CreateMemorySize_);
 
 		//フリーリストビット列へのポインタ保持領域(縦分1個*横分1個) + 実フリーリストビット列領域 + 実フリーリストへのポインタ保持領域
-		local_object->mp_freelistblock = reinterpret_cast<uint8_t*>(std::aligned_alloc(32, static_cast<size_t>((sizeof(uintptr_t) * 2) + (sizeof(uint32_t) * 33) + (sizeof(uintptr_t) * 1024))));
+		local_object->mp_freelistblock = reinterpret_cast<uint8_t*>(std::aligned_alloc(32, l_aling_malloc_size));
 		if (local_object->mp_freelistblock == nullptr)
 		{
+			delete local_object->m_lock;
+			delete local_object;
+
 			return SLibAllocEnums::EnableRet::HEEPALLOCERR_FREEBLOCK;
 		};
 
-		memset(local_object->mp_freelistblock, 0, (sizeof(uintptr_t) * 2) + (sizeof(uint32_t) * 33) + (sizeof(uintptr_t) * 1024));
+		memset(local_object->mp_freelistblock, 0, l_aling_malloc_size);
 
 #else
 		//C++17以前
 		local_object->mp_main_memblock = new(std::nothrow) uint8_t[_CreateMemorySize_]{};
 		if (local_object->mp_main_memblock == nullptr)
 		{
+			delete local_object->m_lock;
+			delete local_object;
+
 			return SLibAllocEnums::EnableRet::HEEPALLOCERR_MAINBLOCK;
 		};
 
 
 		//フリーリストビット列へのポインタ保持領域(縦分1個*横分1個) + 実フリーリストビット列領域 + 実フリーリストへのポインタ保持領域
-		local_object->mp_freelistblock = new(std::nothrow) uint8_t[(sizeof(uintptr_t) * 2) + (sizeof(uint32_t) * 33) + (sizeof(uintptr_t) * 1024)]{};
+		local_object->mp_freelistblock = new(std::nothrow) uint8_t[l_aling_malloc_size]{};
 		if (local_object->mp_freelistblock == nullptr)
 		{
+			delete local_object->m_lock;
+			delete local_object;
+
 			return SLibAllocEnums::EnableRet::HEEPALLOCERR_FREEBLOCK;
 		};
 
@@ -375,49 +469,58 @@ namespace SonikLib
 #endif
 
 		//ここまで成功したら未設定変数のセット
-		local_object->mp_FreelistAreaTop = local_object->mp_freelistblock + ((sizeof(uintptr_t) * 2) + (sizeof(uint32_t) * 33));
 
-		//初回用フリーリストとビット列を設定
-		uintptr_t* l_setaddr = reinterpret_cast<uintptr_t*>(local_object->mp_freelistblock);
-		(*l_setaddr) = reinterpret_cast<uintptr_t>(local_object->mp_freelistblock + (sizeof(uintptr_t) * 2));
-		++l_setaddr;
-		(*l_setaddr) = reinterpret_cast<uintptr_t>(local_object->mp_freelistblock + (sizeof(uintptr_t) * 2) + sizeof(uint32_t));
+		//センチネルの設定
+		uint8_t* l_controlpointer = reinterpret_cast<uint8_t*>(local_object->mp_main_memblock);
+		SLIB_TLSF_MEMBLOCK* l_sentinel_top = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_controlpointer);
+		SLIB_TLSF_MEMBLOCK* l_sentinel_end = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>( ((l_controlpointer + _CreateMemorySize_) - sizeof(SLIB_TLSF_MEMBLOCK)) );
+
+		l_sentinel_top->IsUse = true;
+		l_sentinel_top->back = l_sentinel_end;
+
+		l_sentinel_end->IsUse = true;
+		l_sentinel_end->front = l_sentinel_top;
+
+		l_controlpointer += sizeof(SLIB_TLSF_MEMBLOCK);
 
 		//領域への簡易アクセス用
 		SLIB_TLSF_BITCOLUMBLOCK* l_controlbit = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(local_object->mp_freelistblock);
 
 		//使用サイズの値を管理用ヘッダ分引いて、実際使えるサイズにしておく。
-		_CreateMemorySize_ -= sizeof(SLIB_TLSF_MEMBLOCK);
+		uint32_t usevalues = _CreateMemorySize_;
+		usevalues -= sizeof(SLIB_TLSF_MEMBLOCK) * 3 ; //通常の管理ブロック + センチネル領域(メモリ空間トップとエンドに配置)
 
 		//第１カテゴリを取得
-		uint32_t l_fcat = SonikMathBit::GetMSB(_CreateMemorySize_) - 1;
+		uint32_t l_fcat = SonikMathBit::GetMSB(usevalues);
 		//第２カテゴリを取得(ここで0が来ることはない。)
-		uint32_t l_scat = (_CreateMemorySize_ >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
+		uint32_t l_scat = (usevalues >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
 
 		//それぞれのカテゴリ番号を使ってビットを立てる。
-		(*l_controlbit->mp_FirstCategoryBit) |= (SLIB_TLSF_CONST_BIT_ONE << l_fcat);
-		l_controlbit->mp_SecondCategoryBit[l_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_scat);
+		l_controlbit->FirstCategoryBit			|= (SLIB_TLSF_CONST_BIT_ONE << l_fcat);
+		l_controlbit->SecondCategoryBit[l_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_scat);
 
-		//フリーリストのアドレスを登録する領域を算出
-		//(uint32_t * 33)Byte先がフリーリストのスタート地点(mp_FreelistAreaTopとして保存)
-		//uintptr_t* として再解釈し、uintptr_tのサイズでポインタを移動させる。
-		//移動量は1行32列(2^5) で32行(2^5)まであるため、 32 * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。 
-		uintptr_t* l_point = reinterpret_cast<uintptr_t*>(local_object->mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
-		(*l_point) = reinterpret_cast<uintptr_t>(local_object->mp_main_memblock); //uintptr_tの領域にポインタ先アドレスを書き込み
+		//該当のフリーリストアドレス保存場所へ、空き領域へのアドレスを登録する。
+		//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。 
+		l_controlbit->FreeAreaAddressBlock[ (SLIB_TLSF_CATEGORY_BIT_CNT * l_fcat) + l_scat ] = reinterpret_cast<uintptr_t>(l_controlpointer);
 
-		SLIB_TLSF_FREELISTMEMBLOCK* setpoint = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_point)); //アドレス値を翻訳
-		setpoint->phys_prev = nullptr;
-		setpoint->phys_next = nullptr;
-		setpoint->BlockSize = _CreateMemorySize_;
-		setpoint->free_prev = nullptr;
+		//初期値セットのため、初回の貸出用メモリブロックのアドレスを取得し、値を書き込む
+		SLIB_TLSF_FREELISTMEMBLOCK* setpoint = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_controlpointer);
+		
+		setpoint->front = l_sentinel_top;
+		setpoint->back = l_sentinel_end;
+		setpoint->BlockSize = usevalues;
 		setpoint->free_next = nullptr;
-		setpoint->IsLast = true;
 
-		local_object->mem_block_size = _CreateMemorySize_;
+		l_sentinel_top->back = setpoint;
+		l_sentinel_end->front = setpoint;
+
+		local_object->mem_block_size = usevalues;
 		local_object->m_enabled_state = SLibAllocEnums::EnableRet::ENABLED_OK; //状態を成功状態へ。
 
 		if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(local_object, _out_))
 		{
+			delete local_object->m_lock;
+			delete local_object;
 			return SLibAllocEnums::EnableRet::HEEPALLOCERR_OBJECTSMTPTR;
 		};
 
@@ -432,304 +535,199 @@ namespace SonikLib
 			return nullptr;
 		};
 
-		//0はだめ。
-		if (_size_ == 0)
-		{
-			return nullptr;
-		};
-
 		m_lock->lock(); //ロック開始。↑は引数しかみてないのでロック掛ける必要がない。
 
-		SLIB_TLSF_BITCOLUMBLOCK* lp_flg = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
+		SLIB_TLSF_BITCOLUMBLOCK* lp_freelist_bit = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
 		//そもそもファーストのフラグがすべて0ならフリーリストが無い
-		if ((*lp_flg->mp_FirstCategoryBit) == 0)
+		if (lp_freelist_bit->FirstCategoryBit == 0)
 		{
 			m_lock->unlock();
 			return nullptr;
 		};
 
 		//0以外で32よりしたなら32に矯正
-		if (_size_ < 32)
-		{
-			_size_ = 32;
-		};
+		//if (_size_ < 32)
+		//{
+		//	_size_ = 32;
+		//};
+		//↑のifのビット演算一発解答バージョン
+		_size_ = (((static_cast<uint64_t>(_size_) + 31ULL) & ~31ULL) | (static_cast<uint64_t>(_size_ == 0) * 32ULL));
 
 		//指定されたサイズのファースト、セカンドカテゴリの抽出
 		//第１カテゴリを取得
-		int32_t l_fcat = SonikMathBit::GetMSB(_size_) - 1;
-		//第２カテゴリを取得(ここで0が来ることはない。)
-		uint32_t l_scat = (_size_ >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
+		uint32_t l_request_fcat = static_cast<uint32_t>(SonikMathBit::GetMSB(_size_)); //0が来ることがないのでGetMSBのエラー値である -1が返却されることはない。のでキャストしてしまう。
 
-		//要求サイズのカテゴリビットを64bit列に纏める
-		//uint64_t nowsize_categorybit = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat)) << 32);
-		//nowsize_categorybit |= static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_scat));
-		//↑を1行にまとめたもの。
-		uint64_t nowsize_categorybit = ((static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_fcat) << 32) | (static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_scat);
-
-		//現在のフリーリストの状態(該当行、列)を64bit列に纏める。
-		//uint64_t nowfreelist_categorybit = static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32;
-		//nowfreelist_categorybit |= lp_flg->mp_SecondCategoryBit[l_fcat];
-		//↑を1行にまとめたもの。
-		uint64_t nowfreelist_categorybit = (static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32) | lp_flg->mp_SecondCategoryBit[l_fcat];
-
-		//現在と要求のビット列をAND > Count してswitch要素を獲得
-		uint16_t l_switch_bitcnt = SonikMathBit::OnBitCount((nowfreelist_categorybit & nowsize_categorybit));
-
-		//0 or 1なら各位置調整処理、2ならそのまま後続処理へ。
-		//case 2 はbreakのみだが、無いとdefault分類されてしまう。
-		switch (l_switch_bitcnt)
+		uint32_t fcat_mask = lp_freelist_bit->FirstCategoryBit & (0xFFFFFFFFu << l_request_fcat);
+		if (fcat_mask == 0u)
 		{
-		case 0:
-			//ファースト、セカンドカテゴリともにヒットせず。
-			//上位のファーストカテゴリを探し、あれば一番近いファーストのセカンドカテゴリ位置を使用する。
-
-			//下位32bitのセカンドカテゴリ区域 + 現在のファーストカテゴリの位置までのビットをすべてOFFに。
-			//uint64_t l_tmp = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat) << 32) -1; //対象のファーストカテゴリの位置以下のビットをすべてONに。
-			//l_tmp = l_tmp << 1;																	 //1bit左にずらして、1bit目を除いた以降のファーストカテゴリ位置までのビットをONの状態に。
-			//l_tmp = l_tmp | 0x01;																	 //1bit目のみ0なのでONに。
-			//l_tmp = ~l_tmp;																		 //反転して、要求サイズファーストカテゴリを含む下位ビットをすべてOFFにするマスクを作成
-			//l_tmp = (nowfreelist_categorybit & l_tmp) >> 32;										 //マスクを適用し、もともとの32bit列の整数へ。
-			//l_fcat = SonikMathBit::GetLSB(l_tmp);													 //最後にLSBを取ると、要求サイズより上位で、かつ一番近いビット位置が取得できる。
-			//↑を1行にまとめたもの。
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				return nullptr;
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 1:
-			//仕様上ファーストカテゴリのみ立っている状態でHITする可能性がある。
-			//同じファーストカテゴリ内の上位に使えるリストのビットが立っていればそこを、なければcase 0 のときと同様の位置を使う。
-
-			//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-			l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-			if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-			{
-				break;
-			};
-
-			//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-			//以下case0 処理をコピーレフト
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				return nullptr;
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 2:
-			//マッチヒット。その位置を使う。
-			break;
-
-		default:
-			//エラーです。
+			//ファーストカテゴリで使えるのがない。
 			m_lock->unlock();
 			return nullptr;
-
 		};
 
+		//第１カテゴリとフリーリストの状態をビット演算で見て、フリーリスト側で使用可能な第１カテゴリ値を算出する。
+		//mask = 0xFFFFFFFF << l_fcat;
+		//mask &= lp_freelist_bit->FirstCategoryBit;
+		//l_fcat = static_cast<uint32_t>( SonikMathBit::GetMSB(mask) );
+		//↑の1行書き。
+		uint32_t l_use_fcat = static_cast<uint32_t>(SonikMathBit::GetLSB(fcat_mask));
 
-		//位置特定できたのでフリーリスト調整処理
-		uintptr_t* l_matchaddress = 0;
-		//位置ポインタを取得
-		l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
+		// 同一ファーストカテゴリ内で start_scat 以上のセカンドがあるか先に確認
+		uint32_t start_scat = (l_use_fcat > 5)
+							  ? (_size_ >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE
+							  : 0u;
+		uint32_t secBits	 = lp_freelist_bit->SecondCategoryBit[l_use_fcat] & (0xFFFFFFFFu << start_scat);
 
-		//該当場所のポインタから分割処理等を実施する。
-		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_matchaddress));
-
-		//先頭ポインタ位置からフリーリストを手繰って要求サイズの広さを持ったオブジェクトを探す。
-		while (l_block->BlockSize < _size_) //絶対マッチした場所のポインタを拾ってくるのでnullptr参照になることはない。(警告はでるけどね。)
+		//第２カテゴリを取得(ここで0が来ることはない。)
+		//リクエストサイズから直接算出したファーストカテゴリー番号と、フリーリストと照らし合わせて算出した使用可能なファーストカテゴリー番号が同じ値ならリクエストサイズから計算
+		uint32_t l_scat;
+		if (secBits != 0u)
 		{
-			//ブロックサイズが足りなければ次の要素へ
-			l_block = l_block->free_next;
-			if (l_block == nullptr)
+			int tmpS = SonikMathBit::GetLSB(secBits);
+			if (tmpS < 0)
 			{
-				//なかったので上位から取る。
-				//switch のcase 1処理をコピーレフト
-				//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-				l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-				if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-				{
-					break;
-				};
-
-				//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-				//以下case0 処理をコピーレフト
-				l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-				if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-				{
-					m_lock->unlock();
-					return nullptr;
-				};
-
-				//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-				l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-				//位置ポインタを取得
-				l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
-
-				break;
+				//LSB見つからず
+				m_lock->unlock();
+				return nullptr;
 			};
 
-		};
-
-
-		//違う場合、分割後のサイズによって更に分岐。
-		//分割後のサイズが32Byte以上になるなら分割実施(分割要求サイズはヘッダサイズもプラスされる。)
-		if ((l_block->BlockSize - (_size_ + sizeof(SLIB_TLSF_MEMBLOCK))) >= 32)
-		{
-			uint8_t* l_offsetcontrol = reinterpret_cast<uint8_t*>((*l_matchaddress));
-			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = nullptr;
-
-			//分割先を保存
-			l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_offsetcontrol + (sizeof(SLIB_TLSF_MEMBLOCK) + _size_));
-
-			//設定
-			//一旦情報全てコピー
-			std::memcpy(l_block_split, l_block, sizeof(SLIB_TLSF_FREELISTMEMBLOCK)); //ここもnullptrになることはない。
-			//分割居残り側のサイズ設定
-			l_block_split->BlockSize -= _size_ + sizeof(SLIB_TLSF_MEMBLOCK);
-
-			//各物理メモリ配列の双方向リストの構築
-			l_block_split->phys_prev = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block); //分割された側はnewのときは左(prev)方向しか操作する必要がない。はず....
-			l_block->phys_next = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block_split); //分割した側はnewのときは右(next)方向しか操作する必要がない。はず....
-
-
-			//分割居残り組のフリーリスト候補先を算出================
-			//第１カテゴリを取得
-			int32_t l_split_fcat = SonikMathBit::GetMSB(l_block_split->BlockSize) - 1;
-			//第２カテゴリを取得
-			int32_t l_split_scat = (l_block_split->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット	
-			//アクセス先
-			uintptr_t* l_split_access_addr = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_split_fcat) + l_split_scat);
-
-			//現在の自分の位置と一緒でなければ処理
-			if ((l_fcat != l_split_fcat) || (l_scat != l_split_scat))
-			{
-				//先に古巣からおさらばする
-				if ((*l_matchaddress) == reinterpret_cast<uintptr_t>(l_block))
-				{
-					//分割前のアドレスがマッチアドレスと一緒なら先頭ポインタなのでそのままnextを代入
-					(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split->free_next);
-					//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-					if ((*l_matchaddress) == 0)
-					{
-						lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-					};
-
-				}
-				else
-				{
-					//一緒じゃない場合中間からの離脱なので双方向ポインタを操作していい具合にする。
-					if (l_block_split->free_prev != nullptr)
-					{
-						l_block_split->free_prev->free_next = l_block_split->free_next;
-					};
-					if (l_block_split->free_next != nullptr)
-					{
-						l_block_split->free_next->free_prev = l_block_split->free_prev;
-					};
-
-					//中間なのでフリーリストはまだあるのでビット列は操作しない。
-				};
-
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
-				//登録処理
-				if ((*l_split_access_addr) == 0)
-				{
-					//新しい先がnullptr なら登録だけ。
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-
-				}
-				else
-				{
-					//nullptr以外ならとりあえず先頭に挿入
-					l_block_split->free_prev = nullptr;
-					l_block_split->free_next = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_split_access_addr));
-					l_block_split->free_next->free_prev = l_block_split;
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-				};
-
-				//新しい登録先のビットを立てる。(立っていても立てる)
-				(*lp_flg->mp_FirstCategoryBit) |= (SLIB_TLSF_CONST_BIT_ONE << l_split_fcat);
-				lp_flg->mp_SecondCategoryBit[l_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_split_scat);
-
-			}
-			else
-			{
-				//一緒ならポインタだけつけかえてそのまま。
-				if (l_block_split->free_prev != nullptr)
-				{
-					l_block_split->free_prev->free_next = l_block_split;
-				};
-				if (l_block_split->free_next != nullptr)
-				{
-					l_block_split->free_next->free_prev = l_block_split;
-				};
-
-				//アドレス値の更新
-				(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split);
-
-			};
-
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
+			l_scat = static_cast<uint32_t>(tmpS);
 
 		}
 		else
 		{
-			//サイズ一致の場合はそのまま貸し出す。
-			//nextポインタをアドレス値として使う。最後なら結局nullptrになるので。
-			//アドレス値の更新
-			(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block->free_next);
-			//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-			if ((*l_matchaddress) == 0)
+			//同一ファーストカテゴリに適合無し -> 次のファーストカテゴリを取得
+			uint32_t remainingFirst = fcat_mask & ~(1u << l_use_fcat);
+			if (remainingFirst == 0u)
 			{
-				lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
+				//ファーストカテゴリ見つからず？
+				m_lock->unlock();
+				return nullptr;
 			};
 
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
+			int tmpNextF = SonikMathBit::GetLSB(remainingFirst);
+			if (tmpNextF < 0)
+			{
+				//ファーストカテゴリ見つからず？
+				m_lock->unlock();
+				return nullptr;
+			};
+
+			l_use_fcat = static_cast<uint32_t>(tmpNextF);
+			uint32_t secBits2 = lp_freelist_bit->SecondCategoryBit[l_use_fcat];
+			if (secBits2 == 0u)
+			{
+				//セカンドカテゴリ見つからず
+				m_lock->unlock();
+				return nullptr;
+			};
+			int tmpS = SonikMathBit::GetLSB(secBits2);
+			if (tmpS < 0)
+			{
+				//セカンドカテゴリ見つからず
+				m_lock->unlock();
+				return nullptr;
+			};
+			l_scat = static_cast<uint32_t>(tmpS);
 		};
 
-		//事後作業
-		//分割後サイズ設定
-		l_block->BlockSize = _size_;
-		l_block->free_prev = nullptr;
-		l_block->free_next = nullptr;
 
+		//位置特定できたのでフリーリスト調整処理
+		uint32_t FreeBlockAddresIndex = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat; //結構コールしたので変数用意
+
+		//フリーブロックを取得
+		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex]);
+		if (l_block == nullptr)
+		{
+			m_lock->unlock();
+			return nullptr;
+		};
+		
+		//フリーブロックの位置から一旦抜けるため、先頭ブロックをnextへ変更する。
+		lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] = reinterpret_cast<uintptr_t>(l_block->free_next);
+		
+		//ビット演算でFreeListが0(nullptr)になっていないかチェック。
+		//リストがnullptr(0)になっていれば該当箇所のセカンドカテゴリビットを下ろす。
+		uint32_t freelist_bit_update_mask = (1u << l_scat);
+		if(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] == 0)
+		{
+			lp_freelist_bit->SecondCategoryBit[l_use_fcat] &= ~freelist_bit_update_mask;
+		};
+		
+		//セカンドカテゴリビットの変化でファーストカテゴリビット列も更新が必要なので全く同じように計算し、フラグを更新する。
+		freelist_bit_update_mask = (1u << l_use_fcat); 
+		if (lp_freelist_bit->SecondCategoryBit[l_use_fcat] == 0)
+		{
+			lp_freelist_bit->FirstCategoryBit &= (~freelist_bit_update_mask);
+
+		};
+
+		//要求サイズと管理ブロックの合計
+		uint64_t request_block_size = (_size_ + sizeof(SLIB_TLSF_MEMBLOCK));
+		uint64_t free_block_size = l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
+
+		//分割後の最低限必要なサイズを上回るなら分割(最低限必要なサイズ = 前方管理ブロックサイズ + 32Byte)
+		//分割不可の場合はそのまま貸出なので後続処理へ
+		if ((free_block_size - request_block_size) >= SLIB_TLSF_LOWLIMIT_ALLOCATESIZE)
+		{
+			//フリーブロックの分割位置
+			uint8_t* l_split_point = reinterpret_cast<uint8_t*>(l_block) + (l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK)); //一旦最終地点へ。
+			l_split_point -= request_block_size; //最終地点から戻って後方分割のポイント設置完了
+
+			//分割先(返却ポインタ)
+			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_split_point);
+
+			//設定
+			//分割して減った分のサイズで再設定
+			l_block->BlockSize -= request_block_size;
+
+			//分割したオブジェクトの設定
+			l_block_split->front	 = l_block;		  //分割したオブジェクトの前方を分割前オブジェクトへ接続
+			l_block_split->back		 = l_block->back; //分割したオブジェクトの後方を分割前オブジェクトが指している後方と同じ方向へ接続
+			l_block_split->BlockSize = _size_;		  //ブロックサイズの設定(request_block_sizeは前方タグを含むサイズになっていて、ここにセットするのは前方タグ抜きの純粋なブロックサイズ)
+			l_block->back->front = l_block_split; //分割前オブジェクトが指している後方の前方オブジェクト先を自分から分割後オブジェクトへ接続
+			l_block->back 		 = l_block_split; //分割前オブジェクトの後方を分割後オブジェクトへ接続
+
+			//フリーリストへの再登録
+			l_block->free_next = nullptr;
+
+			//ブロックサイズから入るべきフリーリスト位置を取得
+			//第１カテゴリを取得
+			l_use_fcat = SonikMathBit::GetMSB(l_block->BlockSize);
+			//第２カテゴリを取得(ここで0が来ることはない。)
+			l_scat = (l_block->BlockSize >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
+
+			//それぞれのカテゴリ番号を使ってビットを立てる。
+			lp_freelist_bit->FirstCategoryBit |= (SLIB_TLSF_CONST_BIT_ONE << l_use_fcat);
+			lp_freelist_bit->SecondCategoryBit[l_use_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_scat);
+
+			//該当のフリーリストアドレス保存場所へ、空き領域へのアドレスを登録する。
+			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
+			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
+			uint32_t idx = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat;
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			l_block->free_next = l_control_block;
+			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
+			
+			//最後に主操作用のポインタ兼返却用であるl_blockを分割後の前方タグへ更新して終了
+			l_block = l_block_split;
+		};
+		
+		//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
+		//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
+		l_block->IsUse = 1;
+		m_lock->unlock(); //ロック解除
+
+
+		//事後作業
 		//使用可能領域として設定している範囲をサイズ分メモリ初期化
-		std::memset(reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK), 0, _size_);
+		uint8_t* ret_point = reinterpret_cast<uint8_t*>(l_block);
+		ret_point += sizeof(SLIB_TLSF_MEMBLOCK);
+
+		std::memset(ret_point, 0, _size_);
 
 		//最後に返したる。
-		return (reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK));
-
+		return ret_point;
 	};
 
 	//エラーコード出力バージョン
@@ -742,311 +740,125 @@ namespace SonikLib
 			return nullptr;
 		};
 
-		//0はだめ。
-		if (_size_ == 0)
-		{
-			_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_TARGETSIZE_ZERO;
-			return nullptr;
-		};
-
 		m_lock->lock(); //ロック開始。↑は引数しかみてないのでロック掛ける必要がない。
 
-		SLIB_TLSF_BITCOLUMBLOCK* lp_flg = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
+		SLIB_TLSF_BITCOLUMBLOCK* lp_freelist_bit = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
 		//そもそもファーストのフラグがすべて0ならフリーリストが無い
-		if ((*lp_flg->mp_FirstCategoryBit) == 0)
+		if (lp_freelist_bit->FirstCategoryBit == 0)
 		{
-			m_lock->unlock();
 			_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE;
+			m_lock->unlock();
 			return nullptr;
 		};
 
 		//0以外で32よりしたなら32に矯正
-		if (_size_ < 32)
-		{
-			_size_ = 32;
-		};
+		//if (_size_ < 32)
+		//{
+		//	_size_ = 32;
+		//};
+		//↑のifのビット演算一発解答バージョン
+		_size_ = (((static_cast<uint64_t>(_size_) + 31ULL) & ~31ULL) | (static_cast<uint64_t>(_size_ == 0) * 32ULL));
 
 		//指定されたサイズのファースト、セカンドカテゴリの抽出
 		//第１カテゴリを取得
-		int32_t l_fcat = SonikMathBit::GetMSB(_size_) - 1;
+		uint32_t l_request_fcat = static_cast<uint32_t>(SonikMathBit::GetMSB(_size_)); //0が来ることがないのでGetMSBのエラー値である -1が返却されることはない。のでキャストしてしまう。
+
+		//第１カテゴリとフリーリストの状態をビット演算で見て、フリーリスト側で使用可能な第１カテゴリ値を算出する。
+		//mask = 0xFFFFFFFF << l_fcat;
+		//mask &= lp_freelist_bit->FirstCategoryBit;
+		//l_fcat = static_cast<uint32_t>( SonikMathBit::GetMSB(mask) );
+		//↑の1行書き。
+		uint32_t l_use_fcat = static_cast<uint32_t>(SonikMathBit::GetLSB( lp_freelist_bit->FirstCategoryBit & (0xFFFFFFFFu << l_request_fcat) ));
+
 		//第２カテゴリを取得(ここで0が来ることはない。)
-		uint32_t l_scat = (_size_ >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
-
-		//要求サイズのカテゴリビットを64bit列に纏める
-		//uint64_t nowsize_categorybit = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat)) << 32);
-		//nowsize_categorybit |= static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_scat));
-		//↑を1行にまとめたもの。
-		uint64_t nowsize_categorybit = ((static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_fcat) << 32) | (static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_scat);
-
-		//現在のフリーリストの状態(該当行、列)を64bit列に纏める。
-		//uint64_t nowfreelist_categorybit = static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32;
-		//nowfreelist_categorybit |= lp_flg->mp_SecondCategoryBit[l_fcat];
-		//↑を1行にまとめたもの。
-		uint64_t nowfreelist_categorybit = (static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32) | lp_flg->mp_SecondCategoryBit[l_fcat];
-
-		//現在と要求のビット列をAND > Count してswitch要素を獲得
-		uint16_t l_switch_bitcnt = SonikMathBit::OnBitCount((nowfreelist_categorybit & nowsize_categorybit));
-
-		//0 or 1なら各位置調整処理、2ならそのまま後続処理へ。
-		//case 2 はbreakのみだが、無いとdefault分類されてしまう。
-		switch (l_switch_bitcnt)
-		{
-		case 0:
-			//ファースト、セカンドカテゴリともにヒットせず。
-			//上位のファーストカテゴリを探し、あれば一番近いファーストのセカンドカテゴリ位置を使用する。
-
-			//下位32bitのセカンドカテゴリ区域 + 現在のファーストカテゴリの位置までのビットをすべてOFFに。
-			//uint64_t l_tmp = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat) << 32) -1; //対象のファーストカテゴリの位置以下のビットをすべてONに。
-			//l_tmp = l_tmp << 1;																	 //1bit左にずらして、1bit目を除いた以降のファーストカテゴリ位置までのビットをONの状態に。
-			//l_tmp = l_tmp | 0x01;																	 //1bit目のみ0なのでONに。
-			//l_tmp = ~l_tmp;																		 //反転して、要求サイズファーストカテゴリを含む下位ビットをすべてOFFにするマスクを作成
-			//l_tmp = (nowfreelist_categorybit & l_tmp) >> 32;										 //マスクを適用し、もともとの32bit列の整数へ。
-			//l_fcat = SonikMathBit::GetLSB(l_tmp);													 //最後にLSBを取ると、要求サイズより上位で、かつ一番近いビット位置が取得できる。
-			//↑を1行にまとめたもの。
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE;
-				return nullptr;
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 1:
-			//仕様上ファーストカテゴリのみ立っている状態でHITする可能性がある。
-			//同じファーストカテゴリ内の上位に使えるリストのビットが立っていればそこを、なければcase 0 のときと同様の位置を使う。
-
-			//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-			l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-			if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-			{
-				break;
-			};
-
-			//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-			//以下case0 処理をコピーレフト
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE;
-				return nullptr;
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 2:
-			//マッチヒット。その位置を使う。
-			break;
-
-		default:
-			//エラーです。
-			m_lock->unlock();
-			_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_UNEXCEPTED;
-			return nullptr;
-
-		};
-
+		//リクエストサイズから直接算出したファーストカテゴリー番号と、フリーリストと照らし合わせて算出した使用可能なファーストカテゴリー番号が同じ値ならリクエストサイズから計算
+		uint32_t l_scat = (l_request_fcat == l_use_fcat)
+						  ? (_size_ >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE										 //2^5 ということで MSB - 5 オフセット
+						  : static_cast<uint32_t>(SonikMathBit::GetLSB(lp_freelist_bit->SecondCategoryBit[l_use_fcat])); //上位のファーストカテゴリならどの場所でも入るので最小位置を取得
 
 		//位置特定できたのでフリーリスト調整処理
-		uintptr_t* l_matchaddress = 0;
-		//位置ポインタを取得
-		l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
+		uint32_t FreeBlockAddresIndex = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat; //結構コールしたので変数用意
 
-		//該当場所のポインタから分割処理等を実施する。
-		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_matchaddress));
+		//フリーブロックを取得
+		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex]);
+		
+		//フリーブロックの位置から一旦抜けるため、先頭ブロックをnextへ変更する。
+		lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] = reinterpret_cast<uintptr_t>(l_block->free_next);
+		
+		//ビット演算でFreeListが0(nullptr)になっていないかチェック。
+		//リストがnullptr(0)になっていれば該当箇所のセカンドカテゴリビットを下ろす。
+		uint32_t freelist_bit_update_mask = (1u << l_scat) & -(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] == 0);
+		lp_freelist_bit->SecondCategoryBit[l_use_fcat] &= (~freelist_bit_update_mask);
+		
+		//セカンドカテゴリビットの変化でファーストカテゴリビット列も更新が必要なので全く同じように計算し、フラグを更新する。
+		freelist_bit_update_mask = (1u << l_use_fcat) & -(lp_freelist_bit->SecondCategoryBit[l_use_fcat] == 0);
+		lp_freelist_bit->FirstCategoryBit &= (~freelist_bit_update_mask);
 
-		//先頭ポインタ位置からフリーリストを手繰って要求サイズの広さを持ったオブジェクトを探す。
-		while (l_block->BlockSize < _size_) //絶対マッチした場所のポインタを拾ってくるのでnullptr参照になることはない。(警告はでるけどね。)
+		//要求サイズと管理ブロックの合計
+		uint64_t request_block_size = (_size_ + sizeof(SLIB_TLSF_MEMBLOCK));
+		uint64_t free_block_size = l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
+
+		//分割後の最低限必要なサイズを上回るなら分割(最低限必要なサイズ = 前方管理ブロックサイズ + 32Byte)
+		//分割不可の場合はそのまま貸出なので後続処理へ
+		if ((free_block_size - request_block_size) >= SLIB_TLSF_LOWLIMIT_ALLOCATESIZE)
 		{
-			//ブロックサイズが足りなければ次の要素へ
-			l_block = l_block->free_next;
-			if (l_block == nullptr)
-			{
-				//なかったので上位から取る。
-				//switch のcase 1処理をコピーレフト
-				//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-				l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-				if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-				{
-					break;
-				};
+			//フリーブロックの分割位置
+			uint8_t* l_split_point = reinterpret_cast<uint8_t*>(l_block) + (l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK)); //一旦最終地点へ。
+			l_split_point -= request_block_size; //最終地点から戻って後方分割のポイント設置完了
 
-				//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-				//以下case0 処理をコピーレフト
-				l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-				if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-				{
-					m_lock->unlock();
-					_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE;
-					return nullptr;
-				};
-
-				//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-				l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-				//位置ポインタを取得
-				l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
-
-				break;
-			};
-
-		};
-
-
-		//違う場合、分割後のサイズによって更に分岐。
-		//分割後のサイズが32Byte以上になるなら分割実施(分割要求サイズはヘッダサイズもプラスされる。)
-		if ((l_block->BlockSize - (_size_ + sizeof(SLIB_TLSF_MEMBLOCK))) >= 32)
-		{
-			uint8_t* l_offsetcontrol = reinterpret_cast<uint8_t*>((*l_matchaddress));
-			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = nullptr;
-
-			//分割先を保存
-			l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_offsetcontrol + (sizeof(SLIB_TLSF_MEMBLOCK) + _size_));
+			//分割先(返却ポインタ)
+			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_split_point);
 
 			//設定
-			//一旦情報全てコピー
-			std::memcpy(l_block_split, l_block, sizeof(SLIB_TLSF_FREELISTMEMBLOCK)); //ここもnullptrになることはない。
-			//分割居残り側のサイズ設定
-			l_block_split->BlockSize -= _size_ + sizeof(SLIB_TLSF_MEMBLOCK);
+			//分割して減った分のサイズで再設定
+			l_block->BlockSize -= request_block_size;
 
-			//各物理メモリ配列の双方向リストの構築
-			l_block_split->phys_prev = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block); //分割された側はnewのときは左(prev)方向しか操作する必要がない。はず....
-			l_block->phys_next = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block_split); //分割した側はnewのときは右(next)方向しか操作する必要がない。はず....
+			//分割したオブジェクトの設定
+			l_block_split->front = l_block;		  //分割したオブジェクトの前方を分割前オブジェクトへ接続
+			l_block_split->back  = l_block->back; //分割したオブジェクトの後方を分割前オブジェクトが指している後方と同じ方向へ接続
+			l_block->back->front = l_block_split; //分割前オブジェクトが指している後方の前方オブジェクト先を自分から分割後オブジェクトへ接続
+			l_block->back 		 = l_block_split; //分割前オブジェクトの後方を分割後オブジェクトへ接続
+			l_block->BlockSize   = _size_; //ブロックサイズの設定(request_block_sizeは前方タグを含むサイズになっていて、ここにセットするのは前方タグ抜きの純粋なブロックサイズ)
 
+			//フリーリストへの再登録
+			l_block->free_next = nullptr;
 
-			//分割居残り組のフリーリスト候補先を算出================
+			//ブロックサイズから入るべきフリーリスト位置を取得
 			//第１カテゴリを取得
-			int32_t l_split_fcat = SonikMathBit::GetMSB(l_block_split->BlockSize) - 1;
-			//第２カテゴリを取得
-			int32_t l_split_scat = (l_block_split->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット	
-			//アクセス先
-			uintptr_t* l_split_access_addr = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_split_fcat) + l_split_scat);
+			l_use_fcat = SonikMathBit::GetMSB(l_block->BlockSize);
+			//第２カテゴリを取得(ここで0が来ることはない。)
+			l_scat = (l_block->BlockSize >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
 
-			//現在の自分の位置と一緒でなければ処理
-			if ((l_fcat != l_split_fcat) || (l_scat != l_split_scat))
-			{
-				//先に古巣からおさらばする
-				if ((*l_matchaddress) == reinterpret_cast<uintptr_t>(l_block))
-				{
-					//分割前のアドレスがマッチアドレスと一緒なら先頭ポインタなのでそのままnextを代入
-					(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split->free_next);
-					//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-					if ((*l_matchaddress) == 0)
-					{
-						lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-					};
+			//それぞれのカテゴリ番号を使ってビットを立てる。
+			lp_freelist_bit->FirstCategoryBit |= (SLIB_TLSF_CONST_BIT_ONE << l_use_fcat);
+			lp_freelist_bit->SecondCategoryBit[l_use_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_scat);
 
-				}
-				else
-				{
-					//一緒じゃない場合中間からの離脱なので双方向ポインタを操作していい具合にする。
-					if (l_block_split->free_prev != nullptr)
-					{
-						l_block_split->free_prev->free_next = l_block_split->free_next;
-					};
-					if (l_block_split->free_next != nullptr)
-					{
-						l_block_split->free_next->free_prev = l_block_split->free_prev;
-					};
-
-					//中間なのでフリーリストはまだあるのでビット列は操作しない。
-				};
-
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
-				//登録処理
-				if ((*l_split_access_addr) == 0)
-				{
-					//新しい先がnullptr なら登録だけ。
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-
-				}
-				else
-				{
-					//nullptr以外ならとりあえず先頭に挿入
-					l_block_split->free_prev = nullptr;
-					l_block_split->free_next = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_split_access_addr));
-					l_block_split->free_next->free_prev = l_block_split;
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-				};
-
-				//新しい登録先のビットを立てる。(立っていても立てる)
-				(*lp_flg->mp_FirstCategoryBit) |= (SLIB_TLSF_CONST_BIT_ONE << l_split_fcat);
-				lp_flg->mp_SecondCategoryBit[l_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_split_scat);
-
-			}
-			else
-			{
-				//一緒ならポインタだけつけかえてそのまま。
-				if (l_block_split->free_prev != nullptr)
-				{
-					l_block_split->free_prev->free_next = l_block_split;
-				};
-				if (l_block_split->free_next != nullptr)
-				{
-					l_block_split->free_next->free_prev = l_block_split;
-				};
-
-				//アドレス値の更新
-				(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split);
-
-			};
-
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
-
-		}
-		else
-		{
-			//サイズ一致の場合はそのまま貸し出す。
-			//nextポインタをアドレス値として使う。最後なら結局nullptrになるので。
-			//アドレス値の更新
-			(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block->free_next);
-			//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-			if ((*l_matchaddress) == 0)
-			{
-				lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
-			};
-
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
+			//該当のフリーリストアドレス保存場所へ、空き領域へのアドレスを登録する。
+			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
+			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			l_block->free_next = l_control_block;
+			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
+			
+			//最後に主操作用のポインタ兼返却用であるl_blockを分割後の前方タグへ更新して終了
+			l_block = l_block_split;
 		};
+		
+		//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
+		//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
+		l_block->IsUse = 1;
+		m_lock->unlock(); //ロック解除
+
 
 		//事後作業
-		//分割後サイズ設定
-		l_block->BlockSize = _size_;
-		l_block->free_prev = nullptr;
-		l_block->free_next = nullptr;
-
 		//使用可能領域として設定している範囲をサイズ分メモリ初期化
-		std::memset(reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK), 0, _size_);
+		uint8_t* ret_point = reinterpret_cast<uint8_t*>(l_block);
+		ret_point += sizeof(SLIB_TLSF_MEMBLOCK);
+
+		std::memset(ret_point, 0, _size_);
 
 		//最後に返したる。
-		_errcode_ = SLibAllocEnums::EnableRet::ENABLED_OK;
-		return (reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK));
-
+		return ret_point;
 	};
 
 	//例外送出版
@@ -1058,305 +870,128 @@ namespace SonikLib
 		if (m_enabled_state != SLibAllocEnums::EnableRet::ENABLED_OK)
 		{
 			throw std::bad_alloc();
-		};
-
-		//0はだめ。
-		if (_size_ == 0)
-		{
-			throw std::bad_alloc();
+			return nullptr;
 		};
 
 		m_lock->lock(); //ロック開始。↑は引数しかみてないのでロック掛ける必要がない。
 
-		SLIB_TLSF_BITCOLUMBLOCK* lp_flg = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
+		SLIB_TLSF_BITCOLUMBLOCK* lp_freelist_bit = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
 		//そもそもファーストのフラグがすべて0ならフリーリストが無い
-		if ((*lp_flg->mp_FirstCategoryBit) == 0)
+		if (lp_freelist_bit->FirstCategoryBit == 0)
 		{
 			m_lock->unlock();
 			throw std::bad_alloc();
+			return nullptr;
 		};
 
 		//0以外で32よりしたなら32に矯正
-		if (_size_ < 32)
-		{
-			_size_ = 32;
-		};
+		//if (_size_ < 32)
+		//{
+		//	_size_ = 32;
+		//};
+		//↑のifのビット演算一発解答バージョン
+		_size_ = (((static_cast<uint64_t>(_size_) + 31ULL) & ~31ULL) | (static_cast<uint64_t>(_size_ == 0) * 32ULL));
 
 		//指定されたサイズのファースト、セカンドカテゴリの抽出
 		//第１カテゴリを取得
-		int32_t l_fcat = SonikMathBit::GetMSB(_size_) - 1;
+		uint32_t l_request_fcat = static_cast<uint32_t>(SonikMathBit::GetMSB(_size_)); //0が来ることがないのでGetMSBのエラー値である -1が返却されることはない。のでキャストしてしまう。
+
+		//第１カテゴリとフリーリストの状態をビット演算で見て、フリーリスト側で使用可能な第１カテゴリ値を算出する。
+		//mask = 0xFFFFFFFF << l_fcat;
+		//mask &= lp_freelist_bit->FirstCategoryBit;
+		//l_fcat = static_cast<uint32_t>( SonikMathBit::GetMSB(mask) );
+		//↑の1行書き。
+		uint32_t l_use_fcat = static_cast<uint32_t>(SonikMathBit::GetLSB( lp_freelist_bit->FirstCategoryBit & (0xFFFFFFFFu << l_request_fcat) ));
+
 		//第２カテゴリを取得(ここで0が来ることはない。)
-		uint32_t l_scat = (_size_ >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
-
-		//要求サイズのカテゴリビットを64bit列に纏める
-		//uint64_t nowsize_categorybit = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat)) << 32);
-		//nowsize_categorybit |= static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_scat));
-		//↑を1行にまとめたもの。
-		uint64_t nowsize_categorybit = ((static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_fcat) << 32) | (static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_scat);
-
-		//現在のフリーリストの状態(該当行、列)を64bit列に纏める。
-		//uint64_t nowfreelist_categorybit = static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32;
-		//nowfreelist_categorybit |= lp_flg->mp_SecondCategoryBit[l_fcat];
-		//↑を1行にまとめたもの。
-		uint64_t nowfreelist_categorybit = (static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32) | lp_flg->mp_SecondCategoryBit[l_fcat];
-
-		//現在と要求のビット列をAND > Count してswitch要素を獲得
-		uint16_t l_switch_bitcnt = SonikMathBit::OnBitCount((nowfreelist_categorybit & nowsize_categorybit));
-
-		//0 or 1なら各位置調整処理、2ならそのまま後続処理へ。
-		//case 2 はbreakのみだが、無いとdefault分類されてしまう。
-		switch (l_switch_bitcnt)
-		{
-		case 0:
-			//ファースト、セカンドカテゴリともにヒットせず。
-			//上位のファーストカテゴリを探し、あれば一番近いファーストのセカンドカテゴリ位置を使用する。
-
-			//下位32bitのセカンドカテゴリ区域 + 現在のファーストカテゴリの位置までのビットをすべてOFFに。
-			//uint64_t l_tmp = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat) << 32) -1; //対象のファーストカテゴリの位置以下のビットをすべてONに。
-			//l_tmp = l_tmp << 1;																	 //1bit左にずらして、1bit目を除いた以降のファーストカテゴリ位置までのビットをONの状態に。
-			//l_tmp = l_tmp | 0x01;																	 //1bit目のみ0なのでONに。
-			//l_tmp = ~l_tmp;																		 //反転して、要求サイズファーストカテゴリを含む下位ビットをすべてOFFにするマスクを作成
-			//l_tmp = (nowfreelist_categorybit & l_tmp) >> 32;										 //マスクを適用し、もともとの32bit列の整数へ。
-			//l_fcat = SonikMathBit::GetLSB(l_tmp);													 //最後にLSBを取ると、要求サイズより上位で、かつ一番近いビット位置が取得できる。
-			//↑を1行にまとめたもの。
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				throw std::bad_alloc();
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 1:
-			//仕様上ファーストカテゴリのみ立っている状態でHITする可能性がある。
-			//同じファーストカテゴリ内の上位に使えるリストのビットが立っていればそこを、なければcase 0 のときと同様の位置を使う。
-
-			//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-			l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-			if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-			{
-				break;
-			};
-
-			//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-			//以下case0 処理をコピーレフト
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				throw std::bad_alloc();
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 2:
-			//マッチヒット。その位置を使う。
-			break;
-
-		default:
-			//エラーです。
-			m_lock->unlock();
-			throw std::bad_alloc();
-
-		};
-
+		//リクエストサイズから直接算出したファーストカテゴリー番号と、フリーリストと照らし合わせて算出した使用可能なファーストカテゴリー番号が同じ値ならリクエストサイズから計算
+		uint32_t l_scat = (l_request_fcat == l_use_fcat)
+						  ? (_size_ >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE										 //2^5 ということで MSB - 5 オフセット
+						  : static_cast<uint32_t>(SonikMathBit::GetLSB(lp_freelist_bit->SecondCategoryBit[l_use_fcat])); //上位のファーストカテゴリならどの場所でも入るので最小位置を取得
 
 		//位置特定できたのでフリーリスト調整処理
-		uintptr_t* l_matchaddress = 0;
-		//位置ポインタを取得
-		l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
+		uint32_t FreeBlockAddresIndex = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat; //結構コールしたので変数用意
 
-		//該当場所のポインタから分割処理等を実施する。
-		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_matchaddress));
+		//フリーブロックを取得
+		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex]);
+		
+		//フリーブロックの位置から一旦抜けるため、先頭ブロックをnextへ変更する。
+		lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] = reinterpret_cast<uintptr_t>(l_block->free_next);
+		
+		//ビット演算でFreeListが0(nullptr)になっていないかチェック。
+		//リストがnullptr(0)になっていれば該当箇所のセカンドカテゴリビットを下ろす。
+		uint32_t freelist_bit_update_mask = (1u << l_scat) & -(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] == 0);
+		lp_freelist_bit->SecondCategoryBit[l_use_fcat] &= (~freelist_bit_update_mask);
+		
+		//セカンドカテゴリビットの変化でファーストカテゴリビット列も更新が必要なので全く同じように計算し、フラグを更新する。
+		freelist_bit_update_mask = (1u << l_use_fcat) & -(lp_freelist_bit->SecondCategoryBit[l_use_fcat] == 0);
+		lp_freelist_bit->FirstCategoryBit &= (~freelist_bit_update_mask);
 
-		//先頭ポインタ位置からフリーリストを手繰って要求サイズの広さを持ったオブジェクトを探す。
-		while (l_block->BlockSize < _size_) //絶対マッチした場所のポインタを拾ってくるのでnullptr参照になることはない。(警告はでるけどね。)
+		//要求サイズと管理ブロックの合計
+		uint64_t request_block_size = (_size_ + sizeof(SLIB_TLSF_MEMBLOCK));
+		uint64_t free_block_size = l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
+
+		//分割後の最低限必要なサイズを上回るなら分割(最低限必要なサイズ = 前方管理ブロックサイズ + 32Byte)
+		//分割不可の場合はそのまま貸出なので後続処理へ
+		if ((free_block_size - request_block_size) >= SLIB_TLSF_LOWLIMIT_ALLOCATESIZE)
 		{
-			//ブロックサイズが足りなければ次の要素へ
-			l_block = l_block->free_next;
-			if (l_block == nullptr)
-			{
-				//なかったので上位から取る。
-				//switch のcase 1処理をコピーレフト
-				//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-				l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-				if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-				{
-					break;
-				};
+			//フリーブロックの分割位置
+			uint8_t* l_split_point = reinterpret_cast<uint8_t*>(l_block) + (l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK)); //一旦最終地点へ。
+			l_split_point -= request_block_size; //最終地点から戻って後方分割のポイント設置完了
 
-				//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-				//以下case0 処理をコピーレフト
-				l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-				if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-				{
-					m_lock->unlock();
-					throw std::bad_alloc();
-				};
-
-				//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-				l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-				//位置ポインタを取得
-				l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
-
-				break;
-			};
-
-		};
-
-
-		//違う場合、分割後のサイズによって更に分岐。
-		//分割後のサイズが32Byte以上になるなら分割実施(分割要求サイズはヘッダサイズもプラスされる。)
-		if ((l_block->BlockSize - (_size_ + sizeof(SLIB_TLSF_MEMBLOCK))) >= 32)
-		{
-			uint8_t* l_offsetcontrol = reinterpret_cast<uint8_t*>((*l_matchaddress));
-			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = nullptr;
-
-			//分割先を保存
-			l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_offsetcontrol + (sizeof(SLIB_TLSF_MEMBLOCK) + _size_));
+			//分割先(返却ポインタ)
+			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_split_point);
 
 			//設定
-			//一旦情報全てコピー
-			std::memcpy(l_block_split, l_block, sizeof(SLIB_TLSF_FREELISTMEMBLOCK)); //ここもnullptrになることはない。
-			//分割居残り側のサイズ設定
-			l_block_split->BlockSize -= _size_ + sizeof(SLIB_TLSF_MEMBLOCK);
+			//分割して減った分のサイズで再設定
+			l_block->BlockSize -= request_block_size;
 
-			//各物理メモリ配列の双方向リストの構築
-			l_block_split->phys_prev = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block); //分割された側はnewのときは左(prev)方向しか操作する必要がない。はず....
-			l_block->phys_next = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block_split); //分割した側はnewのときは右(next)方向しか操作する必要がない。はず....
+			//分割したオブジェクトの設定
+			l_block_split->front = l_block;		  //分割したオブジェクトの前方を分割前オブジェクトへ接続
+			l_block_split->back  = l_block->back; //分割したオブジェクトの後方を分割前オブジェクトが指している後方と同じ方向へ接続
+			l_block->back->front = l_block_split; //分割前オブジェクトが指している後方の前方オブジェクト先を自分から分割後オブジェクトへ接続
+			l_block->back 		 = l_block_split; //分割前オブジェクトの後方を分割後オブジェクトへ接続
+			l_block->BlockSize   = _size_; //ブロックサイズの設定(request_block_sizeは前方タグを含むサイズになっていて、ここにセットするのは前方タグ抜きの純粋なブロックサイズ)
 
+			//フリーリストへの再登録
+			l_block->free_next = nullptr;
 
-			//分割居残り組のフリーリスト候補先を算出================
+			//ブロックサイズから入るべきフリーリスト位置を取得
 			//第１カテゴリを取得
-			int32_t l_split_fcat = SonikMathBit::GetMSB(l_block_split->BlockSize) - 1;
-			//第２カテゴリを取得
-			int32_t l_split_scat = (l_block_split->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット	
-			//アクセス先
-			uintptr_t* l_split_access_addr = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_split_fcat) + l_split_scat);
+			l_use_fcat = SonikMathBit::GetMSB(l_block->BlockSize);
+			//第２カテゴリを取得(ここで0が来ることはない。)
+			l_scat = (l_block->BlockSize >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
 
-			//現在の自分の位置と一緒でなければ処理
-			if ((l_fcat != l_split_fcat) || (l_scat != l_split_scat))
-			{
-				//先に古巣からおさらばする
-				if ((*l_matchaddress) == reinterpret_cast<uintptr_t>(l_block))
-				{
-					//分割前のアドレスがマッチアドレスと一緒なら先頭ポインタなのでそのままnextを代入
-					(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split->free_next);
-					//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-					if ((*l_matchaddress) == 0)
-					{
-						lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-					};
+			//それぞれのカテゴリ番号を使ってビットを立てる。
+			lp_freelist_bit->FirstCategoryBit |= (SLIB_TLSF_CONST_BIT_ONE << l_use_fcat);
+			lp_freelist_bit->SecondCategoryBit[l_use_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_scat);
 
-				}
-				else
-				{
-					//一緒じゃない場合中間からの離脱なので双方向ポインタを操作していい具合にする。
-					if (l_block_split->free_prev != nullptr)
-					{
-						l_block_split->free_prev->free_next = l_block_split->free_next;
-					};
-					if (l_block_split->free_next != nullptr)
-					{
-						l_block_split->free_next->free_prev = l_block_split->free_prev;
-					};
-
-					//中間なのでフリーリストはまだあるのでビット列は操作しない。
-				};
-
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
-				//登録処理
-				if ((*l_split_access_addr) == 0)
-				{
-					//新しい先がnullptr なら登録だけ。
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-
-				}
-				else
-				{
-					//nullptr以外ならとりあえず先頭に挿入
-					l_block_split->free_prev = nullptr;
-					l_block_split->free_next = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_split_access_addr));
-					l_block_split->free_next->free_prev = l_block_split;
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-				};
-
-				//新しい登録先のビットを立てる。(立っていても立てる)
-				(*lp_flg->mp_FirstCategoryBit) |= (SLIB_TLSF_CONST_BIT_ONE << l_split_fcat);
-				lp_flg->mp_SecondCategoryBit[l_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_split_scat);
-
-			}
-			else
-			{
-				//一緒ならポインタだけつけかえてそのまま。
-				if (l_block_split->free_prev != nullptr)
-				{
-					l_block_split->free_prev->free_next = l_block_split;
-				};
-				if (l_block_split->free_next != nullptr)
-				{
-					l_block_split->free_next->free_prev = l_block_split;
-				};
-
-				//アドレス値の更新
-				(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split);
-
-			};
-
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
-
-		}
-		else
-		{
-			//サイズ一致の場合はそのまま貸し出す。
-			//nextポインタをアドレス値として使う。最後なら結局nullptrになるので。
-			//アドレス値の更新
-			(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block->free_next);
-			//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-			if ((*l_matchaddress) == 0)
-			{
-				lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
-			};
-
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
+			//該当のフリーリストアドレス保存場所へ、空き領域へのアドレスを登録する。
+			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
+			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			l_block->free_next = l_control_block;
+			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
+			
+			//最後に主操作用のポインタ兼返却用であるl_blockを分割後の前方タグへ更新して終了
+			l_block = l_block_split;
 		};
+		
+		//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
+		//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
+		l_block->IsUse = 1;
+		m_lock->unlock(); //ロック解除
+
 
 		//事後作業
-		//分割後サイズ設定
-		l_block->BlockSize = _size_;
-		l_block->free_prev = nullptr;
-		l_block->free_next = nullptr;
-
 		//使用可能領域として設定している範囲をサイズ分メモリ初期化
-		std::memset(reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK), 0, _size_);
+		uint8_t* ret_point = reinterpret_cast<uint8_t*>(l_block);
+		ret_point += sizeof(SLIB_TLSF_MEMBLOCK);
+
+		std::memset(ret_point, 0, _size_);
 
 		//最後に返したる。
-		return (reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK));
+		return ret_point;
 	};
 
 
@@ -1370,304 +1005,126 @@ namespace SonikLib
 			return nullptr;
 		};
 
+		
 		uint32_t _size_ = static_cast<uint32_t>((static_cast<uint32_t>(_sizeof_) * _elemcnt_));
-		//0はだめ。
-		if (_size_ == 0)
-		{
-			return nullptr;
-		};
 
 		m_lock->lock(); //ロック開始。↑は引数しかみてないのでロック掛ける必要がない。
 
-		SLIB_TLSF_BITCOLUMBLOCK* lp_flg = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
+		SLIB_TLSF_BITCOLUMBLOCK* lp_freelist_bit = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
 		//そもそもファーストのフラグがすべて0ならフリーリストが無い
-		if ((*lp_flg->mp_FirstCategoryBit) == 0)
+		if (lp_freelist_bit->FirstCategoryBit == 0)
 		{
 			m_lock->unlock();
 			return nullptr;
 		};
 
 		//0以外で32よりしたなら32に矯正
-		if (_size_ < 32)
-		{
-			_size_ = 32;
-		};
+		//if (_size_ < 32)
+		//{
+		//	_size_ = 32;
+		//};
+		//↑のifのビット演算一発解答バージョン
+		_size_ = (((static_cast<uint64_t>(_size_) + 31ULL) & ~31ULL) | (static_cast<uint64_t>(_size_ == 0) * 32ULL));
 
 		//指定されたサイズのファースト、セカンドカテゴリの抽出
 		//第１カテゴリを取得
-		int32_t l_fcat = SonikMathBit::GetMSB(_size_) - 1;
+		uint32_t l_request_fcat = static_cast<uint32_t>(SonikMathBit::GetMSB(_size_)); //0が来ることがないのでGetMSBのエラー値である -1が返却されることはない。のでキャストしてしまう。
+
+		//第１カテゴリとフリーリストの状態をビット演算で見て、フリーリスト側で使用可能な第１カテゴリ値を算出する。
+		//mask = 0xFFFFFFFF << l_fcat;
+		//mask &= lp_freelist_bit->FirstCategoryBit;
+		//l_fcat = static_cast<uint32_t>( SonikMathBit::GetMSB(mask) );
+		//↑の1行書き。
+		uint32_t l_use_fcat = static_cast<uint32_t>(SonikMathBit::GetLSB( lp_freelist_bit->FirstCategoryBit & (0xFFFFFFFFu << l_request_fcat) ));
+
 		//第２カテゴリを取得(ここで0が来ることはない。)
-		uint32_t l_scat = (_size_ >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
-
-		//要求サイズのカテゴリビットを64bit列に纏める
-		//uint64_t nowsize_categorybit = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat)) << 32);
-		//nowsize_categorybit |= static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_scat));
-		//↑を1行にまとめたもの。
-		uint64_t nowsize_categorybit = ((static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_fcat) << 32) | (static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_scat);
-
-		//現在のフリーリストの状態(該当行、列)を64bit列に纏める。
-		//uint64_t nowfreelist_categorybit = static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32;
-		//nowfreelist_categorybit |= lp_flg->mp_SecondCategoryBit[l_fcat];
-		//↑を1行にまとめたもの。
-		uint64_t nowfreelist_categorybit = (static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32) | lp_flg->mp_SecondCategoryBit[l_fcat];
-
-		//現在と要求のビット列をAND > Count してswitch要素を獲得
-		uint16_t l_switch_bitcnt = SonikMathBit::OnBitCount((nowfreelist_categorybit & nowsize_categorybit));
-
-		//0 or 1なら各位置調整処理、2ならそのまま後続処理へ。
-		//case 2 はbreakのみだが、無いとdefault分類されてしまう。
-		switch (l_switch_bitcnt)
-		{
-		case 0:
-			//ファースト、セカンドカテゴリともにヒットせず。
-			//上位のファーストカテゴリを探し、あれば一番近いファーストのセカンドカテゴリ位置を使用する。
-
-			//下位32bitのセカンドカテゴリ区域 + 現在のファーストカテゴリの位置までのビットをすべてOFFに。
-			//uint64_t l_tmp = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat) << 32) -1; //対象のファーストカテゴリの位置以下のビットをすべてONに。
-			//l_tmp = l_tmp << 1;																	 //1bit左にずらして、1bit目を除いた以降のファーストカテゴリ位置までのビットをONの状態に。
-			//l_tmp = l_tmp | 0x01;																	 //1bit目のみ0なのでONに。
-			//l_tmp = ~l_tmp;																		 //反転して、要求サイズファーストカテゴリを含む下位ビットをすべてOFFにするマスクを作成
-			//l_tmp = (nowfreelist_categorybit & l_tmp) >> 32;										 //マスクを適用し、もともとの32bit列の整数へ。
-			//l_fcat = SonikMathBit::GetLSB(l_tmp);													 //最後にLSBを取ると、要求サイズより上位で、かつ一番近いビット位置が取得できる。
-			//↑を1行にまとめたもの。
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				return nullptr;
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 1:
-			//仕様上ファーストカテゴリのみ立っている状態でHITする可能性がある。
-			//同じファーストカテゴリ内の上位に使えるリストのビットが立っていればそこを、なければcase 0 のときと同様の位置を使う。
-
-			//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-			l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-			if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-			{
-				break;
-			};
-
-			//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-			//以下case0 処理をコピーレフト
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				return nullptr;
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 2:
-			//マッチヒット。その位置を使う。
-			break;
-
-		default:
-			//エラーです。
-			m_lock->unlock();
-			return nullptr;
-
-		};
-
+		//リクエストサイズから直接算出したファーストカテゴリー番号と、フリーリストと照らし合わせて算出した使用可能なファーストカテゴリー番号が同じ値ならリクエストサイズから計算
+		uint32_t l_scat = (l_request_fcat == l_use_fcat)
+						  ? (_size_ >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE										 //2^5 ということで MSB - 5 オフセット
+						  : static_cast<uint32_t>(SonikMathBit::GetLSB(lp_freelist_bit->SecondCategoryBit[l_use_fcat])); //上位のファーストカテゴリならどの場所でも入るので最小位置を取得
 
 		//位置特定できたのでフリーリスト調整処理
-		uintptr_t* l_matchaddress = 0;
-		//位置ポインタを取得
-		l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
+		uint32_t FreeBlockAddresIndex = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat; //結構コールしたので変数用意
 
-		//該当場所のポインタから分割処理等を実施する。
-		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_matchaddress));
+		//フリーブロックを取得
+		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex]);
+		
+		//フリーブロックの位置から一旦抜けるため、先頭ブロックをnextへ変更する。
+		lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] = reinterpret_cast<uintptr_t>(l_block->free_next);
+		
+		//ビット演算でFreeListが0(nullptr)になっていないかチェック。
+		//リストがnullptr(0)になっていれば該当箇所のセカンドカテゴリビットを下ろす。
+		uint32_t freelist_bit_update_mask = (1u << l_scat) & -(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] == 0);
+		lp_freelist_bit->SecondCategoryBit[l_use_fcat] &= (~freelist_bit_update_mask);
+		
+		//セカンドカテゴリビットの変化でファーストカテゴリビット列も更新が必要なので全く同じように計算し、フラグを更新する。
+		freelist_bit_update_mask = (1u << l_use_fcat) & -(lp_freelist_bit->SecondCategoryBit[l_use_fcat] == 0);
+		lp_freelist_bit->FirstCategoryBit &= (~freelist_bit_update_mask);
 
-		//先頭ポインタ位置からフリーリストを手繰って要求サイズの広さを持ったオブジェクトを探す。
-		while (l_block->BlockSize < _size_) //絶対マッチした場所のポインタを拾ってくるのでnullptr参照になることはない。(警告はでるけどね。)
+		//要求サイズと管理ブロックの合計
+		uint64_t request_block_size = (_size_ + sizeof(SLIB_TLSF_MEMBLOCK));
+		uint64_t free_block_size = l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
+
+		//分割後の最低限必要なサイズを上回るなら分割(最低限必要なサイズ = 前方管理ブロックサイズ + 32Byte)
+		//分割不可の場合はそのまま貸出なので後続処理へ
+		if ((free_block_size - request_block_size) >= SLIB_TLSF_LOWLIMIT_ALLOCATESIZE)
 		{
-			//ブロックサイズが足りなければ次の要素へ
-			l_block = l_block->free_next;
-			if (l_block == nullptr)
-			{
-				//なかったので上位から取る。
-				//switch のcase 1処理をコピーレフト
-				//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-				l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-				if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-				{
-					break;
-				};
+			//フリーブロックの分割位置
+			uint8_t* l_split_point = reinterpret_cast<uint8_t*>(l_block) + (l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK)); //一旦最終地点へ。
+			l_split_point -= request_block_size; //最終地点から戻って後方分割のポイント設置完了
 
-				//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-				//以下case0 処理をコピーレフト
-				l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-				if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-				{
-					m_lock->unlock();
-					return nullptr;
-				};
-
-				//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-				l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-				//位置ポインタを取得
-				l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
-
-				break;
-			};
-
-		};
-
-
-		//違う場合、分割後のサイズによって更に分岐。
-		//分割後のサイズが32Byte以上になるなら分割実施(分割要求サイズはヘッダサイズもプラスされる。)
-		if ((l_block->BlockSize - (_size_ + sizeof(SLIB_TLSF_MEMBLOCK))) >= 32)
-		{
-			uint8_t* l_offsetcontrol = reinterpret_cast<uint8_t*>((*l_matchaddress));
-			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = nullptr;
-
-			//分割先を保存
-			l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_offsetcontrol + (sizeof(SLIB_TLSF_MEMBLOCK) + _size_));
+			//分割先(返却ポインタ)
+			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_split_point);
 
 			//設定
-			//一旦情報全てコピー
-			std::memcpy(l_block_split, l_block, sizeof(SLIB_TLSF_FREELISTMEMBLOCK)); //ここもnullptrになることはない。
-			//分割居残り側のサイズ設定
-			l_block_split->BlockSize -= _size_ + sizeof(SLIB_TLSF_MEMBLOCK);
+			//分割して減った分のサイズで再設定
+			l_block->BlockSize -= request_block_size;
 
-			//各物理メモリ配列の双方向リストの構築
-			l_block_split->phys_prev = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block); //分割された側はnewのときは左(prev)方向しか操作する必要がない。はず....
-			l_block->phys_next = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block_split); //分割した側はnewのときは右(next)方向しか操作する必要がない。はず....
+			//分割したオブジェクトの設定
+			l_block_split->front = l_block;		  //分割したオブジェクトの前方を分割前オブジェクトへ接続
+			l_block_split->back  = l_block->back; //分割したオブジェクトの後方を分割前オブジェクトが指している後方と同じ方向へ接続
+			l_block->back->front = l_block_split; //分割前オブジェクトが指している後方の前方オブジェクト先を自分から分割後オブジェクトへ接続
+			l_block->back 		 = l_block_split; //分割前オブジェクトの後方を分割後オブジェクトへ接続
+			l_block->BlockSize   = _size_; //ブロックサイズの設定(request_block_sizeは前方タグを含むサイズになっていて、ここにセットするのは前方タグ抜きの純粋なブロックサイズ)
 
+			//フリーリストへの再登録
+			l_block->free_next = nullptr;
 
-			//分割居残り組のフリーリスト候補先を算出================
+			//ブロックサイズから入るべきフリーリスト位置を取得
 			//第１カテゴリを取得
-			int32_t l_split_fcat = SonikMathBit::GetMSB(l_block_split->BlockSize) - 1;
-			//第２カテゴリを取得
-			int32_t l_split_scat = (l_block_split->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット	
-			//アクセス先
-			uintptr_t* l_split_access_addr = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_split_fcat) + l_split_scat);
+			l_use_fcat = SonikMathBit::GetMSB(l_block->BlockSize);
+			//第２カテゴリを取得(ここで0が来ることはない。)
+			l_scat = (l_block->BlockSize >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
 
-			//現在の自分の位置と一緒でなければ処理
-			if ((l_fcat != l_split_fcat) || (l_scat != l_split_scat))
-			{
-				//先に古巣からおさらばする
-				if ((*l_matchaddress) == reinterpret_cast<uintptr_t>(l_block))
-				{
-					//分割前のアドレスがマッチアドレスと一緒なら先頭ポインタなのでそのままnextを代入
-					(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split->free_next);
-					//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-					if ((*l_matchaddress) == 0)
-					{
-						lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-					};
+			//それぞれのカテゴリ番号を使ってビットを立てる。
+			lp_freelist_bit->FirstCategoryBit |= (SLIB_TLSF_CONST_BIT_ONE << l_use_fcat);
+			lp_freelist_bit->SecondCategoryBit[l_use_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_scat);
 
-				}
-				else
-				{
-					//一緒じゃない場合中間からの離脱なので双方向ポインタを操作していい具合にする。
-					if (l_block_split->free_prev != nullptr)
-					{
-						l_block_split->free_prev->free_next = l_block_split->free_next;
-					};
-					if (l_block_split->free_next != nullptr)
-					{
-						l_block_split->free_next->free_prev = l_block_split->free_prev;
-					};
-
-					//中間なのでフリーリストはまだあるのでビット列は操作しない。
-				};
-
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
-				//登録処理
-				if ((*l_split_access_addr) == 0)
-				{
-					//新しい先がnullptr なら登録だけ。
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-
-				}
-				else
-				{
-					//nullptr以外ならとりあえず先頭に挿入
-					l_block_split->free_prev = nullptr;
-					l_block_split->free_next = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_split_access_addr));
-					l_block_split->free_next->free_prev = l_block_split;
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-				};
-
-				//新しい登録先のビットを立てる。(立っていても立てる)
-				(*lp_flg->mp_FirstCategoryBit) |= (SLIB_TLSF_CONST_BIT_ONE << l_split_fcat);
-				lp_flg->mp_SecondCategoryBit[l_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_split_scat);
-
-			}
-			else
-			{
-				//一緒ならポインタだけつけかえてそのまま。
-				if (l_block_split->free_prev != nullptr)
-				{
-					l_block_split->free_prev->free_next = l_block_split;
-				};
-				if (l_block_split->free_next != nullptr)
-				{
-					l_block_split->free_next->free_prev = l_block_split;
-				};
-
-				//アドレス値の更新
-				(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split);
-
-			};
-
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
-
-		}
-		else
-		{
-			//サイズ一致の場合はそのまま貸し出す。
-			//nextポインタをアドレス値として使う。最後なら結局nullptrになるので。
-			//アドレス値の更新
-			(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block->free_next);
-			//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-			if ((*l_matchaddress) == 0)
-			{
-				lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
-			};
-
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
+			//該当のフリーリストアドレス保存場所へ、空き領域へのアドレスを登録する。
+			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
+			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			l_block->free_next = l_control_block;
+			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
+			
+			//最後に主操作用のポインタ兼返却用であるl_blockを分割後の前方タグへ更新して終了
+			l_block = l_block_split;
 		};
+		
+		//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
+		//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
+		l_block->IsUse = 1;
+		m_lock->unlock(); //ロック解除
 
 		//事後作業
-		//分割後サイズ設定
-		l_block->BlockSize = _size_;
-		l_block->free_prev = nullptr;
-		l_block->free_next = nullptr;
-
 		//使用可能領域として設定している範囲をサイズ分メモリ初期化
-		std::memset(reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK), 0, _size_);
+		uint8_t* ret_point = reinterpret_cast<uint8_t*>(l_block);
+		ret_point += sizeof(SLIB_TLSF_MEMBLOCK);
+
+		std::memset(ret_point, 0, _size_);
 
 		//最後に返したる。
-		return (reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK));
+		return ret_point;
 
 	};
 
@@ -1682,310 +1139,126 @@ namespace SonikLib
 		};
 
 		uint32_t _size_ = static_cast<uint32_t>((static_cast<uint32_t>(_sizeof_) * _elemcnt_));
-		//0はだめ。
-		if (_size_ == 0)
-		{
-			_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_TARGETSIZE_ZERO;
-			return nullptr;
-		};
 
 		m_lock->lock(); //ロック開始。↑は引数しかみてないのでロック掛ける必要がない。
 
-		SLIB_TLSF_BITCOLUMBLOCK* lp_flg = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
+		SLIB_TLSF_BITCOLUMBLOCK* lp_freelist_bit = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
 		//そもそもファーストのフラグがすべて0ならフリーリストが無い
-		if ((*lp_flg->mp_FirstCategoryBit) == 0)
+		if (lp_freelist_bit->FirstCategoryBit == 0)
 		{
-			m_lock->unlock();
 			_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE;
+			m_lock->unlock();
 			return nullptr;
 		};
 
 		//0以外で32よりしたなら32に矯正
-		if (_size_ < 32)
-		{
-			_size_ = 32;
-		};
+		//if (_size_ < 32)
+		//{
+		//	_size_ = 32;
+		//};
+		//↑のifのビット演算一発解答バージョン
+		_size_ = (((static_cast<uint64_t>(_size_) + 31ULL) & ~31ULL) | (static_cast<uint64_t>(_size_ == 0) * 32ULL));
 
 		//指定されたサイズのファースト、セカンドカテゴリの抽出
 		//第１カテゴリを取得
-		int32_t l_fcat = SonikMathBit::GetMSB(_size_) - 1;
+		uint32_t l_request_fcat = static_cast<uint32_t>(SonikMathBit::GetMSB(_size_)); //0が来ることがないのでGetMSBのエラー値である -1が返却されることはない。のでキャストしてしまう。
+
+		//第１カテゴリとフリーリストの状態をビット演算で見て、フリーリスト側で使用可能な第１カテゴリ値を算出する。
+		//mask = 0xFFFFFFFF << l_fcat;
+		//mask &= lp_freelist_bit->FirstCategoryBit;
+		//l_fcat = static_cast<uint32_t>( SonikMathBit::GetMSB(mask) );
+		//↑の1行書き。
+		uint32_t l_use_fcat = static_cast<uint32_t>(SonikMathBit::GetLSB( lp_freelist_bit->FirstCategoryBit & (0xFFFFFFFFu << l_request_fcat) ));
+
 		//第２カテゴリを取得(ここで0が来ることはない。)
-		uint32_t l_scat = (_size_ >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
-
-		//要求サイズのカテゴリビットを64bit列に纏める
-		//uint64_t nowsize_categorybit = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat)) << 32);
-		//nowsize_categorybit |= static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_scat));
-		//↑を1行にまとめたもの。
-		uint64_t nowsize_categorybit = ((static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_fcat) << 32) | (static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_scat);
-
-		//現在のフリーリストの状態(該当行、列)を64bit列に纏める。
-		//uint64_t nowfreelist_categorybit = static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32;
-		//nowfreelist_categorybit |= lp_flg->mp_SecondCategoryBit[l_fcat];
-		//↑を1行にまとめたもの。
-		uint64_t nowfreelist_categorybit = (static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32) | lp_flg->mp_SecondCategoryBit[l_fcat];
-
-		//現在と要求のビット列をAND > Count してswitch要素を獲得
-		uint16_t l_switch_bitcnt = SonikMathBit::OnBitCount((nowfreelist_categorybit & nowsize_categorybit));
-
-		//0 or 1なら各位置調整処理、2ならそのまま後続処理へ。
-		//case 2 はbreakのみだが、無いとdefault分類されてしまう。
-		switch (l_switch_bitcnt)
-		{
-		case 0:
-			//ファースト、セカンドカテゴリともにヒットせず。
-			//上位のファーストカテゴリを探し、あれば一番近いファーストのセカンドカテゴリ位置を使用する。
-
-			//下位32bitのセカンドカテゴリ区域 + 現在のファーストカテゴリの位置までのビットをすべてOFFに。
-			//uint64_t l_tmp = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat) << 32) -1; //対象のファーストカテゴリの位置以下のビットをすべてONに。
-			//l_tmp = l_tmp << 1;																	 //1bit左にずらして、1bit目を除いた以降のファーストカテゴリ位置までのビットをONの状態に。
-			//l_tmp = l_tmp | 0x01;																	 //1bit目のみ0なのでONに。
-			//l_tmp = ~l_tmp;																		 //反転して、要求サイズファーストカテゴリを含む下位ビットをすべてOFFにするマスクを作成
-			//l_tmp = (nowfreelist_categorybit & l_tmp) >> 32;										 //マスクを適用し、もともとの32bit列の整数へ。
-			//l_fcat = SonikMathBit::GetLSB(l_tmp);													 //最後にLSBを取ると、要求サイズより上位で、かつ一番近いビット位置が取得できる。
-			//↑を1行にまとめたもの。
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE;
-				return nullptr;
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 1:
-			//仕様上ファーストカテゴリのみ立っている状態でHITする可能性がある。
-			//同じファーストカテゴリ内の上位に使えるリストのビットが立っていればそこを、なければcase 0 のときと同様の位置を使う。
-
-			//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-			l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-			if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-			{
-				break;
-			};
-
-			//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-			//以下case0 処理をコピーレフト
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE;
-				return nullptr;
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 2:
-			//マッチヒット。その位置を使う。
-			break;
-
-		default:
-			//エラーです。
-			m_lock->unlock();
-			_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_UNEXCEPTED;
-			return nullptr;
-
-		};
-
+		//リクエストサイズから直接算出したファーストカテゴリー番号と、フリーリストと照らし合わせて算出した使用可能なファーストカテゴリー番号が同じ値ならリクエストサイズから計算
+		uint32_t l_scat = (l_request_fcat == l_use_fcat)
+						  ? (_size_ >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE										 //2^5 ということで MSB - 5 オフセット
+						  : static_cast<uint32_t>(SonikMathBit::GetLSB(lp_freelist_bit->SecondCategoryBit[l_use_fcat])); //上位のファーストカテゴリならどの場所でも入るので最小位置を取得
 
 		//位置特定できたのでフリーリスト調整処理
-		uintptr_t* l_matchaddress = 0;
-		//位置ポインタを取得
-		l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
+		uint32_t FreeBlockAddresIndex = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat; //結構コールしたので変数用意
 
-		//該当場所のポインタから分割処理等を実施する。
-		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_matchaddress));
+		//フリーブロックを取得
+		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex]);
+		
+		//フリーブロックの位置から一旦抜けるため、先頭ブロックをnextへ変更する。
+		lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] = reinterpret_cast<uintptr_t>(l_block->free_next);
+		
+		//ビット演算でFreeListが0(nullptr)になっていないかチェック。
+		//リストがnullptr(0)になっていれば該当箇所のセカンドカテゴリビットを下ろす。
+		uint32_t freelist_bit_update_mask = (1u << l_scat) & -(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] == 0);
+		lp_freelist_bit->SecondCategoryBit[l_use_fcat] &= (~freelist_bit_update_mask);
+		
+		//セカンドカテゴリビットの変化でファーストカテゴリビット列も更新が必要なので全く同じように計算し、フラグを更新する。
+		freelist_bit_update_mask = (1u << l_use_fcat) & -(lp_freelist_bit->SecondCategoryBit[l_use_fcat] == 0);
+		lp_freelist_bit->FirstCategoryBit &= (~freelist_bit_update_mask);
 
-		//先頭ポインタ位置からフリーリストを手繰って要求サイズの広さを持ったオブジェクトを探す。
-		while (l_block->BlockSize < _size_) //絶対マッチした場所のポインタを拾ってくるのでnullptr参照になることはない。(警告はでるけどね。)
+		//要求サイズと管理ブロックの合計
+		uint64_t request_block_size = (_size_ + sizeof(SLIB_TLSF_MEMBLOCK));
+		uint64_t free_block_size = l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
+
+		//分割後の最低限必要なサイズを上回るなら分割(最低限必要なサイズ = 前方管理ブロックサイズ + 32Byte)
+		//分割不可の場合はそのまま貸出なので後続処理へ
+		if ((free_block_size - request_block_size) >= SLIB_TLSF_LOWLIMIT_ALLOCATESIZE)
 		{
-			//ブロックサイズが足りなければ次の要素へ
-			l_block = l_block->free_next;
-			if (l_block == nullptr)
-			{
-				//なかったので上位から取る。
-				//switch のcase 1処理をコピーレフト
-				//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-				l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-				if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-				{
-					break;
-				};
+			//フリーブロックの分割位置
+			uint8_t* l_split_point = reinterpret_cast<uint8_t*>(l_block) + (l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK)); //一旦最終地点へ。
+			l_split_point -= request_block_size; //最終地点から戻って後方分割のポイント設置完了
 
-				//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-				//以下case0 処理をコピーレフト
-				l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-				if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-				{
-					m_lock->unlock();
-					_errcode_ = SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE;
-					return nullptr;
-				};
-
-				//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-				l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-				//位置ポインタを取得
-				l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
-
-				break;
-			};
-
-		};
-
-
-		//違う場合、分割後のサイズによって更に分岐。
-		//分割後のサイズが32Byte以上になるなら分割実施(分割要求サイズはヘッダサイズもプラスされる。)
-		if ((l_block->BlockSize - (_size_ + sizeof(SLIB_TLSF_MEMBLOCK))) >= 32)
-		{
-			uint8_t* l_offsetcontrol = reinterpret_cast<uint8_t*>((*l_matchaddress));
-			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = nullptr;
-
-			//分割先を保存
-			l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_offsetcontrol + (sizeof(SLIB_TLSF_MEMBLOCK) + _size_));
+			//分割先(返却ポインタ)
+			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_split_point);
 
 			//設定
-			//一旦情報全てコピー
-			std::memcpy(l_block_split, l_block, sizeof(SLIB_TLSF_FREELISTMEMBLOCK)); //ここもnullptrになることはない。
-			//分割居残り側のサイズ設定
-			l_block_split->BlockSize -= _size_ + sizeof(SLIB_TLSF_MEMBLOCK);
+			//分割して減った分のサイズで再設定
+			l_block->BlockSize -= request_block_size;
 
-			//各物理メモリ配列の双方向リストの構築
-			l_block_split->phys_prev = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block); //分割された側はnewのときは左(prev)方向しか操作する必要がない。はず....
-			l_block->phys_next = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block_split); //分割した側はnewのときは右(next)方向しか操作する必要がない。はず....
+			//分割したオブジェクトの設定
+			l_block_split->front = l_block;		  //分割したオブジェクトの前方を分割前オブジェクトへ接続
+			l_block_split->back  = l_block->back; //分割したオブジェクトの後方を分割前オブジェクトが指している後方と同じ方向へ接続
+			l_block->back->front = l_block_split; //分割前オブジェクトが指している後方の前方オブジェクト先を自分から分割後オブジェクトへ接続
+			l_block->back 		 = l_block_split; //分割前オブジェクトの後方を分割後オブジェクトへ接続
+			l_block->BlockSize   = _size_; //ブロックサイズの設定(request_block_sizeは前方タグを含むサイズになっていて、ここにセットするのは前方タグ抜きの純粋なブロックサイズ)
 
+			//フリーリストへの再登録
+			l_block->free_next = nullptr;
 
-			//分割居残り組のフリーリスト候補先を算出================
+			//ブロックサイズから入るべきフリーリスト位置を取得
 			//第１カテゴリを取得
-			int32_t l_split_fcat = SonikMathBit::GetMSB(l_block_split->BlockSize) - 1;
-			//第２カテゴリを取得
-			int32_t l_split_scat = (l_block_split->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット	
-			//アクセス先
-			uintptr_t* l_split_access_addr = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_split_fcat) + l_split_scat);
+			l_use_fcat = SonikMathBit::GetMSB(l_block->BlockSize);
+			//第２カテゴリを取得(ここで0が来ることはない。)
+			l_scat = (l_block->BlockSize >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
 
-			//現在の自分の位置と一緒でなければ処理
-			if ((l_fcat != l_split_fcat) || (l_scat != l_split_scat))
-			{
-				//先に古巣からおさらばする
-				if ((*l_matchaddress) == reinterpret_cast<uintptr_t>(l_block))
-				{
-					//分割前のアドレスがマッチアドレスと一緒なら先頭ポインタなのでそのままnextを代入
-					(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split->free_next);
-					//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-					if ((*l_matchaddress) == 0)
-					{
-						lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-					};
+			//それぞれのカテゴリ番号を使ってビットを立てる。
+			lp_freelist_bit->FirstCategoryBit |= (SLIB_TLSF_CONST_BIT_ONE << l_use_fcat);
+			lp_freelist_bit->SecondCategoryBit[l_use_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_scat);
 
-				}
-				else
-				{
-					//一緒じゃない場合中間からの離脱なので双方向ポインタを操作していい具合にする。
-					if (l_block_split->free_prev != nullptr)
-					{
-						l_block_split->free_prev->free_next = l_block_split->free_next;
-					};
-					if (l_block_split->free_next != nullptr)
-					{
-						l_block_split->free_next->free_prev = l_block_split->free_prev;
-					};
-
-					//中間なのでフリーリストはまだあるのでビット列は操作しない。
-				};
-
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
-				//登録処理
-				if ((*l_split_access_addr) == 0)
-				{
-					//新しい先がnullptr なら登録だけ。
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-
-				}
-				else
-				{
-					//nullptr以外ならとりあえず先頭に挿入
-					l_block_split->free_prev = nullptr;
-					l_block_split->free_next = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_split_access_addr));
-					l_block_split->free_next->free_prev = l_block_split;
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-				};
-
-				//新しい登録先のビットを立てる。(立っていても立てる)
-				(*lp_flg->mp_FirstCategoryBit) |= (SLIB_TLSF_CONST_BIT_ONE << l_split_fcat);
-				lp_flg->mp_SecondCategoryBit[l_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_split_scat);
-
-			}
-			else
-			{
-				//一緒ならポインタだけつけかえてそのまま。
-				if (l_block_split->free_prev != nullptr)
-				{
-					l_block_split->free_prev->free_next = l_block_split;
-				};
-				if (l_block_split->free_next != nullptr)
-				{
-					l_block_split->free_next->free_prev = l_block_split;
-				};
-
-				//アドレス値の更新
-				(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split);
-
-			};
-
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
-
-		}
-		else
-		{
-			//サイズ一致の場合はそのまま貸し出す。
-			//nextポインタをアドレス値として使う。最後なら結局nullptrになるので。
-			//アドレス値の更新
-			(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block->free_next);
-			//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-			if ((*l_matchaddress) == 0)
-			{
-				lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
-			};
-
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
+			//該当のフリーリストアドレス保存場所へ、空き領域へのアドレスを登録する。
+			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
+			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			l_block->free_next = l_control_block;
+			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
+			
+			//最後に主操作用のポインタ兼返却用であるl_blockを分割後の前方タグへ更新して終了
+			l_block = l_block_split;
 		};
+		
+		//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
+		//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
+		l_block->IsUse = 1;
+		m_lock->unlock(); //ロック解除
 
 		//事後作業
-		//分割後サイズ設定
-		l_block->BlockSize = _size_;
-		l_block->free_prev = nullptr;
-		l_block->free_next = nullptr;
-
 		//使用可能領域として設定している範囲をサイズ分メモリ初期化
-		std::memset(reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK), 0, _size_);
+		uint8_t* ret_point = reinterpret_cast<uint8_t*>(l_block);
+		ret_point += sizeof(SLIB_TLSF_MEMBLOCK);
 
-		//最後に返したる。
+		std::memset(ret_point, 0, _size_);
+
+		//最後に返したる
 		_errcode_ = SLibAllocEnums::EnableRet::ENABLED_OK;
-		return (reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK));
+		return ret_point;
 
 	};
 	
@@ -1994,321 +1267,139 @@ namespace SonikLib
 	//処理自体はmemalArray通常版と同一
 	void* TLSFAllocator::memalArray_Exception(size_t _sizeof_, size_t _elemcnt_)
 	{
-		//有効化されていないため強制失敗
+				//有効化されていないため強制失敗
 		if (m_enabled_state != SLibAllocEnums::EnableRet::ENABLED_OK)
 		{
 			throw std::bad_alloc();
 		};
 
+		
 		uint32_t _size_ = static_cast<uint32_t>((static_cast<uint32_t>(_sizeof_) * _elemcnt_));
-		//0はだめ。
-		if (_size_ == 0)
-		{
-			throw std::bad_alloc();
-		};
 
 		m_lock->lock(); //ロック開始。↑は引数しかみてないのでロック掛ける必要がない。
 
-		SLIB_TLSF_BITCOLUMBLOCK* lp_flg = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
+		SLIB_TLSF_BITCOLUMBLOCK* lp_freelist_bit = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
 		//そもそもファーストのフラグがすべて0ならフリーリストが無い
-		if ((*lp_flg->mp_FirstCategoryBit) == 0)
+		if (lp_freelist_bit->FirstCategoryBit == 0)
 		{
 			m_lock->unlock();
 			throw std::bad_alloc();
 		};
 
 		//0以外で32よりしたなら32に矯正
-		if (_size_ < 32)
-		{
-			_size_ = 32;
-		};
+		//if (_size_ < 32)
+		//{
+		//	_size_ = 32;
+		//};
+		//↑のifのビット演算一発解答バージョン
+		_size_ = (((static_cast<uint64_t>(_size_) + 31ULL) & ~31ULL) | (static_cast<uint64_t>(_size_ == 0) * 32ULL));
 
 		//指定されたサイズのファースト、セカンドカテゴリの抽出
 		//第１カテゴリを取得
-		int32_t l_fcat = SonikMathBit::GetMSB(_size_) - 1;
+		uint32_t l_request_fcat = static_cast<uint32_t>(SonikMathBit::GetMSB(_size_)); //0が来ることがないのでGetMSBのエラー値である -1が返却されることはない。のでキャストしてしまう。
+
+		//第１カテゴリとフリーリストの状態をビット演算で見て、フリーリスト側で使用可能な第１カテゴリ値を算出する。
+		//mask = 0xFFFFFFFF << l_fcat;
+		//mask &= lp_freelist_bit->FirstCategoryBit;
+		//l_fcat = static_cast<uint32_t>( SonikMathBit::GetMSB(mask) );
+		//↑の1行書き。
+		uint32_t l_use_fcat = static_cast<uint32_t>(SonikMathBit::GetLSB( lp_freelist_bit->FirstCategoryBit & (0xFFFFFFFFu << l_request_fcat) ));
+
 		//第２カテゴリを取得(ここで0が来ることはない。)
-		uint32_t l_scat = (_size_ >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
-
-		//要求サイズのカテゴリビットを64bit列に纏める
-		//uint64_t nowsize_categorybit = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat)) << 32);
-		//nowsize_categorybit |= static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_scat));
-		//↑を1行にまとめたもの。
-		uint64_t nowsize_categorybit = ((static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_fcat) << 32) | (static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_ONE) << l_scat);
-
-		//現在のフリーリストの状態(該当行、列)を64bit列に纏める。
-		//uint64_t nowfreelist_categorybit = static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32;
-		//nowfreelist_categorybit |= lp_flg->mp_SecondCategoryBit[l_fcat];
-		//↑を1行にまとめたもの。
-		uint64_t nowfreelist_categorybit = (static_cast<uint64_t>((*lp_flg->mp_FirstCategoryBit)) << 32) | lp_flg->mp_SecondCategoryBit[l_fcat];
-
-		//現在と要求のビット列をAND > Count してswitch要素を獲得
-		uint16_t l_switch_bitcnt = SonikMathBit::OnBitCount((nowfreelist_categorybit & nowsize_categorybit));
-
-		//0 or 1なら各位置調整処理、2ならそのまま後続処理へ。
-		//case 2 はbreakのみだが、無いとdefault分類されてしまう。
-		switch (l_switch_bitcnt)
-		{
-		case 0:
-			//ファースト、セカンドカテゴリともにヒットせず。
-			//上位のファーストカテゴリを探し、あれば一番近いファーストのセカンドカテゴリ位置を使用する。
-
-			//下位32bitのセカンドカテゴリ区域 + 現在のファーストカテゴリの位置までのビットをすべてOFFに。
-			//uint64_t l_tmp = (static_cast<uint64_t>((SLIB_TLSF_CONST_BIT_ONE << l_fcat) << 32) -1; //対象のファーストカテゴリの位置以下のビットをすべてONに。
-			//l_tmp = l_tmp << 1;																	 //1bit左にずらして、1bit目を除いた以降のファーストカテゴリ位置までのビットをONの状態に。
-			//l_tmp = l_tmp | 0x01;																	 //1bit目のみ0なのでONに。
-			//l_tmp = ~l_tmp;																		 //反転して、要求サイズファーストカテゴリを含む下位ビットをすべてOFFにするマスクを作成
-			//l_tmp = (nowfreelist_categorybit & l_tmp) >> 32;										 //マスクを適用し、もともとの32bit列の整数へ。
-			//l_fcat = SonikMathBit::GetLSB(l_tmp);													 //最後にLSBを取ると、要求サイズより上位で、かつ一番近いビット位置が取得できる。
-			//↑を1行にまとめたもの。
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				throw std::bad_alloc();
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 1:
-			//仕様上ファーストカテゴリのみ立っている状態でHITする可能性がある。
-			//同じファーストカテゴリ内の上位に使えるリストのビットが立っていればそこを、なければcase 0 のときと同様の位置を使う。
-
-			//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-			l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-			if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-			{
-				break;
-			};
-
-			//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-			//以下case0 処理をコピーレフト
-			l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-			if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-			{
-				m_lock->unlock();
-				throw std::bad_alloc();
-			};
-
-			//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-			l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-			break;
-
-		case 2:
-			//マッチヒット。その位置を使う。
-			break;
-
-		default:
-			//エラーです。
-			m_lock->unlock();
-			throw std::bad_alloc();
-
-		};
-
+		//リクエストサイズから直接算出したファーストカテゴリー番号と、フリーリストと照らし合わせて算出した使用可能なファーストカテゴリー番号が同じ値ならリクエストサイズから計算
+		uint32_t l_scat = (l_request_fcat == l_use_fcat)
+						  ? (_size_ >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE										 //2^5 ということで MSB - 5 オフセット
+						  : static_cast<uint32_t>(SonikMathBit::GetLSB(lp_freelist_bit->SecondCategoryBit[l_use_fcat])); //上位のファーストカテゴリならどの場所でも入るので最小位置を取得
 
 		//位置特定できたのでフリーリスト調整処理
-		uintptr_t* l_matchaddress = 0;
-		//位置ポインタを取得
-		l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
+		uint32_t FreeBlockAddresIndex = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat; //結構コールしたので変数用意
 
-		//該当場所のポインタから分割処理等を実施する。
-		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_matchaddress));
+		//フリーブロックを取得
+		SLIB_TLSF_FREELISTMEMBLOCK* l_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex]);
+		
+		//フリーブロックの位置から一旦抜けるため、先頭ブロックをnextへ変更する。
+		lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] = reinterpret_cast<uintptr_t>(l_block->free_next);
+		
+		//ビット演算でFreeListが0(nullptr)になっていないかチェック。
+		//リストがnullptr(0)になっていれば該当箇所のセカンドカテゴリビットを下ろす。
+		uint32_t freelist_bit_update_mask = (1u << l_scat) & -(lp_freelist_bit->FreeAreaAddressBlock[FreeBlockAddresIndex] == 0);
+		lp_freelist_bit->SecondCategoryBit[l_use_fcat] &= (~freelist_bit_update_mask);
+		
+		//セカンドカテゴリビットの変化でファーストカテゴリビット列も更新が必要なので全く同じように計算し、フラグを更新する。
+		freelist_bit_update_mask = (1u << l_use_fcat) & -(lp_freelist_bit->SecondCategoryBit[l_use_fcat] == 0);
+		lp_freelist_bit->FirstCategoryBit &= (~freelist_bit_update_mask);
 
-		//先頭ポインタ位置からフリーリストを手繰って要求サイズの広さを持ったオブジェクトを探す。
-		while (l_block->BlockSize < _size_) //絶対マッチした場所のポインタを拾ってくるのでnullptr参照になることはない。(警告はでるけどね。)
+		//要求サイズと管理ブロックの合計
+		uint64_t request_block_size = (_size_ + sizeof(SLIB_TLSF_MEMBLOCK));
+		uint64_t free_block_size = l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
+
+		//分割後の最低限必要なサイズを上回るなら分割(最低限必要なサイズ = 前方管理ブロックサイズ + 32Byte)
+		//分割不可の場合はそのまま貸出なので後続処理へ
+		if ((free_block_size - request_block_size) >= SLIB_TLSF_LOWLIMIT_ALLOCATESIZE)
 		{
-			//ブロックサイズが足りなければ次の要素へ
-			l_block = l_block->free_next;
-			if (l_block == nullptr)
-			{
-				//なかったので上位から取る。
-				//switch のcase 1処理をコピーレフト
-				//上位32bitのファーストカテゴリ区間 + セカンドカテゴリの自分の位置のビットを含めた下のビットをすべてOFFに。
-				l_scat = SonikMathBit::GetLSB(nowfreelist_categorybit & static_cast<uint64_t>(SLIB_TLSF_CONST_BIT_32_ONBIT << l_scat)) - 1; //オーバーフロー警告がでるが、わざとなので警告無視。
-				if (l_scat > 0) //0より大きい場合はとれてるのでそこを採用。break。
-				{
-					break;
-				};
+			//フリーブロックの分割位置
+			uint8_t* l_split_point = reinterpret_cast<uint8_t*>(l_block) + (l_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK)); //一旦最終地点へ。
+			l_split_point -= request_block_size; //最終地点から戻って後方分割のポイント設置完了
 
-				//取れてなければcase 0 と同様にファーストカテゴリから上位をさらに探す。
-				//以下case0 処理をコピーレフト
-				l_fcat = SonikMathBit::GetLSB((nowfreelist_categorybit >> 32) & (~(SLIB_TLSF_CONST_BIT_64_DW32ONBIT >> (31 - l_fcat)))) - 1;
-				if (l_fcat <= -1) //-1以下(つまり、0より下ということ。)ならビットなしなので取得可能なフリー領域がない。
-				{
-					m_lock->unlock();
-					throw std::bad_alloc();
-				};
-
-				//1以外ならとれてるのでファーストカテゴリを採用、セカンドカテゴリを再設定
-				l_scat = SonikMathBit::GetLSB(lp_flg->mp_SecondCategoryBit[l_fcat]) - 1;
-
-				//位置ポインタを取得
-				l_matchaddress = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
-
-				break;
-			};
-
-		};
-
-
-		//違う場合、分割後のサイズによって更に分岐。
-		//分割後のサイズが32Byte以上になるなら分割実施(分割要求サイズはヘッダサイズもプラスされる。)
-		if ((l_block->BlockSize - (_size_ + sizeof(SLIB_TLSF_MEMBLOCK))) >= 32)
-		{
-			uint8_t* l_offsetcontrol = reinterpret_cast<uint8_t*>((*l_matchaddress));
-			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = nullptr;
-
-			//分割先を保存
-			l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_offsetcontrol + (sizeof(SLIB_TLSF_MEMBLOCK) + _size_));
+			//分割先(返却ポインタ)
+			SLIB_TLSF_FREELISTMEMBLOCK* l_block_split = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_split_point);
 
 			//設定
-			//一旦情報全てコピー
-			std::memcpy(l_block_split, l_block, sizeof(SLIB_TLSF_FREELISTMEMBLOCK)); //ここもnullptrになることはない。
-			//分割居残り側のサイズ設定
-			l_block_split->BlockSize -= _size_ + sizeof(SLIB_TLSF_MEMBLOCK);
+			//分割して減った分のサイズで再設定
+			l_block->BlockSize -= request_block_size;
 
-			//各物理メモリ配列の双方向リストの構築
-			l_block_split->phys_prev = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block); //分割された側はnewのときは左(prev)方向しか操作する必要がない。はず....
-			l_block->phys_next = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_block_split); //分割した側はnewのときは右(next)方向しか操作する必要がない。はず....
+			//分割したオブジェクトの設定
+			l_block_split->front = l_block;		  //分割したオブジェクトの前方を分割前オブジェクトへ接続
+			l_block_split->back  = l_block->back; //分割したオブジェクトの後方を分割前オブジェクトが指している後方と同じ方向へ接続
+			l_block->back->front = l_block_split; //分割前オブジェクトが指している後方の前方オブジェクト先を自分から分割後オブジェクトへ接続
+			l_block->back 		 = l_block_split; //分割前オブジェクトの後方を分割後オブジェクトへ接続
+			l_block->BlockSize   = _size_; //ブロックサイズの設定(request_block_sizeは前方タグを含むサイズになっていて、ここにセットするのは前方タグ抜きの純粋なブロックサイズ)
 
+			//フリーリストへの再登録
+			l_block->free_next = nullptr;
 
-			//分割居残り組のフリーリスト候補先を算出================
+			//ブロックサイズから入るべきフリーリスト位置を取得
 			//第１カテゴリを取得
-			int32_t l_split_fcat = SonikMathBit::GetMSB(l_block_split->BlockSize) - 1;
-			//第２カテゴリを取得
-			int32_t l_split_scat = (l_block_split->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット	
-			//アクセス先
-			uintptr_t* l_split_access_addr = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_split_fcat) + l_split_scat);
+			l_use_fcat = SonikMathBit::GetMSB(l_block->BlockSize);
+			//第２カテゴリを取得(ここで0が来ることはない。)
+			l_scat = (l_block->BlockSize >> (l_use_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
 
-			//現在の自分の位置と一緒でなければ処理
-			if ((l_fcat != l_split_fcat) || (l_scat != l_split_scat))
-			{
-				//先に古巣からおさらばする
-				if ((*l_matchaddress) == reinterpret_cast<uintptr_t>(l_block))
-				{
-					//分割前のアドレスがマッチアドレスと一緒なら先頭ポインタなのでそのままnextを代入
-					(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split->free_next);
-					//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-					if ((*l_matchaddress) == 0)
-					{
-						lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-					};
+			//それぞれのカテゴリ番号を使ってビットを立てる。
+			lp_freelist_bit->FirstCategoryBit |= (SLIB_TLSF_CONST_BIT_ONE << l_use_fcat);
+			lp_freelist_bit->SecondCategoryBit[l_use_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_scat);
 
-				}
-				else
-				{
-					//一緒じゃない場合中間からの離脱なので双方向ポインタを操作していい具合にする。
-					if (l_block_split->free_prev != nullptr)
-					{
-						l_block_split->free_prev->free_next = l_block_split->free_next;
-					};
-					if (l_block_split->free_next != nullptr)
-					{
-						l_block_split->free_next->free_prev = l_block_split->free_prev;
-					};
-
-					//中間なのでフリーリストはまだあるのでビット列は操作しない。
-				};
-
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
-				//登録処理
-				if ((*l_split_access_addr) == 0)
-				{
-					//新しい先がnullptr なら登録だけ。
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-
-				}
-				else
-				{
-					//nullptr以外ならとりあえず先頭に挿入
-					l_block_split->free_prev = nullptr;
-					l_block_split->free_next = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*l_split_access_addr));
-					l_block_split->free_next->free_prev = l_block_split;
-					(*l_split_access_addr) = reinterpret_cast<uintptr_t>(l_block_split);
-				};
-
-				//新しい登録先のビットを立てる。(立っていても立てる)
-				(*lp_flg->mp_FirstCategoryBit) |= (SLIB_TLSF_CONST_BIT_ONE << l_split_fcat);
-				lp_flg->mp_SecondCategoryBit[l_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_split_scat);
-
-			}
-			else
-			{
-				//一緒ならポインタだけつけかえてそのまま。
-				if (l_block_split->free_prev != nullptr)
-				{
-					l_block_split->free_prev->free_next = l_block_split;
-				};
-				if (l_block_split->free_next != nullptr)
-				{
-					l_block_split->free_next->free_prev = l_block_split;
-				};
-
-				//アドレス値の更新
-				(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block_split);
-
-			};
-
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
-
-		}
-		else
-		{
-			//サイズ一致の場合はそのまま貸し出す。
-			//nextポインタをアドレス値として使う。最後なら結局nullptrになるので。
-			//アドレス値の更新
-			(*l_matchaddress) = reinterpret_cast<uintptr_t>(l_block->free_next);
-			//結果的にnullptrとなった場合はもうリストがないのでビット列のフラグを下ろす。
-			if ((*l_matchaddress) == 0)
-			{
-				lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-				//処理後のセカンドカテゴリビット列が0ならファーストカテゴリのビット列の該当位置も下ろす。
-				if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-				{
-					(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-				};
-
-			};
-
-			//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
-			//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
-			l_block->IsUse = 1;
-			m_lock->unlock();
+			//該当のフリーリストアドレス保存場所へ、空き領域へのアドレスを登録する。
+			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
+			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			l_block->free_next = l_control_block;
+			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
+			
+			//最後に主操作用のポインタ兼返却用であるl_blockを分割後の前方タグへ更新して終了
+			l_block = l_block_split;
 		};
+		
+		//ここでフリーリストのすべての操作が完了しているため、ロックを解除する。
+		//ロック解除前に借用ブロックを使用中に変更しておく。(マルチスレッド対策)
+		l_block->IsUse = 1;
+		m_lock->unlock(); //ロック解除
 
 		//事後作業
-		//分割後サイズ設定
-		l_block->BlockSize = _size_;
-		l_block->free_prev = nullptr;
-		l_block->free_next = nullptr;
-
 		//使用可能領域として設定している範囲をサイズ分メモリ初期化
-		std::memset(reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK), 0, _size_);
+		uint8_t* ret_point = reinterpret_cast<uint8_t*>(l_block);
+		ret_point += sizeof(SLIB_TLSF_MEMBLOCK);
+
+		std::memset(ret_point, 0, _size_);
 
 		//最後に返したる。
-		return (reinterpret_cast<uint8_t*>(l_block) + sizeof(SLIB_TLSF_MEMBLOCK));
-
+		return ret_point;
 	};
 
 	//フリーの実装
 	//マージ処理は後方 > 前方の順にしていく。
-	void TLSFAllocator::memdel(void* _pfree_) noexcept
+	void TLSFAllocator::__vfunc_memdel__(void* _pfree_) noexcept
 	{
-		if (_pfree_ == nullptr)
-		{
-			return;
-		};
+		//nullcheckはコール元で実施済みのためスキップ
 
 		//有効化されていないため強制失敗
 		if (m_enabled_state != SLibAllocEnums::EnableRet::ENABLED_OK)
@@ -2319,375 +1410,96 @@ namespace SonikLib
 		uintptr_t IS_ADDR_begin = reinterpret_cast<uintptr_t>(mp_main_memblock);
 		uintptr_t IS_ADDR_end = reinterpret_cast<uintptr_t>((mp_main_memblock + mem_block_size));
 
-		if ((reinterpret_cast<uintptr_t>(_pfree_) < IS_ADDR_begin) && (IS_ADDR_end > reinterpret_cast<uintptr_t>(_pfree_)))
+		if ((reinterpret_cast<uintptr_t>(_pfree_) < IS_ADDR_begin) || (reinterpret_cast<uintptr_t>(_pfree_) >= IS_ADDR_end))
 		{
 			//範囲外なら強制終了
 			return;
 		};
 
-		//nullptrチェックは.h側でデストラクタコール前に実施済み。
-		SLIB_TLSF_MEMBLOCK* l_now = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(reinterpret_cast<uint8_t*>(_pfree_) - sizeof(SLIB_TLSF_MEMBLOCK));
-		//l_freelist_control_target
-		SLIB_TLSF_FREELISTMEMBLOCK* l_free_ctt = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_now);
-		//第１カテゴリ
-		int32_t l_fcat = 0;
-		//第２カテゴリ
-		int32_t l_scat = 0;
-		//フリーリストのアクセスポイント
-		uintptr_t* accesspoint = nullptr;
-		//フラグビット列アクセス用。
-		SLIB_TLSF_BITCOLUMBLOCK* lp_flg = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
-		//ゼロクリア範囲サイズ
-		uint64_t BlcokZeroClearSize = l_now->BlockSize; //とりえあず自身の範囲はクリア対象なので。
+		//前方タグを指すポインタ
+		SLIB_TLSF_FREELISTMEMBLOCK* l_freepoint = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(reinterpret_cast<uint8_t*>(_pfree_) - sizeof(SLIB_TLSF_MEMBLOCK));
+		//フリーリストビット列アクセス用。
+		SLIB_TLSF_BITCOLUMBLOCK* lp_freelist_bit = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
 
-		m_lock->lock();//マルチスレッドロック（最後までフリーリストの更新とかるので全体をブロックすることになる..。
+		//すでにfree済みなら処理しない。
+		if (!l_freepoint->IsUse)
+		{
+			return;
+		};
+
+		m_lock->lock();//マルチスレッドロック（最後までフリーリストの更新とかあるので全体をブロックすることになる..。
 
 		//使用フラグを下ろしておく。
 		//ロックあとに降ろさないとマルチスレッドのときに、下ろした瞬間に誰かロックをとって処理された場合にマージされるおそれもあるので。
-		l_now->IsUse = 0;
+		l_freepoint->IsUse = 0;
 
-		//後方マージ
-		if (l_now->next != nullptr && !(l_now->next->IsUse)) //後方がいて、未使用状態であれば処理
+		//編集操作のためのポインタ
+		SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_freepoint->back);
+		//マージサイズ
+		uint32_t marge_size = 0;
+
+		//後方マージチェック及び実施
+		if(!l_control_block->IsUse)
 		{
-			//操作用ポインタへ後方ブロックを入れる
-			l_free_ctt = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_now->next);
+			//マージ可能なので自身をフリーリストから除去
 
-			//自分のフリーリストと、フリーリストに紐づくビット列を操作する。(フリーリストの状態によってはビット列は操作しない。)
-			//まずは所属するフリーリストのアクセスポイントを獲得する。
-			//第１カテゴリを取得
-			l_fcat = SonikMathBit::GetMSB(l_free_ctt->BlockSize) - 1;
-			//第２カテゴリを取得
-			l_scat = (l_free_ctt->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
-			//フリーリストのアクセスポイントを取得
-			accesspoint = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
+			SLIB_TLSF_GLOBAL_FUNC::AdjustMemBlock(l_control_block, lp_freelist_bit);
 
-			//アクセスポイントと等しいか確認
-			if ((*accesspoint) == reinterpret_cast<uintptr_t>(l_free_ctt)) //等しければ先頭ポインタ処理を実施
-			{
-				//next(先頭より後方)に誰もいないなら、0代入とセカンドカテゴリのビットを下ろす。
-				if (l_free_ctt->free_next == nullptr)
-				{
-					(*accesspoint) = 0;
-					lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-					//フラグを下げた結果該当セカンドカテゴリ列のビットがALLOFFとなった場合はファーストカテゴリのビットも下ろす。
-					if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-					{
-						(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-					};
-
-
-				}
-				else //先頭でないのであれば中間なので左右をくっつけて終わり。
-				{
-					if (l_free_ctt->free_next != nullptr)
-					{
-						l_free_ctt->free_next->free_prev = l_free_ctt->free_prev;
-					};
-					if (l_free_ctt->free_prev != nullptr)
-					{
-						l_free_ctt->free_prev->free_next = l_free_ctt->free_next;
-					};
-				};
-
-				//物理メモリ配列ポインタを付け替えて、サイズを加算して終了
-				l_now->next = l_free_ctt->phys_next;
-				if (l_free_ctt->phys_next != nullptr)
-				{
-					l_free_ctt->phys_next->prev = l_now;
-				};
-				//マージで空くサイズは前方タグサイズ＋貸出サイズ
-				l_now->BlockSize += l_free_ctt->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
-
-				//最終操作用ポインタ更新
-				l_free_ctt = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_now);
-				//後方マージしたら、後方の前置タグ分クリアサイズをプラス
-				BlcokZeroClearSize += sizeof(SLIB_TLSF_FREELISTMEMBLOCK);
-
-				//後方マージ終わり
-			};
+			//サイズ取得
+			marge_size += l_control_block->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
+			//ポインタ調整
+			l_freepoint->back = l_control_block->back;
+			l_control_block->back->front = l_freepoint;
 		};
 
-		//前方マージ
-		if (l_now->prev != nullptr && !(l_now->prev->IsUse)) //前方がいて、未使用状態であれば処理
+		//前方マージチェック及び実施
+		l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_freepoint->front);
+		if (!l_control_block->IsUse)
 		{
-			//操作用ポインタへ前方ブロックを入れる
-			l_free_ctt = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_now->prev);
+			//マージ可能なので自身をフリーリストから除去
 
-			//自分のフリーリストと、フリーリストに紐づくビット列を操作する。(フリーリストの状態によってはビット列は操作しない。)
-			//まずは所属するフリーリストのアクセスポイントを獲得する。
-			//第１カテゴリを取得
-			l_fcat = SonikMathBit::GetMSB(l_free_ctt->BlockSize) - 1;
-			//第２カテゴリを取得
-			l_scat = (l_free_ctt->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
-			//フリーリストのアクセスポイントを取得
-			accesspoint = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
+			SLIB_TLSF_GLOBAL_FUNC::AdjustMemBlock(l_control_block, lp_freelist_bit);
 
-			//アクセスポイントと等しいか確認
-			if ((*accesspoint) == reinterpret_cast<uintptr_t>(l_free_ctt)) //等しければ先頭ポインタ処理を実施
-			{
-				//next(先頭より後方)に誰もいないなら、0代入とセカンドカテゴリのビットを下ろす。
-				if (l_free_ctt->free_next == nullptr)
-				{
-					(*accesspoint) = 0;
-					lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-					//フラグを下げた結果該当セカンドカテゴリ列のビットがALLOFFとなった場合はファーストカテゴリのビットも下ろす。
-					if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-					{
-						(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-					};
-
-				}
-				else //先頭でないのであれば中間なので左右をくっつけて終わり。
-				{
-					if (l_free_ctt->free_next != nullptr)
-					{
-						l_free_ctt->free_next->free_prev = l_free_ctt->free_prev;
-					};
-					if (l_free_ctt->free_prev != nullptr)
-					{
-						l_free_ctt->free_prev->free_next = l_free_ctt->free_next;
-					};
-				};
-
-				//物理メモリ配列ポインタを付け替えて、サイズを加算して終了
-				l_free_ctt->phys_next = l_now->next;
-				if (l_now->next != nullptr)
-				{
-					l_now->next->prev = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_free_ctt);
-				};
-
-				//マージで計算サイズは前方タグサイズ+貸出サイズ
-				l_free_ctt->BlockSize += l_now->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
-
-				//前方マージしたら、今回デリート分(now)の前置タグの領域もプラス
-				BlcokZeroClearSize += sizeof(SLIB_TLSF_MEMBLOCK);
-
-				//変数再利用。前方マージ後はnowのブロックサイズ - SLIB_TLSF_MEMBLOCKの位置から削除。前方ブロックはクリア済みなのでクリアしなくていい。
-				_pfree_ = l_now;
-
-				//前方マージ終わり
-			};
+			//サイズ取得(前方なので、l_freepointのサイズを渡す)
+			marge_size += l_freepoint->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
+			//ポインタ調整
+			l_control_block->back = l_freepoint->back;
+			l_freepoint->back->front = l_control_block;
+			//freepointを前方に移す
+			l_freepoint = l_control_block;
 		};
 
-		//先にメモリの初期化(フリーリストポインタのサイズ分クリアサイズを調整するよこっちに移動のほうが楽だった。
-		std::memset(_pfree_, 0, BlcokZeroClearSize);
+		//ブロックサイズを結合
+		l_freepoint->BlockSize = l_freepoint->BlockSize + marge_size;
 
-
-		//マージしたブロックをフリーリストに再分類し、登録する。
+		//ブロックサイズから入るべきフリーリスト位置を取得
 		//第１カテゴリを取得
-		l_fcat = SonikMathBit::GetMSB(l_free_ctt->BlockSize) - 1;
-		//第２カテゴリを取得
-		l_scat = (l_free_ctt->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
-		//分類先のポインタ取得
-		accesspoint = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
+		uint32_t l_fcat = SonikMathBit::GetMSB(l_freepoint->BlockSize);
+		//第２カテゴリを取得(ここで0が来ることはない。)
+		uint32_t l_scat = (l_freepoint->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
 
-		//カテゴリ先に既にフリーリストがあるか？
-		if ((*accesspoint) != 0) //すでにリストには先客がいるようだ。
-		{
-			//先頭に割り込み
-			reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*accesspoint))->free_prev = l_free_ctt;
-			l_free_ctt->free_next = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*accesspoint));
-		};
+		//それぞれのカテゴリ番号を使ってビットを立てる。
+		lp_freelist_bit->FirstCategoryBit |= (SLIB_TLSF_CONST_BIT_ONE << l_fcat);
+		lp_freelist_bit->SecondCategoryBit[l_fcat] |= (SLIB_TLSF_CONST_BIT_ONE << l_scat);
 
-		//先客いなければそのまま登録だし先客いても先頭に登録なのでここは共通処理
-		(*accesspoint) = reinterpret_cast<uintptr_t>(l_free_ctt);
+		//該当のフリーリストアドレス保存場所へ、空き領域へのアドレスを登録する。
+		//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
+		//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
+		uint32_t testindex = (SLIB_TLSF_CATEGORY_BIT_CNT * l_fcat) + l_scat;
+		l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_fcat) + l_scat]);
+		l_freepoint->free_next = l_control_block;
+		lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_freepoint);
 
-		//delete終了
+		//終了
 		m_lock->unlock();
+		return;
 	};
 
-	//実施memdelをコールしているだけ。
-	//関数コールオーバーヘッド削減のため、処理内容はコピーレフト。
-	void TLSFAllocator::memdelArray(void* _pfree_) noexcept
+	//処理内容自体は変わらないのでmemdelをコールしているだけ。
+	//外側から呼ぶ際に関数コールを別にしたかったので。
+	void TLSFAllocator::__vfung_memdelarray__(void* _pfree_) noexcept
 	{
-		if (_pfree_ == nullptr)
-		{
-			return;
-		};
-
-		//有効化されていないため強制失敗
-		if (m_enabled_state != SLibAllocEnums::EnableRet::ENABLED_OK)
-		{
-			return;
-		};
-
-		uintptr_t IS_ADDR_begin = reinterpret_cast<uintptr_t>(mp_main_memblock);
-		uintptr_t IS_ADDR_end = reinterpret_cast<uintptr_t>((mp_main_memblock + mem_block_size));
-
-		if ((reinterpret_cast<uintptr_t>(_pfree_) < IS_ADDR_begin) && (IS_ADDR_end > reinterpret_cast<uintptr_t>(_pfree_)))
-		{
-			//範囲外なら強制終了
-			return;
-		};
-		//nullptrチェックは.h側でデストラクタコール前に実施済み。
-		SLIB_TLSF_MEMBLOCK* l_now = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(reinterpret_cast<uint8_t*>(_pfree_) - sizeof(SLIB_TLSF_MEMBLOCK));
-		//l_freelist_control_target
-		SLIB_TLSF_FREELISTMEMBLOCK* l_free_ctt = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_now);
-		//第１カテゴリ
-		int32_t l_fcat = 0;
-		//第２カテゴリ
-		int32_t l_scat = 0;
-		//フリーリストのアクセスポイント
-		uintptr_t* accesspoint = nullptr;
-		//フラグビット列アクセス用。
-		SLIB_TLSF_BITCOLUMBLOCK* lp_flg = reinterpret_cast<SLIB_TLSF_BITCOLUMBLOCK*>(mp_freelistblock);
-		//ゼロクリア範囲サイズ
-		uint64_t BlcokZeroClearSize = l_now->BlockSize; //とりえあず自身の範囲はクリア対象なので。
-
-		m_lock->lock();//マルチスレッドロック（最後までフリーリストの更新とかるので全体をブロックすることになる..。
-
-		//使用フラグを下ろしておく。
-		//ロックあとに降ろさないとマルチスレッドのときに、下ろした瞬間に誰かロックをとって処理された場合にマージされるおそれもあるので。
-		l_now->IsUse = 0;
-
-		//後方マージ
-		if (l_now->next != nullptr && !(l_now->next->IsUse)) //後方がいて、未使用状態であれば処理
-		{
-			//操作用ポインタへ後方ブロックを入れる
-			l_free_ctt = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_now->next);
-
-			//自分のフリーリストと、フリーリストに紐づくビット列を操作する。(フリーリストの状態によってはビット列は操作しない。)
-			//まずは所属するフリーリストのアクセスポイントを獲得する。
-			//第１カテゴリを取得
-			l_fcat = SonikMathBit::GetMSB(l_free_ctt->BlockSize) - 1;
-			//第２カテゴリを取得
-			l_scat = (l_free_ctt->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
-			//フリーリストのアクセスポイントを取得
-			accesspoint = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
-
-			//アクセスポイントと等しいか確認
-			if ((*accesspoint) == reinterpret_cast<uintptr_t>(l_free_ctt)) //等しければ先頭ポインタ処理を実施
-			{
-				//next(先頭より後方)に誰もいないなら、0代入とセカンドカテゴリのビットを下ろす。
-				if (l_free_ctt->free_next == nullptr)
-				{
-					(*accesspoint) = 0;
-					lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-					//フラグを下げた結果該当セカンドカテゴリ列のビットがALLOFFとなった場合はファーストカテゴリのビットも下ろす。
-					if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-					{
-						(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-					};
-
-
-				}
-				else //先頭でないのであれば中間なので左右をくっつけて終わり。
-				{
-					if (l_free_ctt->free_next != nullptr)
-					{
-						l_free_ctt->free_next->free_prev = l_free_ctt->free_prev;
-					};
-					if (l_free_ctt->free_prev != nullptr)
-					{
-						l_free_ctt->free_prev->free_next = l_free_ctt->free_next;
-					};
-				};
-
-				//物理メモリ配列ポインタを付け替えて、サイズを加算して終了
-				l_now->next = l_free_ctt->phys_next;
-				if (l_free_ctt->phys_next != nullptr)
-				{
-					l_free_ctt->phys_next->prev = l_now;
-				};
-				//マージで空くサイズは前方タグサイズ＋貸出サイズ
-				l_now->BlockSize += l_free_ctt->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
-
-				//最終操作用ポインタ更新
-				l_free_ctt = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_now);
-				//後方マージしたら、後方の前置タグ分クリアサイズをプラス
-				BlcokZeroClearSize += sizeof(SLIB_TLSF_FREELISTMEMBLOCK);
-
-				//後方マージ終わり
-			};
-		};
-
-		//前方マージ
-		if (l_now->prev != nullptr && !(l_now->prev->IsUse)) //前方がいて、未使用状態であれば処理
-		{
-			//操作用ポインタへ前方ブロックを入れる
-			l_free_ctt = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(l_now->prev);
-
-			//自分のフリーリストと、フリーリストに紐づくビット列を操作する。(フリーリストの状態によってはビット列は操作しない。)
-			//まずは所属するフリーリストのアクセスポイントを獲得する。
-			//第１カテゴリを取得
-			l_fcat = SonikMathBit::GetMSB(l_free_ctt->BlockSize) - 1;
-			//第２カテゴリを取得
-			l_scat = (l_free_ctt->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
-			//フリーリストのアクセスポイントを取得
-			accesspoint = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
-
-			//アクセスポイントと等しいか確認
-			if ((*accesspoint) == reinterpret_cast<uintptr_t>(l_free_ctt)) //等しければ先頭ポインタ処理を実施
-			{
-				//next(先頭より後方)に誰もいないなら、0代入とセカンドカテゴリのビットを下ろす。
-				if (l_free_ctt->free_next == nullptr)
-				{
-					(*accesspoint) = 0;
-					lp_flg->mp_SecondCategoryBit[l_fcat] &= (~(SLIB_TLSF_CONST_BIT_ONE << l_scat));
-					//フラグを下げた結果該当セカンドカテゴリ列のビットがALLOFFとなった場合はファーストカテゴリのビットも下ろす。
-					if (lp_flg->mp_SecondCategoryBit[l_fcat] == 0)
-					{
-						(*lp_flg->mp_FirstCategoryBit) &= (~(SLIB_TLSF_CONST_BIT_ONE << l_fcat));
-					};
-
-				}
-				else //先頭でないのであれば中間なので左右をくっつけて終わり。
-				{
-					if (l_free_ctt->free_next != nullptr)
-					{
-						l_free_ctt->free_next->free_prev = l_free_ctt->free_prev;
-					};
-					if (l_free_ctt->free_prev != nullptr)
-					{
-						l_free_ctt->free_prev->free_next = l_free_ctt->free_next;
-					};
-				};
-
-				//物理メモリ配列ポインタを付け替えて、サイズを加算して終了
-				l_free_ctt->phys_next = l_now->next;
-				if (l_now->next != nullptr)
-				{
-					l_now->next->prev = reinterpret_cast<SLIB_TLSF_MEMBLOCK*>(l_free_ctt);
-				};
-
-				//マージで計算サイズは前方タグサイズ+貸出サイズ
-				l_free_ctt->BlockSize += l_now->BlockSize + sizeof(SLIB_TLSF_MEMBLOCK);
-
-				//前方マージしたら、今回デリート分(now)の前置タグの領域もプラス
-				BlcokZeroClearSize += sizeof(SLIB_TLSF_MEMBLOCK);
-
-				//変数再利用。前方マージ後はnowのブロックサイズ - SLIB_TLSF_MEMBLOCKの位置から削除。前方ブロックはクリア済みなのでクリアしなくていい。
-				_pfree_ = l_now;
-
-				//前方マージ終わり
-			};
-		};
-
-		//先にメモリの初期化(フリーリストポインタのサイズ分クリアサイズを調整するよこっちに移動のほうが楽だった。
-		std::memset(_pfree_, 0, BlcokZeroClearSize);
-
-
-		//マージしたブロックをフリーリストに再分類し、登録する。
-		//第１カテゴリを取得
-		l_fcat = SonikMathBit::GetMSB(l_free_ctt->BlockSize) - 1;
-		//第２カテゴリを取得
-		l_scat = (l_free_ctt->BlockSize >> (l_fcat - 5)) & SLIB_TLSF_CONST_BIT_FIVE; //2^5 ということで MSB - 5 オフセット
-		//分類先のポインタ取得
-		accesspoint = reinterpret_cast<uintptr_t*>(mp_FreelistAreaTop) + ((static_cast<uint64_t>(32) * l_fcat) + l_scat);
-
-		//カテゴリ先に既にフリーリストがあるか？
-		if ((*accesspoint) != 0) //すでにリストには先客がいるようだ。
-		{
-			//先頭に割り込み
-			reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*accesspoint))->free_prev = l_free_ctt;
-			l_free_ctt->free_next = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>((*accesspoint));
-		};
-
-		//先客いなければそのまま登録だし先客いても先頭に登録なのでここは共通処理
-		(*accesspoint) = reinterpret_cast<uintptr_t>(l_free_ctt);
-
-		//delete終了
-		m_lock->unlock();
+		memdel(_pfree_);
 	};
 
 

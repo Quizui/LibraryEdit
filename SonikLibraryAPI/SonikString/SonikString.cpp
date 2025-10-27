@@ -1,7 +1,7 @@
 
 #include <new>
 #include <algorithm>
-#include <stdint.h>
+#include <cstdint>
 #include <stdio.h>
 #include <inttypes.h>
 #include "../SonikCAS/SonikAtomicLock.h"
@@ -11,6 +11,7 @@
 #include "./WIDE/SonikStringWIDE.h"
 #include "./UTF8/SonikStringUTF8.h"
 #include "./UTF16/SonikStringUTF16.h"
+#include "../CompilersPreProcesser.h"
 
 namespace BASED_STRINGCLASS_SONIKLIB
 {
@@ -21,9 +22,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	private:
 		//c:文字列領域
 		utf8_t* Stringval_;
-
-		//文字コンバートに使う基準ロケール
-		char* m_locale;
 
 		//c:格納している最大文字数
 		uint64_t MaxLength_;
@@ -51,81 +49,52 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	public:
 		//c:コンストラクタ
-		SonikString_pImpl(SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
+		SonikString_pImpl(void);
+		SonikString_pImpl(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 
 		//c:コンストラクタオーバーロード
 		SonikString_pImpl(const char* SetStr);
 		SonikString_pImpl(const char* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 
 		//c:コンストラクタオーバーロード
 		SonikString_pImpl(const char16_t* SetStr);
 		SonikString_pImpl(const char16_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 
 		//c:コンストラクタオーバーロード
 		SonikString_pImpl(const wchar_t* SetStr);
 		SonikString_pImpl(const wchar_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
+
 		//コンストラクタオーバーロード
 		SonikString_pImpl(const utf8_t* SetStr);
 		SonikString_pImpl(const utf8_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
+
 		//コンストラクタオーバーロード
 		SonikString_pImpl(const int8_t SetValue);
 		SonikString_pImpl(const int8_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikString_pImpl(const uint8_t SetValue);
 		SonikString_pImpl(const uint8_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikString_pImpl(const int16_t SetValue);
 		SonikString_pImpl(const int16_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikString_pImpl(const uint16_t SetValue);
 		SonikString_pImpl(const uint16_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikString_pImpl(const int32_t SetValue);
 		SonikString_pImpl(const int32_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikString_pImpl(const uint32_t SetValue);
 		SonikString_pImpl(const uint32_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikString_pImpl(const int64_t SetValue);
 		SonikString_pImpl(const int64_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikString_pImpl(const uint64_t SetValue);
 		SonikString_pImpl(const uint64_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikString_pImpl(const float SetValue);
 		SonikString_pImpl(const float SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikString_pImpl(const double SetValue);
 		SonikString_pImpl(const double SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikString_pImpl(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_);
-		SonikString_pImpl(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 
 		//c:コピーコンストラクタ
 		SonikString_pImpl(const SonikString_pImpl& t_his);
 
 		//c:デストラクタ
 		~SonikString_pImpl(void);
-
-		//ロケールを設定します。
-		bool SetStringLocale(SonikLibStringConvert::SonikLibConvertLocale _setlocale_)  noexcept;
 
 		//SJIS形式に変換して取得します。(バッファタイプも書き換わります。)
 		const char* str_c(void);
@@ -245,9 +214,8 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 
 
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
+	SonikStringBase::SonikString_pImpl::SonikString_pImpl(void)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -262,26 +230,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size]{};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -292,9 +243,8 @@ namespace BASED_STRINGCLASS_SONIKLIB
 			throw;
 		};
 	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringBase::SonikString_pImpl::SonikString_pImpl(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -303,26 +253,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if(l_allocbuffer == nullptr)
 			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -336,7 +269,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const char* SetStr)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -361,26 +293,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -402,7 +317,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -412,7 +326,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const char* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -430,26 +343,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -470,155 +366,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		}
 		catch (...)
 		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	{
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		//NULL文字文追加(+1)して格納
-		uint64_t SrcByte = SonikLibStringConvert::GetStringLengthByte(SetStr) + 1;
-
-		if (SrcByte > buffer_)
-		{
-			buffer_ = SrcByte;
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, SrcByte, Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, SrcByte);
-#endif
-
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(m_locale);
-			l_defalloc->memdel(Stringval_);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		//NULL文字文追加(+1)して格納
-		uint64_t SrcByte = SonikLibStringConvert::GetStringLengthByte(SetStr) + 1;
-
-		if (SrcByte > buffer_)
-		{
-			buffer_ = SrcByte;
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, SrcByte, Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, SrcByte);
-#endif
-
-		}
-		catch (...)
-		{
-			_allocator_->memdel(m_locale);
 			_allocator_->memdel(Stringval_);
 			throw;
 		};
@@ -630,7 +377,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const char16_t* SetStr)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_UTF16)
 	,buffer_(100)
@@ -652,26 +398,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -695,7 +424,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -703,7 +431,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const char16_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_UTF16)
 	,buffer_(100)
@@ -718,26 +445,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -761,147 +471,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char16_t*>(Stringval_));
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_UTF16)
-	,buffer_(100)
-	{
-		uint64_t SrcByte = SonikLibStringConvert::GetStringLengthByte(SetStr) + 2; //Null文字分 shortサイズ分追加。
-
-		if (SrcByte > buffer_)
-		{
-			buffer_ = SrcByte;
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			SrcByte >>= 1; //要素数に変換
-			std::copy_n(SetStr, SrcByte, reinterpret_cast<char16_t*>(Stringval_));
-#else
-			std::memcpy(Stringval_, SetStr, SrcByte);
-#endif
-
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char16_t*>(Stringval_));
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_UTF16)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		uint64_t SrcByte = SonikLibStringConvert::GetStringLengthByte(SetStr) + 2; //Null文字分 shortサイズ分追加。
-
-		if (SrcByte > buffer_)
-		{
-			buffer_ = SrcByte;
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			SrcByte >>= 1; //要素数に変換
-			std::copy_n(SetStr, SrcByte, reinterpret_cast<char16_t*>(Stringval_));
-#else
-			std::memcpy(Stringval_, SetStr, SrcByte);
-#endif
-
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -910,7 +479,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const wchar_t* SetStr)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_UNKNOWN)
 	,buffer_(100)
@@ -945,26 +513,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -994,7 +545,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -1002,7 +552,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const wchar_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_UNKNOWN)
 	,buffer_(100)
@@ -1030,26 +579,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if(l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -1079,183 +611,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<WCRTYPE>(Stringval_));
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_UNKNOWN)
-	,buffer_(100)
-	{
-#if WCHAR_MAX <= 0xFFFFU
-		uint32_t NULLSTR_SIZE = 2;
-		using CONST_WCRTYPE = const char16_t*;
-		using WCRTYPE = char16_t*;
-		CType = SCHTYPE_UTF16;
-#else
-		uint32_t NULLSTR_SIZE = 4;
-		using CONST_WCRTYPE = const char32_t*;
-		using WCRTYPE = char32_t*;
-		CType = SCHTYPE_UTF32;
-#endif
-
-		uint64_t SrcByte = SonikLibStringConvert::GetStringLengthByte(reinterpret_cast<CONST_WCRTYPE>(SetStr)) + NULLSTR_SIZE; //Null文字tサイズ分追加。
-
-		if (SrcByte > buffer_)
-		{
-			buffer_ = SrcByte;
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-#if WCHAR_MAX <= 0xFFFFU
-			SrcByte >>= 1;
-#else
-			SrcByte >>= 2;
-#endif
-
-			std::copy_n(SetStr, SrcByte, reinterpret_cast<wchar_t*>(Stringval_));
-#else
-			std::memcpy(Stringval_, SetStr, SrcByte);
-#endif
-
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<WCRTYPE>(Stringval_));
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_UNKNOWN)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-#if WCHAR_MAX <= 0xFFFFU
-		uint32_t NULLSTR_SIZE = 2;
-		using CONST_WCRTYPE = const char16_t*;
-		using WCRTYPE = char16_t*;
-		CType = SCHTYPE_UTF16;
-#else
-		uint32_t NULLSTR_SIZE = 4;
-		using CONST_WCRTYPE = const char32_t*;
-		using WCRTYPE = char32_t*;
-		CType = SCHTYPE_UTF32;
-#endif
-
-		uint64_t SrcByte = SonikLibStringConvert::GetStringLengthByte(reinterpret_cast<CONST_WCRTYPE>(SetStr)) + NULLSTR_SIZE; //Null文字tサイズ分追加。
-
-		if (SrcByte > buffer_)
-		{
-			buffer_ = SrcByte;
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-#if WCHAR_MAX <= 0xFFFFU
-			SrcByte >>= 1;
-#else
-			SrcByte >>= 2;
-#endif
-
-			std::copy_n(SetStr, SrcByte, reinterpret_cast<wchar_t*>(Stringval_));
-#else
-			std::memcpy(Stringval_, SetStr, SrcByte);
-#endif
-
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -1264,7 +619,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const utf8_t* SetStr)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_UTF16)
 	,buffer_(100)
@@ -1289,26 +643,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -1332,7 +669,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -1342,7 +678,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const utf8_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_UTF16)
 	,buffer_(100)
@@ -1360,26 +695,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -1403,157 +721,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_UTF16)
-	,buffer_(100)
-	{
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(reinterpret_cast<const char*>(SetStr));
-
-		//NULL文字文追加(+1)して格納
-		uint64_t SrcByte = SonikLibStringConvert::GetStringLengthByte(reinterpret_cast<const char*>(SetStr)) + 1;
-
-		if (SrcByte > buffer_)
-		{
-			buffer_ = SrcByte;
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, SrcByte, Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, SrcByte);
-#endif
-
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_UTF16)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(reinterpret_cast<const char*>(SetStr));
-
-		//NULL文字文追加(+1)して格納
-		uint64_t SrcByte = SonikLibStringConvert::GetStringLengthByte(reinterpret_cast<const char*>(SetStr)) + 1;
-
-		if (SrcByte > buffer_)
-		{
-			buffer_ = SrcByte;
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, SrcByte, Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, SrcByte);
-#endif
-
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -1564,7 +731,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int8_t SetValue)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -1589,26 +755,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -1630,7 +779,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -1640,7 +788,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int8_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -1658,26 +805,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -1699,153 +829,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	{
-		char SetStr[5]{};
-		snprintf(SetStr, sizeof(SetStr), "%d", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		char SetStr[5]{};
-		snprintf(SetStr, sizeof(SetStr), "%d", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -1856,7 +839,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint8_t SetValue)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -1881,26 +863,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -1922,7 +887,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -1932,7 +896,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint8_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -1950,27 +913,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -1992,153 +937,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	{
-		char SetStr[4]{};
-		snprintf(SetStr, sizeof(SetStr), "%u", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-			}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		char SetStr[4]{};
-		snprintf(SetStr, sizeof(SetStr), "%u", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -2149,7 +947,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int16_t SetValue)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -2174,26 +971,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -2215,7 +995,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -2225,7 +1004,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int16_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -2243,26 +1021,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -2284,153 +1045,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	{
-		char SetStr[7]{};
-		snprintf(SetStr, sizeof(SetStr), "%d", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-			}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		char SetStr[7]{};
-		snprintf(SetStr, sizeof(SetStr), "%d", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -2441,7 +1055,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint16_t SetValue)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -2466,26 +1079,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -2507,7 +1103,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -2517,7 +1112,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint16_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -2535,26 +1129,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -2576,153 +1153,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	{
-		char SetStr[6]{};
-		snprintf(SetStr, sizeof(SetStr), "%u", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		char SetStr[6]{};
-		snprintf(SetStr, sizeof(SetStr), "%u", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -2733,7 +1163,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int32_t SetValue)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -2758,26 +1187,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -2799,7 +1211,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -2809,7 +1220,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int32_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -2827,26 +1237,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -2868,153 +1261,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	{
-		char SetStr[12]{};
-		snprintf(SetStr, sizeof(SetStr), "%" PRId32, SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-			}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		char SetStr[12]{};
-		snprintf(SetStr, sizeof(SetStr), "%" PRId32, SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -3025,7 +1271,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint32_t SetValue)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -3050,26 +1295,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -3091,7 +1319,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -3101,7 +1328,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint32_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -3119,26 +1345,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -3160,153 +1369,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	{
-		char SetStr[11]{};
-		snprintf(SetStr, sizeof(SetStr), "%" PRIu32, SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-			}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		char SetStr[11]{};
-		snprintf(SetStr, sizeof(SetStr), "%" PRIu32, SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -3317,7 +1379,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int64_t SetValue)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -3342,26 +1403,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -3383,7 +1427,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -3393,7 +1436,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int64_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -3411,26 +1453,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -3452,153 +1477,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	{
-		char SetStr[21]{};
-		snprintf(SetStr, sizeof(SetStr), "%" PRId64, SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		char SetStr[21]{};
-		snprintf(SetStr, sizeof(SetStr), "%" PRId64, SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -3609,7 +1487,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint64_t SetValue)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -3634,26 +1511,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -3675,7 +1535,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -3685,7 +1544,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint64_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -3703,26 +1561,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -3744,153 +1585,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	{
-		char SetStr[20]{};
-		snprintf(SetStr, sizeof(SetStr), "%" PRIu64, SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-			}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		char SetStr[20]{};
-		snprintf(SetStr, sizeof(SetStr), "%" PRIu64, SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -3901,7 +1595,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const float SetValue)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -3926,26 +1619,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -3967,7 +1643,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -3977,7 +1652,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const float SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -3995,26 +1669,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -4036,153 +1693,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	{
-		char SetStr[47]{};
-		snprintf(SetStr, sizeof(SetStr), "%g", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		char SetStr[47]{};
-		snprintf(SetStr, sizeof(SetStr), "%g", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -4193,7 +1703,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const double SetValue)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -4218,26 +1727,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				throw std::bad_alloc();
 			};
 
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -4259,7 +1751,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
 			throw;
 		};
 
@@ -4269,7 +1760,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const double SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(0)
 	,CType(SCHTYPE_NULLTEXT)
 	,buffer_(100)
@@ -4287,26 +1777,9 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		try
 		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
+			void* l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -4328,7 +1801,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
 			throw;
 		};
 
@@ -4336,177 +1808,20 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		CType = tmpType;
 	};
-
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	{
-		char SetStr[94]{};
-		snprintf(SetStr, sizeof(SetStr), "%lg", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		SonikLib::SLibAllocateInterface* l_defalloc = nullptr;
-		try
-		{
-			l_defalloc = new SonikLib::SLibAllocateInterface();
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = l_defalloc->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_defalloc->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-			}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			l_defalloc->memdel(Stringval_);
-			l_defalloc->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	:Stringval_(nullptr)
-	,m_locale(nullptr)
-	,MaxLength_(0)
-	,CType(SCHTYPE_NULLTEXT)
-	,buffer_(100)
-	,m_allocator(_allocator_)
-	{
-		char SetStr[94]{};
-		snprintf(SetStr, sizeof(SetStr), "%lg", SetValue);
-
-		SonikLibConvertType tmpType = SonikLibStringConvert::CheckConvertType(SetStr);
-
-		if (sizeof(SetStr) > buffer_)
-		{
-			buffer_ = sizeof(SetStr);
-		};
-
-		try
-		{
-			uint32_t l_size = 0;
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-			if (l_size == 0)
-			{
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			m_locale = new(l_allocbuffer) char[l_size] {};
-			SonikLibStringConvert::ConvertLocaleCharacter(l_size, m_locale, _setlocale_);
-
-			l_allocbuffer = _allocator_->memal(sizeof(utf8_t) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				_allocator_->memdel(m_locale);
-				throw std::bad_alloc();
-			};
-
-			Stringval_ = new(l_allocbuffer) utf8_t[buffer_]{};
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-		try
-		{
-#if defined(_S_STRING_COPY_STL)
-			std::copy_n(SetStr, sizeof(SetStr), Stringval_);
-#else
-			std::memcpy(Stringval_, SetStr, sizeof(SetStr));
-#endif
-		}
-		catch (...)
-		{
-			_allocator_->memdel(Stringval_);
-			_allocator_->memdel(m_locale);
-			throw;
-		};
-
-		MaxLength_ = SonikLibStringConvert::GetStringCount(reinterpret_cast<char*>(Stringval_));
-
-		CType = tmpType;
-	};
-
 
 	SonikStringBase::SonikString_pImpl::SonikString_pImpl(const SonikString_pImpl& t_his)
 	:Stringval_(nullptr)
-	,m_locale(nullptr)
 	,MaxLength_(t_his.MaxLength_)
 	,CType(t_his.CType)
 	,buffer_(t_his.buffer_)
 	,m_allocator(t_his.m_allocator)
 	{
-		uint64_t localesize = SonikLibStringConvert::GetStringLengthByte(t_his.m_locale) + 1;
 		try
 		{
-			void* l_allocbuffer = m_allocator->memal(sizeof(char) * localesize);
-			if(l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
 
-			m_locale = new(l_allocbuffer) char[localesize] {};
-
-			l_allocbuffer = m_allocator->memal(sizeof(utf8_t) * t_his.buffer_);
+			void* l_allocbuffer = m_allocator->memal(sizeof(utf8_t) * t_his.buffer_);
 			if (l_allocbuffer == nullptr)
 			{
-				m_allocator->memdel(m_locale);
 				throw std::bad_alloc();
 			};
 
@@ -4520,10 +1835,8 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		try
 		{
 #if defined(_S_STRING_COPY_STL)
-			std::copy_n(t_his.m_locale, localesize, m_locale);
 			std::copy_n(t_his.Stringval_, buffer_, Stringval_);
 #else
-			std::memcpy(m_locale, t_his.m_locale, localesize);
 			std::memcpy(Stringval_, t_his.Stringval_, buffer_);
 #endif
 
@@ -4531,7 +1844,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		catch (...)
 		{
 			m_allocator->memdel(Stringval_);
-			m_allocator->memdel(m_locale);
 			throw;
 		};
 
@@ -4539,11 +1851,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	SonikStringBase::SonikString_pImpl::~SonikString_pImpl(void)
 	{
-		if (m_locale != 0)
-		{
-			m_allocator->memdel(m_locale);
-			m_locale = nullptr;
-		};
 		if (Stringval_ != 0)
 		{
 			m_allocator->memdel(Stringval_);
@@ -4554,7 +1861,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	//現在のバッファタイプを指定のバッファタイプに変更します。
 	//変更の際に、バッファに対して変換作業が行われます。
 	//変換の際に失敗した場合は、falseになり、タイプの切り替えと変換作業は行われません。
-	bool SonikStringBase::SonikString_pImpl::SetCharacterType(SonikLibConvertType SetType)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::SetCharacterType(SonikLibConvertType SetType)
 	{
 		string_atm_lock.lock();
 
@@ -4575,7 +1882,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 			case SCHTYPE_UTF16:
 				//UTF16への変換
-				SonikLibStringConvert::ConvertMBStoUTF16(reinterpret_cast<char*>(Stringval_), nullptr, &convSize_, m_locale);
+				SonikLibStringConvert::ConvertMBStoUTF16(reinterpret_cast<char*>(Stringval_), nullptr, &convSize_, m_allocator);
 
 				if (convSize_ > buffer_)
 				{
@@ -4587,7 +1894,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 				};
 
-				if (!SonikLibStringConvert::ConvertMBStoUTF16(reinterpret_cast<char*>(Stringval_), reinterpret_cast<char16_t*>(Stringval_), nullptr, m_locale))
+				if (!SonikLibStringConvert::ConvertMBStoUTF16(reinterpret_cast<char*>(Stringval_), reinterpret_cast<char16_t*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4600,7 +1907,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 			case SCHTYPE_UTF8:
 				//SJISからUTF8への変換を行う。
-				SonikLibStringConvert::ConvertMBSToUTF8(reinterpret_cast<char*>(Stringval_), nullptr, &convSize_, m_locale);
+				SonikLibStringConvert::ConvertMBSToUTF8(reinterpret_cast<char*>(Stringval_), nullptr, &convSize_, m_allocator);
 
 				if (convSize_ > buffer_)
 				{
@@ -4612,7 +1919,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 				};
 
-				if (!SonikLibStringConvert::ConvertMBSToUTF8(reinterpret_cast<char*>(Stringval_), reinterpret_cast<utf8_t*>(Stringval_), nullptr, m_locale))
+				if (!SonikLibStringConvert::ConvertMBSToUTF8(reinterpret_cast<char*>(Stringval_), reinterpret_cast<utf8_t*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4625,7 +1932,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 			case SCHTYPE_UTF32:
 				//SJIS -> UTF32 への変換
-				SonikLibStringConvert::ConvertMBStoUTF32(reinterpret_cast<char*>(Stringval_), nullptr, &convSize_, m_locale);
+				SonikLibStringConvert::ConvertMBStoUTF32(reinterpret_cast<char*>(Stringval_), nullptr, &convSize_, m_allocator);
 				if (convSize_ > buffer_)
 				{
 					if (!this->ReAlloc(convSize_))
@@ -4636,7 +1943,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 				};
 
-				if (!SonikLibStringConvert::ConvertMBStoUTF32(reinterpret_cast<char*>(Stringval_), reinterpret_cast<char32_t*>(Stringval_), nullptr, m_locale))
+				if (!SonikLibStringConvert::ConvertMBStoUTF32(reinterpret_cast<char*>(Stringval_), reinterpret_cast<char32_t*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4667,7 +1974,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 			{
 			case SCHTYPE_SJIS:
 				//UTF16からSJISへの変換
-				SonikLibStringConvert::ConvertUTF16toMBS(reinterpret_cast<char16_t*>(Stringval_), nullptr, &convSize_, m_locale);
+				SonikLibStringConvert::ConvertUTF16toMBS(reinterpret_cast<char16_t*>(Stringval_), nullptr, &convSize_, m_allocator);
 				if (convSize_ > buffer_)
 				{
 					if (!this->ReAlloc(convSize_))
@@ -4679,7 +1986,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 				};
 
 				//convSize_ = buffer_ << 1; // x * 2 = x << 1
-				if (!SonikLibStringConvert::ConvertUTF16toMBS(reinterpret_cast<char16_t*>(Stringval_), reinterpret_cast<char*>(Stringval_), nullptr, m_locale))
+				if (!SonikLibStringConvert::ConvertUTF16toMBS(reinterpret_cast<char16_t*>(Stringval_), reinterpret_cast<char*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4700,7 +2007,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 			case SCHTYPE_UTF8:
 				//UTF16 から UTF8への変換
-				SonikLibStringConvert::ConvertUTF16ToUTF8(reinterpret_cast<char16_t*>(Stringval_), nullptr, &convSize_);
+				SonikLibStringConvert::ConvertUTF16ToUTF8(reinterpret_cast<char16_t*>(Stringval_), nullptr, &convSize_, m_allocator);
 				if (convSize_ > buffer_)
 				{
 					if (!this->ReAlloc(convSize_))
@@ -4711,7 +2018,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 				};
 
-				if (!SonikLibStringConvert::ConvertUTF16ToUTF8(reinterpret_cast<char16_t*>(Stringval_), reinterpret_cast<utf8_t*>(Stringval_), nullptr))
+				if (!SonikLibStringConvert::ConvertUTF16ToUTF8(reinterpret_cast<char16_t*>(Stringval_), reinterpret_cast<utf8_t*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4725,7 +2032,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 			case SCHTYPE_UTF32:
 				//UTF16 -> UTF32 への変換
-				SonikLibStringConvert::ConvertUTF16ToUTF32(reinterpret_cast<char16_t*>(Stringval_), nullptr, &convSize_);
+				SonikLibStringConvert::ConvertUTF16ToUTF32(reinterpret_cast<char16_t*>(Stringval_), nullptr, &convSize_, m_allocator);
 
 				if (convSize_ > buffer_)
 				{
@@ -4737,7 +2044,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 				};
 
-				if (!SonikLibStringConvert::ConvertUTF16ToUTF32(reinterpret_cast<char16_t*>(Stringval_), reinterpret_cast<char32_t*>(Stringval_), nullptr))
+				if (!SonikLibStringConvert::ConvertUTF16ToUTF32(reinterpret_cast<char16_t*>(Stringval_), reinterpret_cast<char32_t*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4770,7 +2077,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 			{
 			case SCHTYPE_SJIS:
 				//UTF8からSJISへの変換
-				SonikLibStringConvert::ConvertUTF8ToMBS(reinterpret_cast<utf8_t*>(Stringval_), nullptr, &convSize_, m_locale);
+				SonikLibStringConvert::ConvertUTF8ToMBS(reinterpret_cast<utf8_t*>(Stringval_), nullptr, &convSize_, m_allocator);
 				if (convSize_ > buffer_)
 				{
 					if (!this->ReAlloc(convSize_))
@@ -4781,7 +2088,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 				};
 
-				if (!SonikLibStringConvert::ConvertUTF8ToMBS(reinterpret_cast<utf8_t*>(Stringval_), reinterpret_cast<char*>(Stringval_), nullptr, m_locale))
+				if (!SonikLibStringConvert::ConvertUTF8ToMBS(reinterpret_cast<utf8_t*>(Stringval_), reinterpret_cast<char*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4795,7 +2102,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 			case SCHTYPE_UTF16:
 				//UTF8からUTF16へ変換
-				SonikLibStringConvert::ConvertUTF8ToUTF16(reinterpret_cast<utf8_t*>(Stringval_), nullptr, &convSize_);
+				SonikLibStringConvert::ConvertUTF8ToUTF16(reinterpret_cast<utf8_t*>(Stringval_), nullptr, &convSize_, m_allocator);
 
 				if (convSize_ > buffer_)
 				{
@@ -4807,7 +2114,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 				};
 
-				if (!SonikLibStringConvert::ConvertUTF8ToUTF16(reinterpret_cast<utf8_t*>(Stringval_), reinterpret_cast<char16_t*>(Stringval_), nullptr))
+				if (!SonikLibStringConvert::ConvertUTF8ToUTF16(reinterpret_cast<utf8_t*>(Stringval_), reinterpret_cast<char16_t*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4828,7 +2135,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 			case SCHTYPE_UTF32:
 				//UTF8 -> UTF32 への変換
-				SonikLibStringConvert::ConvertUTF8ToUTF32(reinterpret_cast<utf8_t*>(Stringval_), nullptr, &convSize_);
+				SonikLibStringConvert::ConvertUTF8ToUTF32(reinterpret_cast<utf8_t*>(Stringval_), nullptr, &convSize_, m_allocator);
 
 				if (convSize_ > buffer_)
 				{
@@ -4840,7 +2147,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 				};
 
-				if (!SonikLibStringConvert::ConvertUTF8ToUTF32(reinterpret_cast<utf8_t*>(Stringval_), reinterpret_cast<char32_t*>(Stringval_), nullptr))
+				if (!SonikLibStringConvert::ConvertUTF8ToUTF32(reinterpret_cast<utf8_t*>(Stringval_), reinterpret_cast<char32_t*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4871,7 +2178,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 			{
 			case SCHTYPE_SJIS:
 				//UTF32 -> SJIS
-				SonikLibStringConvert::ConvertUTF32toMBS(reinterpret_cast<char32_t*>(Stringval_), nullptr, &convSize_, m_locale);
+				SonikLibStringConvert::ConvertUTF32toMBS(reinterpret_cast<char32_t*>(Stringval_), nullptr, &convSize_, m_allocator);
 				if (convSize_ > buffer_)
 				{
 					if (!this->ReAlloc(convSize_))
@@ -4882,7 +2189,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 				};
 
-				if (!SonikLibStringConvert::ConvertUTF32toMBS(reinterpret_cast<char32_t*>(Stringval_), reinterpret_cast<char*>(Stringval_), nullptr, m_locale))
+				if (!SonikLibStringConvert::ConvertUTF32toMBS(reinterpret_cast<char32_t*>(Stringval_), reinterpret_cast<char*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4896,7 +2203,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 			case SCHTYPE_UTF16:
 				//UTF32 -> UTF16
-				SonikLibStringConvert::ConvertUTF32ToUTF16(reinterpret_cast<char32_t*>(Stringval_), nullptr, &convSize_);
+				SonikLibStringConvert::ConvertUTF32ToUTF16(reinterpret_cast<char32_t*>(Stringval_), nullptr, &convSize_, m_allocator);
 				if (convSize_ > buffer_)
 				{
 					if (!this->ReAlloc(convSize_))
@@ -4907,7 +2214,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 				};
 
-				if (!SonikLibStringConvert::ConvertUTF32ToUTF16(reinterpret_cast<char32_t*>(Stringval_), reinterpret_cast<char16_t*>(Stringval_), nullptr))
+				if (!SonikLibStringConvert::ConvertUTF32ToUTF16(reinterpret_cast<char32_t*>(Stringval_), reinterpret_cast<char16_t*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4921,7 +2228,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 			case SCHTYPE_UTF8:
 				//UTF8からUTF32へ変換
-				SonikLibStringConvert::ConvertUTF8ToUTF32(reinterpret_cast<utf8_t*>(Stringval_), nullptr, &convSize_);
+				SonikLibStringConvert::ConvertUTF8ToUTF32(reinterpret_cast<utf8_t*>(Stringval_), nullptr, &convSize_, m_allocator);
 
 				if (convSize_ > buffer_)
 				{
@@ -4933,7 +2240,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 				};
 
-				if (!SonikLibStringConvert::ConvertUTF8ToUTF32(reinterpret_cast<utf8_t*>(Stringval_), reinterpret_cast<char32_t*>(Stringval_), nullptr))
+				if (!SonikLibStringConvert::ConvertUTF8ToUTF32(reinterpret_cast<utf8_t*>(Stringval_), reinterpret_cast<char32_t*>(Stringval_), nullptr, m_allocator))
 				{
 					string_atm_lock.unlock();
 					return false;
@@ -4980,7 +2287,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return false;
 	};
 
-	bool SonikStringBase::SonikString_pImpl::ReAlloc(uint64_t ReArraySize)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::ReAlloc(uint64_t ReArraySize)
 	{
 		utf8_t* pTmp = 0;
 
@@ -5014,39 +2321,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return true;
 	};
 
-	//ロケールを設定します。
-	bool SonikStringBase::SonikString_pImpl::SetStringLocale(SonikLibStringConvert::SonikLibConvertLocale _setlocale_) noexcept
-	{
-		string_atm_lock.lock();
-
-		uint32_t  l_size = 0;
-		SonikLibStringConvert::ConvertLocaleCharacter(l_size, nullptr, _setlocale_);
-		if (l_size == 0)
-		{
-			string_atm_lock.unlock();
-			return false;
-		};
-
-		void* l_allocbuffer = m_allocator->memal(sizeof(char) * l_size);
-		if(l_allocbuffer == nullptr)
-		{
-			string_atm_lock.unlock();
-			return false;
-		};
-
-		char* tmpbuffer = nullptr;
-		tmpbuffer = new(l_allocbuffer) char[l_size] {};
-
-		SonikLibStringConvert::ConvertLocaleCharacter(l_size, tmpbuffer, _setlocale_);
-
-		m_allocator->memdel(m_locale);
-		m_locale = tmpbuffer;
-
-		string_atm_lock.unlock();
-		return true;
-	};
-
-	const char* SonikStringBase::SonikString_pImpl::str_c(void)
+	DEF_FORCE_INLINE const char* SonikStringBase::SonikString_pImpl::str_c(void)
 	{
 		if (CType == SCHTYPE_UNKNOWN)
 		{
@@ -5063,7 +2338,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 
 	//wchar_t形式に変換して取得します。(バッファタイプも書き換わります。)
-	const wchar_t* SonikStringBase::SonikString_pImpl::str_wchar(void)
+	DEF_FORCE_INLINE const wchar_t* SonikStringBase::SonikString_pImpl::str_wchar(void)
 	{
 		if (CType == SCHTYPE_UNKNOWN)
 		{
@@ -5084,7 +2359,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return reinterpret_cast<wchar_t*>(Stringval_);
 	};
 
-	const char16_t* SonikStringBase::SonikString_pImpl::str_utf16(void)
+	DEF_FORCE_INLINE const char16_t* SonikStringBase::SonikString_pImpl::str_utf16(void)
 	{
 		if (CType == SCHTYPE_UNKNOWN)
 		{
@@ -5099,7 +2374,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return reinterpret_cast<char16_t*>(Stringval_);
 	};
 
-	const utf8_t* SonikStringBase::SonikString_pImpl::str_utf8(void)
+	DEF_FORCE_INLINE const utf8_t* SonikStringBase::SonikString_pImpl::str_utf8(void)
 	{
 		if (CType == SCHTYPE_UNKNOWN)
 		{
@@ -5114,7 +2389,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return Stringval_;
 	};
 
-	uint64_t SonikStringBase::SonikString_pImpl::GetCpy_str_c(char* dstBuffer)
+	DEF_FORCE_INLINE uint64_t SonikStringBase::SonikString_pImpl::GetCpy_str_c(char* dstBuffer)
 	{
 		if (CType == SCHTYPE_UNKNOWN)
 		{
@@ -5157,7 +2432,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return cpysize;
 	};
 
-	uint64_t SonikStringBase::SonikString_pImpl::GetCpy_str_wcstr(wchar_t* dstBuffer)
+	DEF_FORCE_INLINE uint64_t SonikStringBase::SonikString_pImpl::GetCpy_str_wcstr(wchar_t* dstBuffer)
 	{
 		if (CType == SCHTYPE_UNKNOWN)
 		{
@@ -5218,7 +2493,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return cpysize;
 	};
 
-	uint64_t SonikStringBase::SonikString_pImpl::GetCpy_str_utf16(char16_t* dstBuffer)
+	DEF_FORCE_INLINE uint64_t SonikStringBase::SonikString_pImpl::GetCpy_str_utf16(char16_t* dstBuffer)
 	{
 		if (CType == SCHTYPE_UNKNOWN)
 		{
@@ -5262,7 +2537,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return cpysize;
 	};
 
-	uint64_t SonikStringBase::SonikString_pImpl::GetCpy_str_utf8(utf8_t* dstBuffer)
+	DEF_FORCE_INLINE uint64_t SonikStringBase::SonikString_pImpl::GetCpy_str_utf8(utf8_t* dstBuffer)
 	{
 		if (CType == SCHTYPE_UNKNOWN)
 		{
@@ -5306,19 +2581,19 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 
 	//c:文字列のByte数を取得します。（Null終端文字をカウントに含まない)
-	uint64_t SonikStringBase::SonikString_pImpl::Count_Byte_NotNull(void)
+	DEF_FORCE_INLINE uint64_t SonikStringBase::SonikString_pImpl::Count_Byte_NotNull(void)
 	{
 		return SonikLibStringConvert::GetStringLengthByte(reinterpret_cast<char*>(Stringval_));
 	};
 
 	//c:文字列数を取得します。（Null終端文字をカウントに含まない)
-	uint64_t SonikStringBase::SonikString_pImpl::Count_Str_NotNull(void)
+	DEF_FORCE_INLINE uint64_t SonikStringBase::SonikString_pImpl::Count_Str_NotNull(void)
 	{
 		return MaxLength_;
 	};
 
 	//文字列中の全角英数字を半角英数字に変換します。
-	bool SonikStringBase::SonikString_pImpl::ConvertFWANtoHWAN(void)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::ConvertFWANtoHWAN(void)
 	{
 		if (CType == SCHTYPE_UNKNOWN)
 		{
@@ -5335,22 +2610,24 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		//全角半角変換
 		uint64_t Size = 0;
 		//サイズ取得
-		SonikLibStringConvert::ConvertUTF8FWCToHWCForAN(reinterpret_cast<char*>(Stringval_), nullptr, Size);
+		SonikLibStringConvert::ConvertUTF8FWCToHWCForAN(reinterpret_cast<char*>(Stringval_), nullptr, Size, m_allocator);
 		//領域取得
 		if (Size & 0x01)
 		{
 			++Size;
 		};
 
-		int8_t* tmp_Str = new(std::nothrow) int8_t[Size];
-		if (tmp_Str == nullptr)
+		void* l_allocmemory = m_allocator->memal(sizeof(int8_t) * Size);
+		if( l_allocmemory == nullptr )
 		{
 			string_atm_lock.unlock();
 			return false;
 		};
 
+		int8_t* tmp_Str = new(l_allocmemory) int8_t[Size]{};
+
 		//本番
-		if (!SonikLibStringConvert::ConvertUTF8FWCToHWCForAN(reinterpret_cast<char*>(Stringval_), reinterpret_cast<char*>(tmp_Str), Size))
+		if (!SonikLibStringConvert::ConvertUTF8FWCToHWCForAN(reinterpret_cast<char*>(Stringval_), reinterpret_cast<char*>(tmp_Str), Size, m_allocator))
 		{
 			string_atm_lock.unlock();
 			return false;
@@ -5369,7 +2646,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 
 	//文字列中の全角カナを半角カナに変換します。
-	bool SonikStringBase::SonikString_pImpl::ConvertFWKNtoHWKN(void)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::ConvertFWKNtoHWKN(void)
 	{
 		if (CType == SCHTYPE_UNKNOWN)
 		{
@@ -5386,22 +2663,24 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		//全角半角変換
 		uint64_t Size = 0;
 		//サイズ取得
-		SonikLibStringConvert::ConvertUTF8FWCToHWCForKANA(reinterpret_cast<char*>(Stringval_), nullptr, Size);
+		SonikLibStringConvert::ConvertUTF8FWCToHWCForKANA(reinterpret_cast<char*>(Stringval_), nullptr, Size, m_allocator);
 		//領域取得
 		if (Size & 0x01)
 		{
 			++Size;
 		};
 
-		int8_t* tmp_Str = new(std::nothrow) int8_t[Size];
-		if (tmp_Str == nullptr)
+		void* l_allocmemory = m_allocator->memal(sizeof(int8_t) * Size);
+		if (l_allocmemory == nullptr)
 		{
 			string_atm_lock.unlock();
 			return false;
 		};
 
+		int8_t* tmp_Str = new(l_allocmemory) int8_t[Size]{};
+
 		//本番
-		if (!SonikLibStringConvert::ConvertUTF8FWCToHWCForKANA(reinterpret_cast<char*>(Stringval_), reinterpret_cast<char*>(tmp_Str), Size))
+		if (!SonikLibStringConvert::ConvertUTF8FWCToHWCForKANA(reinterpret_cast<char*>(Stringval_), reinterpret_cast<char*>(tmp_Str), Size, m_allocator))
 		{
 			string_atm_lock.unlock();
 			return false;
@@ -5421,7 +2700,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 
 	//c: 指定位置の文字を削除します。
-	void SonikStringBase::SonikString_pImpl::EraseChar(uint64_t ChrPoint)
+	DEF_FORCE_INLINE void SonikStringBase::SonikString_pImpl::EraseChar(uint64_t ChrPoint)
 	{
 		this->str_utf8();
 
@@ -5433,7 +2712,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 
 	//c: 指定の開始位置から指定された文字数を削除します。
-	void SonikStringBase::SonikString_pImpl::EraseStr(uint64_t ChrStartPoint, uint64_t ChrEndPoint)
+	DEF_FORCE_INLINE void SonikStringBase::SonikString_pImpl::EraseStr(uint64_t ChrStartPoint, uint64_t ChrEndPoint)
 	{
 		this->str_utf8();
 
@@ -5443,7 +2722,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		};
 	};
 
-	bool SonikStringBase::SonikString_pImpl::Split_Ascii(const char* delim, char*& _outbuffer_, uint64_t& _out_splitcnt_, uint64_t& _out_buffersize_)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::Split_Ascii(const char* delim, char*& _outbuffer_, uint64_t& _out_splitcnt_, uint64_t& _out_buffersize_)
 	{
 		this->str_wchar();
 		SonikLib::SonikString delimconvert = delim;
@@ -5510,7 +2789,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 
 
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const SonikString_pImpl& t_his)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const SonikString_pImpl& t_his)
 	{
 		if (this == &t_his)
 		{
@@ -5519,7 +2798,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		utf8_t* tmpbuffer = nullptr;
 		char* tmp_localebuffer = nullptr;
-		uint64_t l_size = SonikLibStringConvert::GetStringLengthByte(t_his.m_locale) + 1;
 
 		SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> l_alloc = t_his.m_allocator;
 		try
@@ -5531,16 +2809,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 			};
 
 			tmpbuffer = new(l_allocbuffer) utf8_t[t_his.buffer_]{};
-
-			l_allocbuffer = l_alloc->memal(sizeof(char) * l_size);
-			if (l_allocbuffer == nullptr)
-			{
-				l_alloc->memdel(tmpbuffer);
-				throw std::bad_alloc();
-			};
-
-			tmp_localebuffer = new(l_allocbuffer) char[l_size] {};
-
 		}
 		catch (std::bad_alloc&)
 		{
@@ -5551,13 +2819,8 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		{
 			m_allocator->memdel(Stringval_);
 		};
-		if (m_locale != nullptr)
-		{
-			m_allocator->memdel(m_locale);
-		};
 
 		Stringval_ = tmpbuffer;
-		m_locale = tmp_localebuffer;
 
 		buffer_ = t_his.buffer_;
 		CType = t_his.CType;
@@ -5570,21 +2833,19 @@ namespace BASED_STRINGCLASS_SONIKLIB
 			std::copy_n(t_his.Stringval_, buffer_, reinterpret_cast<utf8_t*>(tmpbuffer));
 #else
 			std::memcpy(tmpbuffer, t_his.Stringval_, buffer_);
-			std::memcpy(tmp_localebuffer, t_his.m_locale, l_size);
 #endif
 
 		}
 		catch (...)
 		{
 			l_alloc->memdel(Stringval_);
-			l_alloc->memdel(m_locale);
 			throw;
 		};
 
 		return (*this);
 	};
 
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const char* Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const char* Str)
 	{
 		if (Str == 0)
 		{
@@ -5649,7 +2910,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	};
 
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const char16_t* w_Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const char16_t* w_Str)
 	{
 		if (w_Str == 0)
 		{
@@ -5706,7 +2967,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 	};
 
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const wchar_t* w_Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const wchar_t* w_Str)
 	{
 		if (w_Str == 0)
 		{
@@ -5787,7 +3048,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 	};
 
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const utf8_t* utf8_Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const utf8_t* utf8_Str)
 	{
 		if (utf8_Str == nullptr)
 		{
@@ -5848,7 +3109,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		string_operator_lock.unlock();
 		return (*this);
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const int8_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const int8_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -5910,7 +3171,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const uint8_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const uint8_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -5972,7 +3233,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const int16_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const int16_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -6034,7 +3295,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const uint16_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const uint16_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -6096,7 +3357,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const int32_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const int32_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -6159,7 +3420,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const uint32_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const uint32_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -6213,7 +3474,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const int64_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const int64_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -6275,7 +3536,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const uint64_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const uint64_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -6338,7 +3599,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const float SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const float SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -6398,7 +3659,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		string_operator_lock.unlock();
 		return (*this);
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const double SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator =(const double SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -6462,7 +3723,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 
 
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const SonikString_pImpl& t_his)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const SonikString_pImpl& t_his)
 	{
 		string_operator_lock.lock();
 
@@ -6555,7 +3816,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 	};
 
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const char* Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const char* Str)
 	{
 		string_operator_lock.lock();
 
@@ -6612,7 +3873,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 	};
 
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const char16_t* w_Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const char16_t* w_Str)
 	{
 		string_operator_lock.lock();
 
@@ -6669,7 +3930,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 	};
 
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const wchar_t* w_Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const wchar_t* w_Str)
 	{
 		string_operator_lock.lock();
 
@@ -6743,7 +4004,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 	};
 
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const utf8_t* utf8_Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const utf8_t* utf8_Str)
 	{
 		string_operator_lock.lock();
 
@@ -6800,7 +4061,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return (*this);
 
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const int8_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const int8_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -6852,7 +4113,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		string_operator_lock.unlock();
 		return (*this);
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const uint8_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const uint8_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -6904,7 +4165,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		string_operator_lock.unlock();
 		return (*this);
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const int16_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const int16_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -6956,7 +4217,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		string_operator_lock.unlock();
 		return (*this);
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const uint16_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const uint16_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -7008,7 +4269,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		string_operator_lock.unlock();
 		return (*this);
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const int32_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const int32_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -7060,7 +4321,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		string_operator_lock.unlock();
 		return (*this);
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const uint32_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const uint32_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -7112,7 +4373,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		string_operator_lock.unlock();
 		return (*this);
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const int64_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const int64_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -7163,7 +4424,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		string_operator_lock.unlock();
 		return (*this);
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const uint64_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const uint64_t SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -7214,7 +4475,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		string_operator_lock.unlock();
 		return (*this);
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const float SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const float SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -7265,7 +4526,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		string_operator_lock.unlock();
 		return (*this);
 	};
-	SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const double SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl& SonikStringBase::SonikString_pImpl::operator +=(const double SetValue)
 	{
 		string_operator_lock.lock();
 
@@ -7320,7 +4581,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	//現在のバッファと入力バッファを結合し、別のオブジェクトとして返却します。
 	//コピー元とコピー先が同じオブジェクトの場合、そのまま結合します。
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const SonikString_pImpl& t_his)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const SonikString_pImpl& t_his)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7329,7 +4590,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return tmpStr;
 	};
 
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const char* Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const char* Str)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7338,7 +4599,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return tmpStr;
 	};
 
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const char16_t* w_Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const char16_t* w_Str)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7348,7 +4609,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	};
 
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const wchar_t* w_Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const wchar_t* w_Str)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7357,7 +4618,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return tmpStr;
 	};
 
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const utf8_t* utf8_Str)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const utf8_t* utf8_Str)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7366,7 +4627,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return tmpStr;
 	};
 
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const int8_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const int8_t SetValue)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7377,7 +4638,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		return tmpStr;
 	};
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const uint8_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const uint8_t SetValue)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7388,7 +4649,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		return tmpStr;
 	};
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const int16_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const int16_t SetValue)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7399,7 +4660,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		return tmpStr;
 	};
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const uint16_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const uint16_t SetValue)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7410,7 +4671,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		return tmpStr;
 	};
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const int32_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const int32_t SetValue)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7421,7 +4682,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		return tmpStr;
 	};
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const uint32_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const uint32_t SetValue)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7432,7 +4693,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		return tmpStr;
 	};
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const int64_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const int64_t SetValue)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7443,7 +4704,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		return tmpStr;
 	};
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const uint64_t SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const uint64_t SetValue)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7454,7 +4715,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		return tmpStr;
 	};
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const float SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const float SetValue)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7465,7 +4726,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 		return tmpStr;
 	};
-	SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const double SetValue)
+	DEF_FORCE_INLINE SonikStringBase::SonikString_pImpl SonikStringBase::SonikString_pImpl::operator +(const double SetValue)
 	{
 		SonikString_pImpl tmpStr = (*this);
 
@@ -7479,7 +4740,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	//c: 文字列同士を比較します。(strcmp)
 	//c: 一致の場合true 不一致の場合 falseを返却します。
-	bool SonikStringBase::SonikString_pImpl::operator ==(const SonikString_pImpl& t_his)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::operator ==(const SonikString_pImpl& t_his)
 	{
 		//c: 文字タイプが違えば相手と同じ文字タイプに変換
 		if (CType != t_his.CType)
@@ -7527,7 +4788,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return true;
 	};
 
-	bool SonikStringBase::SonikString_pImpl::operator ==(const char* Str)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::operator ==(const char* Str)
 	{
 		SonikLibConvertType StrType = SonikLibStringConvert::CheckConvertType(Str);
 
@@ -7565,7 +4826,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return true;
 	};
 
-	bool SonikStringBase::SonikString_pImpl::operator ==(const char16_t* w_Str)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::operator ==(const char16_t* w_Str)
 	{
 		//c: 文字タイプが違えば相手と同じ文字タイプに変換
 		if (CType != SCHTYPE_UTF16)
@@ -7601,7 +4862,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return true;
 	};
 
-	bool SonikStringBase::SonikString_pImpl::operator ==(const wchar_t* w_Str)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::operator ==(const wchar_t* w_Str)
 	{
 #if WCHAR_MAX <= 0xFFFFU
 		//uint32_t NULLSTR_SIZE = 2;
@@ -7650,7 +4911,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return true;
 	};
 
-	bool SonikStringBase::SonikString_pImpl::operator ==(const utf8_t* utf8_Str)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::operator ==(const utf8_t* utf8_Str)
 	{
 		SonikLibConvertType StrType = SonikLibStringConvert::CheckConvertType(reinterpret_cast<const char*>(utf8_Str));
 
@@ -7689,7 +4950,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 
 	//c: 文字列同士を比較します。(strcmp)
 	//c: 不一致の場合true　一致の場合 falseを返却します。
-	bool SonikStringBase::SonikString_pImpl::operator !=(const SonikString_pImpl& t_his)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::operator !=(const SonikString_pImpl& t_his)
 	{
 		//c: 文字タイプが違えば相手と同じ文字タイプに変換
 		if (CType != t_his.CType)
@@ -7737,7 +4998,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return false;
 	};
 
-	bool SonikStringBase::SonikString_pImpl::operator !=(const char* Str)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::operator !=(const char* Str)
 	{
 		SonikLibConvertType StrType = SonikLibStringConvert::CheckConvertType(Str);
 
@@ -7774,7 +5035,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return false;
 	};
 
-	bool SonikStringBase::SonikString_pImpl::operator !=(const char16_t* w_Str)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::operator !=(const char16_t* w_Str)
 	{
 		//c: 文字タイプが違えば相手と同じ文字タイプに変換
 		if (CType != SCHTYPE_UTF16)
@@ -7810,7 +5071,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return false;
 	};
 
-	bool SonikStringBase::SonikString_pImpl::operator !=(const wchar_t* w_Str)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::operator !=(const wchar_t* w_Str)
 	{
 
 #if WCHAR_MAX <= 0xFFFFU
@@ -7860,7 +5121,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		return false;
 	};
 
-	bool SonikStringBase::SonikString_pImpl::operator !=(const utf8_t* utf8_Str)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::operator !=(const utf8_t* utf8_Str)
 	{
 		SonikLibConvertType StrType = SonikLibStringConvert::CheckConvertType(reinterpret_cast<const char*>(utf8_Str));
 
@@ -7898,22 +5159,22 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	};
 
 	//c:比較演算子
-	bool SonikStringBase::SonikString_pImpl::Greater(const char* CompareArg2val)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::Greater(const char* CompareArg2val)
 	{
 		return strcmp(this->str_c(), CompareArg2val) > 0;
 	};
 
-	bool SonikStringBase::SonikString_pImpl::Less(const char* CompareArg2val)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::Less(const char* CompareArg2val)
 	{
 		return strcmp(this->str_c(), CompareArg2val) < 0;
 	};
 
-	bool SonikStringBase::SonikString_pImpl::GreaterEqual(const char* CompareArg2val)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::GreaterEqual(const char* CompareArg2val)
 	{
 		return !(this->Less(CompareArg2val));
 	};
 
-	bool SonikStringBase::SonikString_pImpl::LessEqual(const char* CompareArg2val)
+	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::LessEqual(const char* CompareArg2val)
 	{
 		return !(this->Greater(CompareArg2val));
 	};
@@ -7943,12 +5204,6 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		//no process 
 		//deleteは派生先で実行
 		//Baseは関数提供のみ
-	};
-
-	//ロケールを設定します。
-	bool SonikStringBase::SetStringLocale(SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		return pImpl->SetStringLocale(_setlocale_);
 	};
 
 	//SJIS形式に変換して取得します。(バッファタイプも書き換わります。)
@@ -8300,7 +5555,7 @@ namespace SonikLib
 	//				SonikString実装
 	//
 	//======================================================================================================================
-	SonikString::SonikString(SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
+	SonikString::SonikString(void)
 	{
 		pImpl = nullptr;
 
@@ -8320,14 +5575,14 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			throw;
 		};
 	};
-	SonikString::SonikString(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
+	SonikString::SonikString(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 
@@ -8340,7 +5595,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_setlocale_, _allocator_);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_allocator_);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -8348,7 +5603,6 @@ namespace SonikLib
 			throw;
 		};
 	};
-
 
 	SonikString::SonikString(const SonikString& t_his)
 	{
@@ -8456,7 +5710,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -8477,57 +5731,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikString::SonikString(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -8556,7 +5760,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -8577,61 +5781,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikString::SonikString(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			m_allocator->memdel(l_allocbuffer);
 			throw;
 		};
 
@@ -8656,7 +5810,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -8677,59 +5831,9 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		
 		}catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikString::SonikString(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
 			throw;
@@ -8756,7 +5860,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -8778,57 +5882,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikString::SonikString(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -8857,7 +5911,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -8877,56 +5931,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikString::SonikString(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -8955,7 +5960,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -8975,56 +5980,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikString::SonikString(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9053,7 +6009,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9073,56 +6029,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikString::SonikString(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9151,7 +6058,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9171,58 +6078,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikString::SonikString(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-		try
-		{
-			void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
 			throw;
 		};
 
@@ -9247,7 +6107,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9267,57 +6127,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikString::SonikString(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9346,7 +6156,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9366,59 +6176,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikString::SonikString(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-		try
-		{
-			void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
 			throw;
 		};
 
@@ -9443,7 +6205,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9463,56 +6225,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikString::SonikString(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9541,7 +6254,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9561,56 +6274,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				delete l_defalloc;				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikString::SonikString(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9639,7 +6303,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9659,56 +6323,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikString::SonikString(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9737,7 +6352,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -9757,56 +6372,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikString::SonikString(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikString::SonikString(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -10458,7 +7024,7 @@ namespace SonikLib
 	//				SonikStringWIDE実装
 	//
 	//======================================================================================================================
-	SonikStringWIDE::SonikStringWIDE(SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
+	SonikStringWIDE::SonikStringWIDE(void)
 	{
 		pImpl = nullptr;
 
@@ -10478,14 +7044,14 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			throw;
 		};
 	};
-	SonikStringWIDE::SonikStringWIDE(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
+	SonikStringWIDE::SonikStringWIDE(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 
@@ -10498,7 +7064,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_setlocale_, _allocator_);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_allocator_);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -10613,7 +7179,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -10634,57 +7200,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringWIDE::SonikStringWIDE(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -10713,7 +7229,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -10734,61 +7250,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringWIDE::SonikStringWIDE(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			m_allocator->memdel(l_allocbuffer);
 			throw;
 		};
 
@@ -10813,7 +7279,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -10834,58 +7300,8 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringWIDE::SonikStringWIDE(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -10914,7 +7330,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -10936,57 +7352,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringWIDE::SonikStringWIDE(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11015,7 +7381,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11035,56 +7401,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringWIDE::SonikStringWIDE(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11113,7 +7430,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11133,56 +7450,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringWIDE::SonikStringWIDE(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11211,7 +7479,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11231,56 +7499,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringWIDE::SonikStringWIDE(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11309,7 +7528,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11329,58 +7548,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringWIDE::SonikStringWIDE(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-		try
-		{
-			void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
 			throw;
 		};
 
@@ -11405,7 +7577,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11425,57 +7597,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringWIDE::SonikStringWIDE(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11504,7 +7626,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11524,59 +7646,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringWIDE::SonikStringWIDE(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-		try
-		{
-			void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
 			throw;
 		};
 
@@ -11601,7 +7675,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11621,56 +7695,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringWIDE::SonikStringWIDE(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11699,7 +7724,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11719,56 +7744,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				delete l_defalloc;				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringWIDE::SonikStringWIDE(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11797,7 +7773,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11817,56 +7793,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringWIDE::SonikStringWIDE(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11895,7 +7822,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -11915,56 +7842,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringWIDE::SonikStringWIDE(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringWIDE::SonikStringWIDE(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -12618,7 +8496,7 @@ namespace SonikLib
 	//				SonikStringUTF8実装
 	//
 	//======================================================================================================================
-	SonikStringUTF8::SonikStringUTF8(SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
+	SonikStringUTF8::SonikStringUTF8(void)
 	{
 		pImpl = nullptr;
 
@@ -12638,14 +8516,14 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			throw;
 		};
 	};
-	SonikStringUTF8::SonikStringUTF8(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
+	SonikStringUTF8::SonikStringUTF8(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 
@@ -12658,7 +8536,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_setlocale_, _allocator_);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_allocator_);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -12773,7 +8651,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -12794,57 +8672,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringUTF8::SonikStringUTF8(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -12873,7 +8701,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -12894,61 +8722,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringUTF8::SonikStringUTF8(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			m_allocator->memdel(l_allocbuffer);
 			throw;
 		};
 
@@ -12973,7 +8751,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -12994,58 +8772,8 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringUTF8::SonikStringUTF8(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13074,7 +8802,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13096,57 +8824,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringUTF8::SonikStringUTF8(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13175,7 +8853,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13195,56 +8873,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF8::SonikStringUTF8(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13273,7 +8902,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13293,56 +8922,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF8::SonikStringUTF8(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13371,7 +8951,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13391,56 +8971,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF8::SonikStringUTF8(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13469,7 +9000,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13489,58 +9020,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF8::SonikStringUTF8(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-		try
-		{
-			void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
 			throw;
 		};
 
@@ -13565,7 +9049,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13585,57 +9069,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF8::SonikStringUTF8(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13664,7 +9098,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13684,59 +9118,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF8::SonikStringUTF8(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-		try
-		{
-			void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
 			throw;
 		};
 
@@ -13761,7 +9147,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13781,56 +9167,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF8::SonikStringUTF8(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13859,7 +9196,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13879,56 +9216,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				delete l_defalloc;				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF8::SonikStringUTF8(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13957,7 +9245,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -13977,56 +9265,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF8::SonikStringUTF8(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -14055,7 +9294,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -14075,56 +9314,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF8::SonikStringUTF8(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF8::SonikStringUTF8(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -14788,7 +9978,7 @@ namespace SonikLib
 	//				SonikStringUTF16実装
 	//
 	//======================================================================================================================
-	SonikStringUTF16::SonikStringUTF16(SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
+	SonikStringUTF16::SonikStringUTF16(void)
 	{
 		pImpl = nullptr;
 
@@ -14808,14 +9998,14 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			throw;
 		};
 	};
-	SonikStringUTF16::SonikStringUTF16(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
+	SonikStringUTF16::SonikStringUTF16(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 
@@ -14828,7 +10018,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_setlocale_, _allocator_);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(_allocator_);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -14943,7 +10133,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -14964,57 +10154,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringUTF16::SonikStringUTF16(const char* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15043,7 +10183,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15064,61 +10204,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringUTF16::SonikStringUTF16(const char16_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			m_allocator->memdel(l_allocbuffer);
 			throw;
 		};
 
@@ -15143,7 +10233,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15164,58 +10254,8 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringUTF16::SonikStringUTF16(const wchar_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15244,7 +10284,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15266,57 +10306,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = nullptr;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-
-	};
-	SonikStringUTF16::SonikStringUTF16(const utf8_t* SetStr, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetStr, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15345,7 +10335,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15365,56 +10355,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF16::SonikStringUTF16(const int8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15443,7 +10384,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15463,56 +10404,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF16::SonikStringUTF16(const uint8_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15541,7 +10433,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15561,56 +10453,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF16::SonikStringUTF16(const int16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15639,7 +10482,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15659,58 +10502,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF16::SonikStringUTF16(const uint16_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-		try
-		{
-			void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
 			throw;
 		};
 
@@ -15735,7 +10531,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15755,57 +10551,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF16::SonikStringUTF16(const int32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15834,7 +10580,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15854,59 +10600,11 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
 			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF16::SonikStringUTF16(const uint32_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-		try
-		{
-			void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
 			throw;
 		};
 
@@ -15931,7 +10629,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -15951,56 +10649,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF16::SonikStringUTF16(const int64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -16029,7 +10678,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -16049,56 +10698,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				delete l_defalloc;				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF16::SonikStringUTF16(const uint64_t SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -16127,7 +10727,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -16147,56 +10747,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF16::SonikStringUTF16(const float SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -16225,7 +10776,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{
@@ -16245,56 +10796,7 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, SonikLibStringConvert::SonikLibConvertLocale::LC_JPN, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			_allocator_->memdel(l_allocbuffer);
-			throw;
-		};
-
-	};
-
-	SonikStringUTF16::SonikStringUTF16(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_)
-	{
-		pImpl = 0;
-
-		try
-		{
-			SonikLib::SLibAllocateInterface* l_defalloc = new SonikLib::SLibAllocateInterface;
-			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, m_allocator))
-			{
-				delete l_defalloc;
-				throw std::bad_alloc();
-			};
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
-		}
-		catch (std::bad_alloc&)
-		{
-			throw;
-		};
-	};
-	SonikStringUTF16::SonikStringUTF16(const double SetValue, SonikLibStringConvert::SonikLibConvertLocale _setlocale_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
-	{
-		m_allocator = _allocator_;
-		pImpl = nullptr;
-
-		void* l_allocbuffer = _allocator_->memal(sizeof(BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl));
-		try
-		{
-			if (l_allocbuffer == nullptr)
-			{
-				throw std::bad_alloc();
-			};
-
-			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, _setlocale_, m_allocator);
+			pImpl = new(l_allocbuffer) BASED_STRINGCLASS_SONIKLIB::SonikStringBase::SonikString_pImpl(SetValue, m_allocator);
 		}
 		catch (std::bad_alloc&)
 		{

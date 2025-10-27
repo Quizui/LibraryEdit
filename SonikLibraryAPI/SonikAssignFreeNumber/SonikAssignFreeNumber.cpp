@@ -1,7 +1,7 @@
 #include <new>
 #include "SonikAssignFreeNumber.h"
 #include "../Container/RangedForContainer.hpp"
-#include "../MathBit/MathBit.h"
+#include "../MathBit/MathBit.hpp"
 
 namespace SonikLib
 {
@@ -109,7 +109,13 @@ namespace SonikLib
 
         return true;
     };
-
+    
+    //SingletonCreate
+    SonikAssignFreeNumber& SonikAssignFreeNumber::CreateSingletonObject(void)
+    {
+        static SonikAssignFreeNumber _inst_;
+        return _inst_;
+    };
 
 
     //空き番号の貸出
@@ -139,8 +145,16 @@ namespace SonikLib
 
         //空き番号があればそれを利用
         uint64_t bitvalueindex = (64 * (l_header_index - 1)) + l_header_lsb;
-        uint64_t ret = (SonikMathBit::GetZEROLSB((*m_bitvalue)[bitvalueindex]) - static_cast<uint64_t>(1)) + (64 * bitvalueindex);
 
+        uint64_t ret = SonikMathBit::GetZEROLSB((*m_bitvalue)[bitvalueindex]);
+        if(ret == -1)
+        {
+            //空き番号無し。
+            m_lock.unlock();
+            return -1;
+        };
+
+        ret -= (static_cast<uint64_t>(1) + (64 * bitvalueindex));
         if (0x7FFFFFFFFFFFFFFF < ret)
         {
             m_lock.unlock();
