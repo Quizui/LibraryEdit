@@ -9,29 +9,43 @@
 namespace SLibEnumsBitTemplate
 {
 
-	//____________________________________________________
-//									@				  |
-//    Šeíƒrƒbƒg‰‰Z‚Ì—LŒø/–³Œø‰»ƒtƒ‰ƒOƒeƒ“ƒvƒŒ[ƒg	  |
+//____________________________________________________
+//									ã€€				  |
+//    å„ç¨®ãƒ“ãƒƒãƒˆæ¼”ç®—ã®æœ‰åŠ¹/ç„¡åŠ¹åŒ–ãƒ•ãƒ©ã‚°ãƒ†ãƒ³ãƒ—ãƒ¬ãƒ¼ãƒˆ	  	  |
 //____________________________________________________|
-//—LŒø‰»‚·‚é‚Æ‚«‚ÍA—LŒø‰»‚µ‚½‚¢enum class ‚ğ’è‹`‚µ‚½Œã‚ÉAEnableOperatorBitMask<enum classŒ^>‚ğéŒ¾‚·‚éB
+//æœ‰åŠ¹åŒ–ã™ã‚‹ã¨ãã¯ã€æœ‰åŠ¹åŒ–ã—ãŸã„enum class ã‚’å®šç¾©ã—ãŸå¾Œã«ã€EnableOperatorBitMask<enum classå‹>ã‚’å®£è¨€ã™ã‚‹ã€‚
 
-//ƒgƒŒƒCƒg–{‘Ì
+//ãƒˆãƒ¬ã‚¤ãƒˆæœ¬ä½“
 	template<class E>
 	struct EnableOperatorBitMask : std::false_type
 	{
 		//no implement
 	};
-	//ƒrƒbƒg‰‰Zƒeƒ“ƒvƒŒ[ƒg–{‘Ì
+	//ãƒ“ãƒƒãƒˆæ¼”ç®—ãƒ†ãƒ³ãƒ—ãƒ¬ãƒ¼ãƒˆæœ¬ä½“
 	//operator |
 	template<class E>
-	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E> operator |(E left_value, E right_value) noexcept
+#if defined(__cplusplus) && __cplusplus >= 201402L
+	//C++14
+	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E>
+#else
+	//C++14æœªæº€(C++11)
+	DEF_FORCE_INLINE typename std::enable_if<EnableOperatorBitMask<E>::value, E>::type
+#endif
+ 	operator |(E left_value, E right_value) noexcept
 	{
 		using l_cast_type = std::underlying_type_t<E>;
 		return static_cast<E>(static_cast<l_cast_type>(left_value) | static_cast<l_cast_type>(right_value));
 	};
 	//operator |=
 	template<class E>
-	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E&> operator |=(E& left_value, E right_value) noexcept
+#if defined(__cplusplus) && __cplusplus >= 201402L
+	//C++14
+	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E&>
+#else
+	//C++14æœªæº€(C++11)
+	DEF_FORCE_INLINE typename std::enable_if<EnableOperatorBitMask<E>::value, E&>::type
+#endif
+	operator |=(E& left_value, E right_value) noexcept
 	{
 		left_value = left_value | right_value;
 		return left_value;
@@ -39,14 +53,28 @@ namespace SLibEnumsBitTemplate
 
 	//operator &
 	template<class E>
-	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E> operator &(E left_value, E right_value) noexcept
+#if defined(__cplusplus) && __cplusplus >= 201402L
+	//C++14
+	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E>
+#else
+	//C++14æœªæº€(C++11)
+	DEF_FORCE_INLINE typename std::enable_if<EnableOperatorBitMask<E>::value, E>::type
+#endif
+	operator &(E left_value, E right_value) noexcept
 	{
 		using l_cast_type = std::underlying_type_t<E>;
 		return static_cast<E>(static_cast<l_cast_type>(left_value) & static_cast<l_cast_type>(right_value));
 	};
 	//operator &=
 	template<class E>
-	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E&> operator &=(E& left_value, E right_value) noexcept
+#if defined(__cplusplus) && __cplusplus >= 201402L
+	//C++14
+	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E&>
+#else
+	//C++14æœªæº€(C++11)
+	DEF_FORCE_INLINE typename std::enable_if<EnableOperatorBitMask<E>::value, E&>::type
+#endif
+	operator &=(E& left_value, E right_value) noexcept
 	{
 		left_value = left_value & right_value;
 		return left_value;
@@ -54,14 +82,28 @@ namespace SLibEnumsBitTemplate
 
 	//operator ^
 	template<class E>
-	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E> operator ^(E left_value, E right_value) noexcept
+#if defined(__cplusplus) && __cplusplus >= 201402L
+	//C++14
+	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E>
+#else
+	//C++14æœªæº€(C++11)
+	DEF_FORCE_INLINE typename std::enable_if<EnableOperatorBitMask<E>::value, E>::type
+#endif
+	operator ^(E left_value, E right_value) noexcept
 	{
 		using l_cast_type = std::underlying_type_t<E>;
 		return static_cast<E>(static_cast<l_cast_type>(left_value) ^ static_cast<l_cast_type>(right_value));
 	};
 	//operator ^=
 	template<class E>
-	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E&> operator ^=(E& left_value, E right_value) noexcept
+#if defined(__cplusplus) && __cplusplus >= 201402L
+	//C++14
+	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E&>
+#else
+	//C++14æœªæº€(C++11)
+	DEF_FORCE_INLINE typename std::enable_if<EnableOperatorBitMask<E>::value, E&>::type
+#endif
+	operator ^=(E& left_value, E right_value) noexcept
 	{
 		left_value = left_value ^ right_value;
 		return left_value;
@@ -69,7 +111,14 @@ namespace SLibEnumsBitTemplate
 
 	//operator ~
 	template<class E>
-	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E> operator ~(E _value_) noexcept
+#if defined(__cplusplus) && __cplusplus >= 201402L
+	//C++14
+	DEF_FORCE_INLINE constexpr std::enable_if_t<EnableOperatorBitMask<E>::value, E>
+#else
+	//C++14æœªæº€(C++11)
+	DEF_FORCE_INLINE typename std::enable_if<EnableOperatorBitMask<E>::value, E>::type
+#endif
+	operator ~(E _value_) noexcept
 	{
 		using l_cast_type = std::underlying_type_t<E>;
 		return static_cast<E>(~static_cast<l_cast_type>(_value_));
