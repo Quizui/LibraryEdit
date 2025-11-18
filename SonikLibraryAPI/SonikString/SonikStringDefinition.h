@@ -10,13 +10,15 @@
 #ifndef __SONIKSTRING_SONIKSTRING_DEFINITION_H__
 #define __SONIKSTRING_SONIKSTRING_DEFINITION_H__
 
+#include "../CPPGrammarDefines.h"
+
 #if defined(SONIKSTRING_USED_UTF8)
 #if defined(SONIKSTRING_USED_UTF16) || defined(SONIKSTRING_USED_WIDE)
 	//default
 #include "./SonikString.h"
 namespace SonikLib
 {
-	using SonikString = SonikLib::SonikString;
+	SLIB_CVR_USING(SonikString, SonikLib::SonikString);
 };
 
 
@@ -24,7 +26,7 @@ namespace SonikLib
 #include "./UTF8/SonikStringUTF8.h"
 namespace SonikLib
 {
-	using SonikString = SonikLib::SonikStringUTF8;
+	SLIB_CVR_USING(SonikString, SonikLib::SonikStringUTF8);
 };
 
 #endif
@@ -34,14 +36,14 @@ namespace SonikLib
 #include "./SonikString.h"
 namespace SonikLib
 {
-	using SonikString = SonikLib::SonikString;
+	SLIB_CVR_USING(SonikString, SonikLib::SonikString);
 };
 
 #else
 #include "./UTF16/SonikStringUTF16.h"
 namespace SonikLib
 {
-	using SonikString = SonikLib::SonikStringUTF16;
+	SLIB_CVR_USING(SonikString, SonikLib::SonikStringUTF16);
 };
 
 #endif
@@ -50,14 +52,14 @@ namespace SonikLib
 #include "./WIDE/SonikStringWIDE.h"
 namespace SonikLib
 {
-	using SonikString = SonikLib::SonikStringWIDE;
+	SLIB_CVR_USING(SonikString, SonikLib::SonikStringWIDE);
 };
 
 #else
 #include "./SonikString.h"
 namespace SonikLib
 {
-	using SonikString = SonikLib::SonikString;
+	SLIB_CVR_USING(SonikString, SonikLib::SonikString);
 };
 
 #endif

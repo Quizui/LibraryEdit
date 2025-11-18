@@ -4,6 +4,7 @@
 
 #include "../Container/SonikAtomicQueue.hpp"
 #include "../FunctionObject/FunctionObjectSystemInterface.hpp"
+#include "./SonikThreadWaitingObject.hpp"
 
 #include <new>
 #include <condition_variable>
@@ -66,21 +67,10 @@ namespace SonikLib
 		SonikThreadManagerEx* lp_mngobj = new(l_allocbuffer) SonikThreadManagerEx;
 		lp_mngobj->m_allocator = l_allocSmtPtr;
 
-		l_allocbuffer = l_defalloc->memal(sizeof(std::condition_variable_any));
-		if (l_allocbuffer == nullptr)
+
+		if (!WorkerThreadWaitingObject<>::CreateWaitingObject(lp_mngobj->m_cond, l_allocSmtPtr))
 		{
 			lp_mngobj->~SonikThreadManagerEx();
-			l_defalloc->memdel(lp_mngobj);
-			return false;
-		};
-
-		std::condition_variable_any* lp_cond = new(l_allocbuffer) std::condition_variable_any;
-
-		if (!SonikLib::SharedSmtPtr<std::condition_variable_any>::SmartPointerCreate(lp_cond, lp_mngobj->m_cond, l_allocSmtPtr))
-		{
-			lp_cond->~condition_variable_any();
-			lp_mngobj->~SonikThreadManagerEx();
-			l_defalloc->memdel(lp_cond); //スマートポインタに格納できていないためここでmemdelする必要がある。ここ以降はクラス内デストラクタでスマートポインタにより破棄される。
 			l_defalloc->memdel(lp_mngobj);
 			return false;
 		};
@@ -168,13 +158,9 @@ namespace SonikLib
 			return false;
 		};
 
-		std::condition_variable_any* lp_cond = new(l_allocbuffer) std::condition_variable_any;
-
-		if (!SonikLib::SharedSmtPtr<std::condition_variable_any>::SmartPointerCreate(lp_cond, lp_mngobj->m_cond, _allocator_))
+		if (!WorkerThreadWaitingObject<>::CreateWaitingObject(lp_mngobj->m_cond, _allocator_))
 		{
-			lp_cond->~condition_variable_any();
 			lp_mngobj->~SonikThreadManagerEx();
-			_allocator_->memdel(lp_cond); //スマートポインタに格納できていないためここでmemdelする必要がある。ここ以降はクラス内デストラクタでスマートポインタにより破棄される。
 			_allocator_->memdel(lp_mngobj);
 			return false;
 		};

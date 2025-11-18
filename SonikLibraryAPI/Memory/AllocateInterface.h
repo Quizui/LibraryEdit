@@ -1,6 +1,7 @@
 #ifndef __SONIKLIB_ALLOCATE_TRAITS_HEADER__
 #define __SONIKLIB_ALLOCATE_TRAITS_HEADER__
 
+#include <cstdint>
 #include <new>
 #include <type_traits>
 #include "../CompilersPreProcesser.h"
@@ -23,6 +24,9 @@ namespace SonikLib
 			MEM_AL_ERR_OVERSIZE,		//memal、memalarray関数において、貸し出せるメモリ容量が無いため関数は失敗として終了しました。(戻り値はnullptrで返ります。)
 			MEM_AL_ERR_TARGETSIZE_ZERO,	//memalで指定された確保領域要求サイズが0です。
 			MEM_AL_ERR_UNEXCEPTED,		//memalで想定していない何等かのエラーが発生しています。実装のパターン漏れかもしれません。
+
+			MEM_CAT_ERR_NOMATCH_FIRSTCATEGORY,	//ファーストカテゴリ検索時にマッチするサイズがみつかりませんでした。
+			MEM_CAT_ERR_NOMATCH_SECONDCATEGORY, //セカンドカテゴリ検索時にマッチするサイズがみつかりませんでした。
 
 			ENABLE_FAILED,				//Enableの状態がOK以外かつ、本アロケータが使用不可能な状態の時。
 			ENABLE_DEFAULT = 255,		//Enabled初期状態(生成関数が通されていない初期状態。)
@@ -174,7 +178,7 @@ namespace SonikLib
 		template<>
 		DEF_FORCE_INLINE void memdel<void>(void* _del_)
 		{
-			if(_del_ == nullptr)
+			if (_del_ == nullptr)
 			{
 				return;
 			};
@@ -198,6 +202,17 @@ namespace SonikLib
 
 			 __vfung_memdelarray__(_del_);
 		};
+		template <>
+		DEF_FORCE_INLINE void memdelArray<void>(void* _del_, uint32_t index_size)
+		{
+			if (_del_ == nullptr)
+			{
+				return;
+			};
+
+			__vfung_memdelarray__(_del_);
+		};
+
 	};
 
 };

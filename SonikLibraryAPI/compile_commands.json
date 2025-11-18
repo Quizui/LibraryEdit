@@ -97,6 +97,12 @@
 },
 {
   "directory": "D:/TheiaProject_Edit/SonikLibraryAPI/Debug_x64",
+  "command": "D:\\Development\\MSYS64\\clang64\\bin\\clang++.exe -DSLIB_SMTPTR_ASSERTOFF -D_DEBUG -D_WIN64 -D__SONIK_x86_64__ -D__cplusplus=202002L -I/include -g -g -std=c++20 -fmessage-length=0 -finput-charset=UTF-8 -fexec-charset=UTF-8 -fno-omit-frame-pointer -Wall -std=gnu++20 -o CMakeFiles\\Dx64_SonikLibraryAPI.dir\\Release_x64\\CMakeFiles\\4.1.0\\CompilerIdCXX\\CMakeCXXCompilerId.cpp.obj -c D:\\TheiaProject_Edit\\SonikLibraryAPI\\Release_x64\\CMakeFiles\\4.1.0\\CompilerIdCXX\\CMakeCXXCompilerId.cpp",
+  "file": "D:/TheiaProject_Edit/SonikLibraryAPI/Release_x64/CMakeFiles/4.1.0/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+  "output": "D:/TheiaProject_Edit/SonikLibraryAPI/Debug_x64/CMakeFiles/Dx64_SonikLibraryAPI.dir/Release_x64/CMakeFiles/4.1.0/CompilerIdCXX/CMakeCXXCompilerId.cpp.obj"
+},
+{
+  "directory": "D:/TheiaProject_Edit/SonikLibraryAPI/Debug_x64",
   "command": "D:\\Development\\MSYS64\\clang64\\bin\\clang++.exe -DSLIB_SMTPTR_ASSERTOFF -D_DEBUG -D_WIN64 -D__SONIK_x86_64__ -D__cplusplus=202002L -I/include -g -g -std=c++20 -fmessage-length=0 -finput-charset=UTF-8 -fexec-charset=UTF-8 -fno-omit-frame-pointer -Wall -std=gnu++20 -o CMakeFiles\\Dx64_SonikLibraryAPI.dir\\SonikAssignFreeNumber\\SonikAssignFreeNumber.cpp.obj -c D:\\TheiaProject_Edit\\SonikLibraryAPI\\SonikAssignFreeNumber\\SonikAssignFreeNumber.cpp",
   "file": "D:/TheiaProject_Edit/SonikLibraryAPI/SonikAssignFreeNumber/SonikAssignFreeNumber.cpp",
   "output": "D:/TheiaProject_Edit/SonikLibraryAPI/Debug_x64/CMakeFiles/Dx64_SonikLibraryAPI.dir/SonikAssignFreeNumber/SonikAssignFreeNumber.cpp.obj"

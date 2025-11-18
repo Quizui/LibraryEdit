@@ -37,8 +37,8 @@ namespace SonikLib
 		SonikStringUTF16(const SonikStringUTF8& t_his);
 		SonikStringUTF16(const char* SetStr);
 		SonikStringUTF16(const char* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikStringUTF16(const char16_t* SetStr);
-		SonikStringUTF16(const char16_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
+		SonikStringUTF16(const utf16_t* SetStr);
+		SonikStringUTF16(const utf16_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikStringUTF16(const wchar_t* SetStr);
 		SonikStringUTF16(const wchar_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikStringUTF16(const utf8_t* SetStr);
@@ -65,32 +65,32 @@ namespace SonikLib
 		SonikStringUTF16(const double SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 
 		//ムーヴコンストラクタ
-		SonikStringUTF16(SonikString&& _move_) noexcept;
-		SonikStringUTF16(SonikStringWIDE&& _move_) noexcept;
-		SonikStringUTF16(SonikStringUTF8&& _move_) noexcept;
-		SonikStringUTF16(SonikStringUTF16&& _move_) noexcept;
+		SonikStringUTF16(SonikString&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringUTF16(SonikStringWIDE&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringUTF16(SonikStringUTF8&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringUTF16(SonikStringUTF16&& _move_) SLIB_CVR_NOEXCEPT;
 
 		//デストラクタ
 		~SonikStringUTF16(void);
 
 		//define切り替えのStrCopy
-		const char16_t* definition_str(void);
+		const utf16_t* definition_str(void);
 
 		//define切り替えのStrCopy
-		uint64_t GetCpy_str_definition(char16_t* dstBuffer = nullptr);
+		uint64_t GetCpy_str_definition(utf16_t* dstBuffer = nullptr);
 
 		//各入力フォーマットから現在のバッファに変換して代入します。
 		SonikStringUTF16& operator =(const SonikStringUTF16& t_his);
 		SonikStringUTF16& operator =(const SonikString& t_his);
 		SonikStringUTF16& operator =(const SonikStringWIDE& t_his);
 		SonikStringUTF16& operator =(const SonikStringUTF8& t_his);
-		SonikStringUTF16& operator =(SonikString&& _move_) noexcept;
-		SonikStringUTF16& operator =(SonikStringWIDE&& _move_) noexcept;
-		SonikStringUTF16& operator =(SonikStringUTF8&& _move_) noexcept;
-		SonikStringUTF16& operator =(SonikStringUTF16&& _move_) noexcept;
+		SonikStringUTF16& operator =(SonikString&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringUTF16& operator =(SonikStringWIDE&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringUTF16& operator =(SonikStringUTF8&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringUTF16& operator =(SonikStringUTF16&& _move_) SLIB_CVR_NOEXCEPT;
 
 		SonikStringUTF16& operator =(const char* Str);
-		SonikStringUTF16& operator =(const char16_t* w_Str);
+		SonikStringUTF16& operator =(const utf16_t* w_Str);
 		SonikStringUTF16& operator =(const wchar_t* w_Str);
 		SonikStringUTF16& operator =(const utf8_t* utf8_Str);
 		SonikStringUTF16& operator =(const int8_t SetValue);
@@ -111,7 +111,7 @@ namespace SonikLib
 		SonikStringUTF16& operator +=(const SonikStringWIDE& t_his);
 		SonikStringUTF16& operator +=(const SonikStringUTF8& t_his);
 		SonikStringUTF16& operator +=(const char* Str);
-		SonikStringUTF16& operator +=(const char16_t* w_Str);
+		SonikStringUTF16& operator +=(const utf16_t* w_Str);
 		SonikStringUTF16& operator +=(const wchar_t* w_Str);
 		SonikStringUTF16& operator +=(const utf8_t* utf8_Str);
 		SonikStringUTF16& operator +=(const int8_t SetValue);
@@ -132,7 +132,7 @@ namespace SonikLib
 		SonikStringUTF16 operator +(const SonikStringWIDE& t_his);
 		SonikStringUTF16 operator +(const SonikStringUTF8& t_his);
 		SonikStringUTF16 operator +(const char* Str);
-		SonikStringUTF16 operator +(const char16_t* w_Str);
+		SonikStringUTF16 operator +(const utf16_t* w_Str);
 		SonikStringUTF16 operator +(const wchar_t* w_Str);
 		SonikStringUTF16 operator +(const utf8_t* utf8_Str);
 		SonikStringUTF16 operator +(const int8_t SetValue);

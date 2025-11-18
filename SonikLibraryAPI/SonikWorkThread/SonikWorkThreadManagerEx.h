@@ -4,6 +4,7 @@
 #define SONIKWORKTHREADMANAGEREX_H_
 
 #include "../SmartPointer/SonikSmartPointer.hpp"
+#include "./ThreadImplePreProcesser.h"
 
  //前方宣言===================================
 namespace SonikFunctionObjectDefines
@@ -22,6 +23,13 @@ namespace SonikLib
 	};
 
 	class WorkThreadEx;
+
+#if defined(SONIK_THREAD_IMPLE_TO_CPP_STD)
+	//C++20以上
+	template <int64_t>
+	class WorkerThreadWaitingObject;
+#endif
+
 };
 
 namespace std
@@ -55,7 +63,7 @@ namespace SonikLib
 		//ジョブキュー(MTロックフリー)
 		SonikLib::SharedSmtPtr<SonikLib::Container::SonikAtomicQueue<SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>>> JobQueue;
 		//スレッドに与えるcondition_variable_any
-		SonikLib::SharedSmtPtr<std::condition_variable_any> m_cond;
+		SonikLib::SharedSmtPtr<WorkerThreadWaitingObject<INT64_MAX>> m_cond;
 		//アロケータ
 		SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> m_allocator;
 

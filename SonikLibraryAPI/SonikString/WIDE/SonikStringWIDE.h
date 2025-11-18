@@ -37,8 +37,8 @@ namespace SonikLib
 		SonikStringWIDE(const SonikStringUTF16& t_his);
 		SonikStringWIDE(const char* SetStr);
 		SonikStringWIDE(const char* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		SonikStringWIDE(const char16_t* SetStr);
-		SonikStringWIDE(const char16_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
+		SonikStringWIDE(const utf16_t* SetStr);
+		SonikStringWIDE(const utf16_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikStringWIDE(const wchar_t* SetStr);
 		SonikStringWIDE(const wchar_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikStringWIDE(const utf8_t* SetStr);
@@ -65,10 +65,10 @@ namespace SonikLib
 		SonikStringWIDE(const double SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 
 		//ムーヴコンストラクタ
-		SonikStringWIDE(SonikString&& _move_) noexcept;
-		SonikStringWIDE(SonikStringWIDE&& _move_) noexcept;
-		SonikStringWIDE(SonikStringUTF8&& _move_) noexcept;
-		SonikStringWIDE(SonikStringUTF16&& _move_) noexcept;
+		SonikStringWIDE(SonikString&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringWIDE(SonikStringWIDE&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringWIDE(SonikStringUTF8&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringWIDE(SonikStringUTF16&& _move_) SLIB_CVR_NOEXCEPT;
 
 		//デストラクタ
 		~SonikStringWIDE(void);
@@ -84,12 +84,12 @@ namespace SonikLib
 		SonikStringWIDE& operator =(const SonikString& t_his);
 		SonikStringWIDE& operator =(const SonikStringUTF8& t_his);
 		SonikStringWIDE& operator =(const SonikStringUTF16& t_his);
-		SonikStringWIDE& operator =(SonikString&& _move_) noexcept;
-		SonikStringWIDE& operator =(SonikStringWIDE&& _move_) noexcept;
-		SonikStringWIDE& operator =(SonikStringUTF8&& _move_) noexcept;
-		SonikStringWIDE& operator =(SonikStringUTF16&& _move_) noexcept;
+		SonikStringWIDE& operator =(SonikString&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringWIDE& operator =(SonikStringWIDE&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringWIDE& operator =(SonikStringUTF8&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringWIDE& operator =(SonikStringUTF16&& _move_) SLIB_CVR_NOEXCEPT;
 		SonikStringWIDE& operator =(const char* Str);
-		SonikStringWIDE& operator =(const char16_t* w_Str);
+		SonikStringWIDE& operator =(const utf16_t* w_Str);
 		SonikStringWIDE& operator =(const wchar_t* w_Str);
 		SonikStringWIDE& operator =(const utf8_t* utf8_Str);
 		SonikStringWIDE& operator =(const int8_t SetValue);
@@ -110,7 +110,7 @@ namespace SonikLib
 		SonikStringWIDE& operator +=(const SonikStringUTF8& t_his);
 		SonikStringWIDE& operator +=(const SonikStringUTF16& t_his);
 		SonikStringWIDE& operator +=(const char* Str);
-		SonikStringWIDE& operator +=(const char16_t* w_Str);
+		SonikStringWIDE& operator +=(const utf16_t* w_Str);
 		SonikStringWIDE& operator +=(const wchar_t* w_Str);
 		SonikStringWIDE& operator +=(const utf8_t* utf8_Str);
 		SonikStringWIDE& operator +=(const int8_t SetValue);
@@ -131,7 +131,7 @@ namespace SonikLib
 		SonikStringWIDE operator +(const SonikStringUTF8& t_his);
 		SonikStringWIDE operator +(const SonikStringUTF16& t_his);
 		SonikStringWIDE operator +(const char* Str);
-		SonikStringWIDE operator +(const char16_t* w_Str);
+		SonikStringWIDE operator +(const utf16_t* w_Str);
 		SonikStringWIDE operator +(const wchar_t* w_Str);
 		SonikStringWIDE operator +(const utf8_t* utf8_Str);
 		SonikStringWIDE operator +(const int8_t SetValue);

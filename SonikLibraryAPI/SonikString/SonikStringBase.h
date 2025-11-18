@@ -30,12 +30,26 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	protected:
 		//コンストラクタ
 		SonikStringBase(void);
-		//コピーコンストラクタ
+
+#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
+		//コピーと代入の禁止
 		SonikStringBase(const SonikStringBase&) = delete;
 		//ムーヴコンストラクタ
 		SonikStringBase(SonikStringBase&&) = delete;
 		//代入演算子
 		SonikStringBase& operator =(const SonikStringBase&) = delete;
+
+#else //C++ 11 以下
+		//コピーと代入の禁止
+		SonikStringBase(const SonikStringBase&);
+		SonikStringBase& operator =(const SonikStringBase&);
+
+	#if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
+		//MSVC2010ならmove可能なので定義だけしておく。
+		SonikStringBase(SonikStringBase&&);
+
+	#endif
+#endif
 
 	public:
 		~SonikStringBase(void);
@@ -45,7 +59,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		//wchar_t形式に変換して取得します。(バッファタイプも書き換わります。)
 		const wchar_t* str_wchar(void);
 		//UTF16形式に変換して取得します。(バッファタイプも書き換わります。)
-		const char16_t* str_utf16(void);
+		const utf16_t* str_utf16(void);
 		//UTF8形式に変換して取得します。(バッファタイプも書き換わります。)
 		const utf8_t* str_utf8(void);
 
@@ -57,7 +71,7 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		uint64_t GetCpy_str_wcstr(wchar_t* dstBuffer = nullptr);
 		//UTF16形式に変換して、バッファをdstBufferにコピーします。(バッファタイプも書き換わります。)
 		//第１引数を省略してコールした場合はdstに必要なバッファサイズを取得することができます。(単位/1Byte)
-		uint64_t GetCpy_str_utf16(char16_t* dstBuffer = nullptr);
+		uint64_t GetCpy_str_utf16(utf16_t* dstBuffer = nullptr);
 		//UTF8形式に変換して、バッファをdstBufferにコピーします。(バッファタイプも書き換わります。)
 		//第１引数を省略してコールした場合はdstに必要なバッファサイズを取得することができます。(単位/1Byte)
 		uint64_t GetCpy_str_utf8(utf8_t* dstBuffer = nullptr);
@@ -83,14 +97,14 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		//c: 文字列同士を比較します。(strcmp)
 		//c: 一致の場合true 不一致の場合 falseを返却します。
 		bool operator ==(const char* Str);
-		bool operator ==(const char16_t* w_Str);
+		bool operator ==(const utf16_t* w_Str);
 		bool operator ==(const wchar_t* w_Str);
 		bool operator ==(const utf8_t* utf8_Str);
 
 		//c: 文字列同士を比較します。(strcmp)
 		//c: 不一致の場合true　一致の場合 falseを返却します。
 		bool operator !=(const char* Str);
-		bool operator !=(const char16_t* w_Str);
+		bool operator !=(const utf16_t* w_Str);
 		bool operator !=(const wchar_t* w_Str);
 		bool operator !=(const utf8_t* utf8_Str);
 
@@ -112,10 +126,27 @@ namespace SonikLib
 		SonikLib::AllocatorSharedSmtPtr<SLibAllocateInterface> m_allocator;
 
 	private:
+
+#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
+		//コピーと代入の禁止
 		SonikStringSplitObject(const SonikStringSplitObject& _copy_) = delete;
 		SonikStringSplitObject(SonikStringSplitObject&& _move_) = delete;
 		SonikStringSplitObject& operator =(const SonikStringSplitObject& _copy_) = delete;
 		SonikStringSplitObject& operator =(SonikStringSplitObject&& _move_) = delete;
+
+#else //C++ 11 以下
+		//コピーと代入の禁止
+		SonikStringSplitObject(const SonikStringSplitObject& _copy_);
+		SonikStringSplitObject& operator =(const SonikStringSplitObject& _copy_);
+
+#if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
+		//MSVC2010ならmove可能なので定義だけしておく。
+		SonikStringSplitObject(SonikStringSplitObject&& _move_);
+		SonikStringSplitObject& operator =(SonikStringSplitObject&& _move_);
+#endif
+#endif
+
+
 
 	public:
 		SonikStringSplitObject(void);

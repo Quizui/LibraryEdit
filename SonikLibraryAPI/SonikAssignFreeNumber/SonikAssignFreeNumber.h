@@ -32,12 +32,29 @@ namespace SonikLib
         SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> m_allocator;
 
     private:
+        SonikAssignFreeNumber(void);
+
+
+#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
+        //コピーと代入の禁止
         SonikAssignFreeNumber(const SonikAssignFreeNumber& _copy_) = delete;
         SonikAssignFreeNumber(SonikAssignFreeNumber&& _copy_) = delete;
         SonikAssignFreeNumber& operator =(const SonikAssignFreeNumber& _copy_) = delete;
         SonikAssignFreeNumber& operator =(SonikAssignFreeNumber&& _copy_) = delete;
 
-        SonikAssignFreeNumber(void);
+#else //C++ 11 以下
+        //コピーと代入の禁止
+        SonikAssignFreeNumber(const SonikAssignFreeNumber& _copy_);
+        SonikAssignFreeNumber& operator =(const SonikAssignFreeNumber& _copy_);
+
+    #if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
+        //MSVC2010ならmove可能なので定義だけしておく。
+        SonikAssignFreeNumber(SonikAssignFreeNumber&& _copy_);
+        SonikAssignFreeNumber& operator =(SonikAssignFreeNumber&& _copy_);
+
+    #endif
+#endif
+
 
     public:
         ~SonikAssignFreeNumber(void);
@@ -45,11 +62,9 @@ namespace SonikLib
         //通常のオブジェクトを生成します。
         static bool CreateObject(SonikLib::SharedSmtPtr<SonikAssignFreeNumber>& _get_);
         static bool CreateObject(SonikLib::SharedSmtPtr<SonikAssignFreeNumber>& _get_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-        
-        //シングルトンオブジェクトを生成します。
-        //どこでコールされるかわからないのでアロケータは使用不可能です。
-        static SonikAssignFreeNumber& CreateSingletonObject(void);
 
+        //シングルトンオブジェクトとして生成します。
+        static SonikAssignFreeNumber& SingletonCreate(void);
 
         //空き番号の貸出
         //最大値はint64_t型で0x7FFFFFFFFFFFFFFF(実値:9223372036854775807)

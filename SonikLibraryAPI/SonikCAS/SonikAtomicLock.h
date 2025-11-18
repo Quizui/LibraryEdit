@@ -1,20 +1,10 @@
-/*
- * SonikAtomicBlock.h
- *
- *  Created on: 2015/10/07
- *      Author: SONIK
- *  TEXTFORMAT: UTF-8
- */
+#pragma once
 
 #ifndef SONIKATOMICBLOCK_H_
 #define SONIKATOMICBLOCK_H_
 
-#include <atomic>
-
-#ifdef _DEBUG
-//#include "..//SonikLoggerUse.h"
-
-#endif
+//#include <atomic>
+#include "./SonikAtomic.hpp"
 
 namespace SonikLib
 {
@@ -23,15 +13,32 @@ namespace SonikLib
 		class SonikAtomicLock
 		{
 		private:
-			std::atomic<bool> _lock;
+			//std::atomic<bool> _lock;
+			SonikLib::SonikAtomic<bool> _lock;
 
 		private:
+
+#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
+			//コピーと代入の禁止
 			//コピーコンストラクタ
 			SonikAtomicLock(const SonikAtomicLock& _copy_) = delete;
 			SonikAtomicLock(SonikAtomicLock&& _move_) = delete;
 			//代入演算子
 			SonikAtomicLock& operator =(const SonikAtomicLock& _copy_) = delete;
 			SonikAtomicLock& operator =(SonikAtomicLock&& _move_) = delete;
+
+#else //C++ 11 以下
+			//コピーと代入の禁止
+			SonikAtomicLock(const SonikAtomicLock& _copy_);
+			SonikAtomicLock& operator =(const SonikAtomicLock& _copy_);
+
+			#if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
+				//MSVC2010ならmove可能なので定義だけしておく。
+				SonikAtomicLock(SonikAtomicLock&& _move_);
+				SonikAtomicLock& operator =(SonikAtomicLock&& _move_);
+
+			#endif
+#endif
 		public:
 			//コンストラクタ
 			SonikAtomicLock(void);

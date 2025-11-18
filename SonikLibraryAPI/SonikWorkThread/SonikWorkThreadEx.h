@@ -17,22 +17,30 @@
 
 #include "../SmartPointer/SonikSmartPointer.hpp"
 
+namespace SonikLib
+{
+	template <long long>
+	class WorkerThreadWaitingObject;
+};
+
+/*
 namespace std
 {
-#if defined(_MSC_VER)
-	class condition_variable_any;
-
-#elif defined(__GNUC__) || defined(__GNUG__) || defined(__clang__)
+#if defined(__GNUC__) || defined(__GNUG__) || defined(__clang__)
 	namespace _LIBCPP_ABI_NAMESPACE
 	{
 		class condition_variable_any;
 	};
+
+#elif defined(_MSC_VER)
+	class condition_variable_any;
 
 #else
 	class condition_variable_any;
 
 #endif
 };
+*/
 
 namespace SonikFunctionObjectDefines
 {
@@ -74,8 +82,8 @@ namespace SonikLib
 		WorkThreadEx(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, bool DetachThread = false);
 		//外部のcondition_variable_anyオブジェクトを使用します。
 		//外部のcondition_variable_anyオブジェクトが複数のスレッドに渡されていた場合、内部のスレッド起床関数コールが対象はすべてのスレッド対象になります。
-		WorkThreadEx(SonikLib::SharedSmtPtr<std::condition_variable_any>& _cond_, bool DetachThread = false);
-		WorkThreadEx(SonikLib::SharedSmtPtr<std::condition_variable_any>& _cond_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, bool DetachThread = false);
+		WorkThreadEx(SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<LLONG_MAX>> &_cond_, bool DetachThread = false);
+		WorkThreadEx(SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<LLONG_MAX>>& _cond_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, bool DetachThread = false);
 
 		//本クラスのデストラクタです。
 		~WorkThreadEx(void);
@@ -83,7 +91,7 @@ namespace SonikLib
 		//関数オブジェクトポインタをセットします。
 		//引数1: スレッドで実行する関数オブジェクトを設定します。
 		//引数2: 実行関数の実行終了後、再度繰り返し実行させる場合はtrueを指定します。(default = false, １回コールのみ。)
-		//			  この引数をtrueにした状態のままで関数
+		//
 		//戻り値; スレッドが実行中の場合はfalseが返り、セットされません。
 		//本関数はスレッドセーフです。
 		//確実にセットしたい場合、前にセットされた関数があれば、それが終了し、関数がtrueを返却するまでループします。

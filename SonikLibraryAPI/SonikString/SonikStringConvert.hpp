@@ -34,8 +34,8 @@
 #include "./SonikStringEnums.h"
 #include "../SmartPointer/SonikSmartPointer.hpp"
 
-#include "../SonikCAS/SonikAtomicLock.h"
 #include "../CompilersPreProcesser.h"
+#include "./TypePermissibleTemplate.hpp"
 
 //SJIS ⇒ UNICODE(UTF16) CodePage(がんばって実装)
 //2次元配列なので配列要素数は１次元のみ省略可
@@ -46,7 +46,7 @@ namespace SonikConvStaticTable
 {
 	//UTF-8 FULLWIDKATAKANA => HALFWIDTH KATAKANA
 	//1次元配列なので配列要素数省略可
-	DEF_FORCE_INLINE const uint32_t* GET_HW_KANA_OFFSET_STARTPOINT(void) noexcept
+	DEF_FORCE_INLINE const uint32_t* GET_HW_KANA_OFFSET_STARTPOINT(void) SLIB_CVR_NOEXCEPT
 	{
 		static constexpr uint32_t HW_KANA_OFFSET_STARTPOINT[] = { 0xE382A1, 0xE38380 };
 		return HW_KANA_OFFSET_STARTPOINT;
@@ -54,7 +54,7 @@ namespace SonikConvStaticTable
 
 	//形式 => 左3Byte -> 実文字コード、 右1Byte -> 最上位bit = ポインタ進行数(0 or 1)  残り7bit = 下記配列の濁点位置。
 	//1次元配列なので配列要素数省略可
-	DEF_FORCE_INLINE const uint32_t* GET_HW_KANA(void) noexcept
+	DEF_FORCE_INLINE const uint32_t* GET_HW_KANA(void) SLIB_CVR_NOEXCEPT
 	{
 		static constexpr uint32_t HW_KANA[] = { 0xEFBDA700, 0xEFBDB100, 0xEFBDA800, 0xEFBDB200, 0xEFBDA900, 0xEFBDB300, 0xEFBDAA00, 0xEFBDB400, 0xEFBDAB00, 0xEFBDB500,
 												0xEFBDB600, 0xEFBDB69F, 0xEFBDB700, 0xEFBDB79F, 0xEFBDB800, 0xEFBDB89F, 0xEFBDB900, 0xEFBDB99F, 0xEFBDBA00, 0xEFBDBA9F,
@@ -4447,7 +4447,7 @@ namespace SonikConvStaticTable
 	};
 
 	//UTF8文字数カウント用テーブル
-	DEF_FORCE_INLINE const uint8_t* GET_UTF8_LEN_TABLE(void) noexcept
+	DEF_FORCE_INLINE const uint8_t* GET_UTF8_LEN_TABLE(void) SLIB_CVR_NOEXCEPT
 	{
 		static constexpr uint8_t UTF8_LEN_TABLE[] = { 1, 1, 1, 1, 1, 1, 1, 1,	//0x00 - 0x07：ASCII区分(1Byte文字)
 													  1, 1, 1, 1,				//0x08 - 0x0B：後続バイト or 不正コード(フォールバックで1文字としてカウント)(1Byte文字)
@@ -4472,6 +4472,11 @@ namespace SonikLibStringConvert
 		if (pCheckSrc == nullptr)
 		{
 			return SCHTYPE_UNKNOWN;
+		};
+
+		if (pCheckSrc == "")
+		{
+			return SCHTYPE_NULLTEXT;
 		};
 
 		uint32_t Len = static_cast<uint32_t>(strlen(pCheckSrc));
@@ -4625,7 +4630,7 @@ namespace SonikLibStringConvert
 
 	};
 	//unicode文字の文字列バイト数を返却します。
-	DEF_FORCE_INLINE uint64_t GetStringLengthByte(const char16_t* pCheckSrc)
+	DEF_FORCE_INLINE uint64_t GetStringLengthByte(const utf16_t* pCheckSrc)
 	{
 		if (pCheckSrc == nullptr)
 		{
@@ -4644,7 +4649,7 @@ namespace SonikLibStringConvert
 	};
 	//unicode(UTF-32)文字の文字列バイト数を返却します。
 	//ただのループ。
-	DEF_FORCE_INLINE uint64_t GetStringLengthByte(const char32_t* pCheckSrc)
+	DEF_FORCE_INLINE uint64_t GetStringLengthByte(const utf32_t* pCheckSrc)
 	{
 		if (pCheckSrc == nullptr)
 		{
@@ -4829,7 +4834,7 @@ namespace SonikLibStringConvert
 	};
 
 	//unicode(UTF-16)文字の文字数を返却します。
-	DEF_FORCE_INLINE uint64_t GetStringCount(const char16_t* pCheckSrc)
+	DEF_FORCE_INLINE uint64_t GetStringCount(const utf16_t* pCheckSrc)
 	{
 		if (pCheckSrc == nullptr)
 		{
@@ -4856,7 +4861,7 @@ namespace SonikLibStringConvert
 	};
 
 	//unicode(UTF-32)文字の文字数を返却します。
-	DEF_FORCE_INLINE uint64_t GetStringCount(const char32_t* pCheckSrc)
+	DEF_FORCE_INLINE uint64_t GetStringCount(const utf32_t* pCheckSrc)
 	{
 		if (pCheckSrc == nullptr)
 		{
@@ -4876,7 +4881,7 @@ namespace SonikLibStringConvert
 
 
 	//UTF-8をUNICODE(UTF-32)に変換します。
-	DEF_FORCE_INLINE bool ConvertUTF8ToUTF32(const utf8_t* pSrc, char32_t* pDest, uint64_t* DestBufferSize)
+	DEF_FORCE_INLINE bool ConvertUTF8ToUTF32(const utf8_t* pSrc, utf32_t* pDest, uint64_t* DestBufferSize)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -4900,9 +4905,9 @@ namespace SonikLibStringConvert
 			return false;
 		};
 
-		char32_t* pUtf32_ = 0;
+		utf32_t* pUtf32_ = 0;
 
-		pUtf32_ = new(std::nothrow) char32_t[SrcLen] {}; //初期化時0クリア
+		pUtf32_ = new(std::nothrow) utf32_t[SrcLen] {}; //初期化時0クリア
 		if (pUtf32_ == nullptr)
 		{
 			return false;
@@ -5030,7 +5035,7 @@ namespace SonikLibStringConvert
 		delete[] pUtf32_;
 		return true;
 	};
-	DEF_FORCE_INLINE bool ConvertUTF8ToUTF32(const utf8_t* pSrc, char32_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	DEF_FORCE_INLINE bool ConvertUTF8ToUTF32(const utf8_t* pSrc, utf32_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -5054,15 +5059,15 @@ namespace SonikLibStringConvert
 			return false;
 		};
 
-		char32_t* pUtf32_ = nullptr;
+		utf32_t* pUtf32_ = nullptr;
 
-		void* l_allocbuffer = _allocator_->memal(sizeof(char32_t) * SrcLen);
+		void* l_allocbuffer = _allocator_->memal(sizeof(utf32_t) * SrcLen);
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		pUtf32_ = new(l_allocbuffer) char32_t[SrcLen] {}; //初期化時0クリア
+		pUtf32_ = new(l_allocbuffer) utf32_t[SrcLen] {}; //初期化時0クリア
 
 
 		uint64_t utf8_i = 0;
@@ -5094,8 +5099,8 @@ namespace SonikLibStringConvert
 				numBytes = 2;
 
 				//C6385警告及び、C6386警告対処。(範囲は大丈夫なので。)
-				SLIB_ASSUME((utf8_i + 1) < lopsize);
-				SLIB_ASSUME(utf32_i < SrcLen);
+				LIB_ASSUME((utf8_i + 1) < lopsize);
+				LIB_ASSUME(utf32_i < SrcLen);
 
 				if (!(0x80 <= (*(control_src + 1)) && (*(control_src + 1)) < 0xC0))
 				{
@@ -5119,8 +5124,8 @@ namespace SonikLibStringConvert
 				numBytes = 3;
 
 				//C6385警告及び、C6386警告対処。(範囲は大丈夫なので。)
-				SLIB_ASSUME((utf8_i + 2) < lopsize);
-				SLIB_ASSUME(utf32_i < SrcLen);
+				LIB_ASSUME((utf8_i + 2) < lopsize);
+				LIB_ASSUME(utf32_i < SrcLen);
 
 				if ((!(0x80 <= (*(control_src + 1)) && (*(control_src + 1)) < 0xC0)) ||
 					(!(0x80 <= (*(control_src + 2)) && (*(control_src + 2)) < 0xC0))
@@ -5148,8 +5153,8 @@ namespace SonikLibStringConvert
 				numBytes = 4;
 
 				//C6385警告及び、C6386警告対処。(範囲は大丈夫なので。)
-				SLIB_ASSUME((utf8_i + 3) < lopsize);
-				SLIB_ASSUME(utf32_i < SrcLen);
+				LIB_ASSUME((utf8_i + 3) < lopsize);
+				LIB_ASSUME(utf32_i < SrcLen);
 
 				if ((!(0x80 <= (*(control_src + 1)) && (*(control_src + 1)) < 0xC0)) ||
 					(!(0x80 <= (*(control_src + 2)) && (*(control_src + 2)) < 0xC0)) ||
@@ -5210,7 +5215,7 @@ namespace SonikLibStringConvert
 	};
 
 	//UNICODE(UTF-32)をUTF-8に変換します。
-	DEF_FORCE_INLINE bool ConvertUTF32ToUTF8(const char32_t* pSrc, utf8_t* pDest, uint64_t* DestBufferSize)
+	DEF_FORCE_INLINE bool ConvertUTF32ToUTF8(const utf32_t* pSrc, utf8_t* pDest, uint64_t* DestBufferSize)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -5220,7 +5225,7 @@ namespace SonikLibStringConvert
 		uint64_t utf32_strcnt_ = 0;
 		uint64_t utf8_strcnt_ = 0;
 		//文字数カウント
-		const char32_t* tmpsrc = pSrc;
+		const utf32_t* tmpsrc = pSrc;
 		while ((*tmpsrc) != 0)
 		{
 			++tmpsrc;
@@ -5327,7 +5332,7 @@ namespace SonikLibStringConvert
 		delete[] utf8buffer;
 		return true;
 	};
-	DEF_FORCE_INLINE bool ConvertUTF32ToUTF8(const char32_t* pSrc, utf8_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	DEF_FORCE_INLINE bool ConvertUTF32ToUTF8(const utf32_t* pSrc, utf8_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -5337,7 +5342,7 @@ namespace SonikLibStringConvert
 		uint64_t utf32_strcnt_ = 0;
 		uint64_t utf8_strcnt_ = 0;
 		//文字数カウント
-		const char32_t* tmpsrc = pSrc;
+		const utf32_t* tmpsrc = pSrc;
 		while ((*tmpsrc) != 0)
 		{
 			++tmpsrc;
@@ -5456,7 +5461,7 @@ namespace SonikLibStringConvert
 	};
 
 	//UNICODE(UTF-32)をUNICODE(UTF-16)に変換します。
-	DEF_FORCE_INLINE bool ConvertUTF32ToUTF16(const char32_t* pSrc, char16_t* pDest, uint64_t* DestBufferSize)
+	DEF_FORCE_INLINE bool ConvertUTF32ToUTF16(const utf32_t* pSrc, utf16_t* pDest, uint64_t* DestBufferSize)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -5467,16 +5472,16 @@ namespace SonikLibStringConvert
 		uint64_t srclen_ = GetStringCount(pSrc);
 
 		//事前に確保する設定上1文字=4Byte必要で計算する。UTF16は最大2Byte x 2Byteの4Byteで構成される。
-		uint64_t wsrclen_ = (srclen_ + 1) << 1;  // ( x + null文字 ) * 2 -> char16_t型で配列を作るので、これで2Byte文字列 * 2の配列ができる = １文字最大4Byteで計算している。
+		uint64_t wsrclen_ = (srclen_ + 1) << 1;  // ( x + null文字 ) * 2 -> utf16_t型で配列を作るので、これで2Byte文字列 * 2の配列ができる = １文字最大4Byteで計算している。
 
-		char16_t* utf16buffer = new(std::nothrow) char16_t[wsrclen_] {}; //初期化時0クリア
+		utf16_t* utf16buffer = new(std::nothrow) utf16_t[wsrclen_] {}; //初期化時0クリア
 		if (utf16buffer == nullptr)
 		{
 			return false;
 		};
 
-		const char32_t* utf32_Src = pSrc;
-		char16_t* p_cont_utf16buffer = utf16buffer;
+		const utf32_t* utf32_Src = pSrc;
+		utf16_t* p_cont_utf16buffer = utf16buffer;
 		uint64_t CopySize = 0; //UTF16で使う要素数
 		for (uint64_t i = 0; i < srclen_; ++i)
 		{
@@ -5539,7 +5544,7 @@ namespace SonikLibStringConvert
 		delete[] utf16buffer;
 		return true;
 	};
-	DEF_FORCE_INLINE bool ConvertUTF32ToUTF16(const char32_t* pSrc, char16_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	DEF_FORCE_INLINE bool ConvertUTF32ToUTF16(const utf32_t* pSrc, utf16_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -5550,19 +5555,19 @@ namespace SonikLibStringConvert
 		uint64_t srclen_ = GetStringCount(pSrc);
 
 		//事前に確保する設定上1文字=4Byte必要で計算する。UTF16は最大2Byte x 2Byteの4Byteで構成される。
-		uint64_t wsrclen_ = (srclen_ + 1) << 1;  // ( x + null文字 ) * 2 -> char16_t型で配列を作るので、これで2Byte文字列 * 2の配列ができる = １文字最大4Byteで計算している。
+		uint64_t wsrclen_ = (srclen_ + 1) << 1;  // ( x + null文字 ) * 2 -> utf16_t型で配列を作るので、これで2Byte文字列 * 2の配列ができる = １文字最大4Byteで計算している。
 
-		void* l_allocbuffer = _allocator_->memal(sizeof(char16_t) * wsrclen_);
+		void* l_allocbuffer = _allocator_->memal(sizeof(utf16_t) * wsrclen_);
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		char16_t* utf16buffer = new(l_allocbuffer) char16_t[wsrclen_] {}; //初期化時0クリア
+		utf16_t* utf16buffer = new(l_allocbuffer) utf16_t[wsrclen_] {}; //初期化時0クリア
 
 
-		const char32_t* utf32_Src = pSrc;
-		char16_t* p_cont_utf16buffer = utf16buffer;
+		const utf32_t* utf32_Src = pSrc;
+		utf16_t* p_cont_utf16buffer = utf16buffer;
 		uint64_t CopySize = 0; //UTF16で使う要素数
 		for (uint64_t i = 0; i < srclen_; ++i)
 		{
@@ -5633,7 +5638,7 @@ namespace SonikLibStringConvert
 	};
 
 	//UNICODE(UTF-16)をUNICODE(UTF-32)に変換します。
-	DEF_FORCE_INLINE bool ConvertUTF16ToUTF32(const char16_t* pSrc, char32_t* pDest, uint64_t* DestBufferSize)
+	DEF_FORCE_INLINE bool ConvertUTF16ToUTF32(const utf16_t* pSrc, utf32_t* pDest, uint64_t* DestBufferSize)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -5656,14 +5661,14 @@ namespace SonikLibStringConvert
 			return false;
 		};
 
-		char32_t* utf32buffer = new(std::nothrow) char32_t[srclen_ + 1]{}; //初期化時0クリア
+		utf32_t* utf32buffer = new(std::nothrow) utf32_t[srclen_ + 1]{}; //初期化時0クリア
 		if (utf32buffer == nullptr)
 		{
 			return false;
 		};
 
 		//配列組み換え
-		const char16_t* utf16buffer = pSrc;
+		const utf16_t* utf16buffer = pSrc;
 
 		for (uint64_t i = 0; i < srclen_; ++i)
 		{
@@ -5735,7 +5740,7 @@ namespace SonikLibStringConvert
 		delete[] utf32buffer;
 		return true;
 	};
-	DEF_FORCE_INLINE bool ConvertUTF16ToUTF32(const char16_t* pSrc, char32_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	DEF_FORCE_INLINE bool ConvertUTF16ToUTF32(const utf16_t* pSrc, utf32_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -5758,17 +5763,17 @@ namespace SonikLibStringConvert
 			return false;
 		};
 
-		void* l_allocbuffer = _allocator_->memal((sizeof(char32_t) * (srclen_ + 1)));
+		void* l_allocbuffer = _allocator_->memal((sizeof(utf32_t) * (srclen_ + 1)));
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		char32_t* utf32buffer = new(l_allocbuffer) char32_t[srclen_ + 1]{}; //初期化時0クリア
+		utf32_t* utf32buffer = new(l_allocbuffer) utf32_t[srclen_ + 1]{}; //初期化時0クリア
 
 
 		//配列組み換え
-		const char16_t* utf16buffer = pSrc;
+		const utf16_t* utf16buffer = pSrc;
 
 		for (uint64_t i = 0; i < srclen_; ++i)
 		{
@@ -5845,7 +5850,7 @@ namespace SonikLibStringConvert
 	};
 
 	//UNICODE(UTF-16)をUTF8に変換します。
-	DEF_FORCE_INLINE bool ConvertUTF16ToUTF8(const char16_t* pSrc, utf8_t* pDest, uint64_t* DestBufferSize)
+	DEF_FORCE_INLINE bool ConvertUTF16ToUTF8(const utf16_t* pSrc, utf8_t* pDest, uint64_t* DestBufferSize)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -5859,7 +5864,7 @@ namespace SonikLibStringConvert
 
 		//Byte数から要素数を算出
 		buffersize >>= 2; //UTF32は4Byteブロックのため、使用Byte数 / 4 = 要素数
-		char32_t* utf32buffer = new(std::nothrow) char32_t[buffersize] {}; //初期化時0クリア
+		utf32_t* utf32buffer = new(std::nothrow) utf32_t[buffersize] {}; //初期化時0クリア
 		if (utf32buffer == nullptr)
 		{
 			return false;
@@ -5898,7 +5903,7 @@ namespace SonikLibStringConvert
 		delete[] utf32buffer;
 		return true;
 	};
-	DEF_FORCE_INLINE bool ConvertUTF16ToUTF8(const char16_t* pSrc, utf8_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	DEF_FORCE_INLINE bool ConvertUTF16ToUTF8(const utf16_t* pSrc, utf8_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -5913,13 +5918,13 @@ namespace SonikLibStringConvert
 		//Byte数から要素数を算出
 		buffersize >>= 2; //UTF32は4Byteブロックのため、使用Byte数 / 4 = 要素数
 
-		void* l_allocbuffer = _allocator_->memal(sizeof(char32_t) * buffersize);
+		void* l_allocbuffer = _allocator_->memal(sizeof(utf32_t) * buffersize);
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		char32_t* utf32buffer = new(l_allocbuffer) char32_t[buffersize] {}; //初期化時0クリア
+		utf32_t* utf32buffer = new(l_allocbuffer) utf32_t[buffersize] {}; //初期化時0クリア
 
 		if (!ConvertUTF16ToUTF32(pSrc, utf32buffer, nullptr, _allocator_))
 		{
@@ -5962,7 +5967,7 @@ namespace SonikLibStringConvert
 	};
 
 	//UTF8をUNICODE(UTF-16)に変換します。
-	DEF_FORCE_INLINE bool ConvertUTF8ToUTF16(const utf8_t* pSrc, char16_t* pDest, uint64_t* DestBufferSize)
+	DEF_FORCE_INLINE bool ConvertUTF8ToUTF16(const utf8_t* pSrc, utf16_t* pDest, uint64_t* DestBufferSize)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -5976,7 +5981,7 @@ namespace SonikLibStringConvert
 		//Byte数から要素数を算出
 		buffersize >>= 2; //UTF32は4Byteブロックのため、使用Byte数 / 4 = 要素数
 
-		char32_t* utf32buffer = new(std::nothrow) char32_t[buffersize] {}; //初期化時0クリア
+		utf32_t* utf32buffer = new(std::nothrow) utf32_t[buffersize] {}; //初期化時0クリア
 		if (utf32buffer == nullptr)
 		{
 			return false;
@@ -6015,7 +6020,7 @@ namespace SonikLibStringConvert
 		delete[] utf32buffer;
 		return true;
 	};
-	DEF_FORCE_INLINE bool ConvertUTF8ToUTF16(const utf8_t* pSrc, char16_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	DEF_FORCE_INLINE bool ConvertUTF8ToUTF16(const utf8_t* pSrc, utf16_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -6029,13 +6034,13 @@ namespace SonikLibStringConvert
 		//Byte数から要素数を算出
 		buffersize >>= 2; //UTF32は4Byteブロックのため、使用Byte数 / 4 = 要素数
 
-		void* l_allocbuffer = _allocator_->memal(sizeof(char32_t) * buffersize);
+		void* l_allocbuffer = _allocator_->memal(sizeof(utf32_t) * buffersize);
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		char32_t* utf32buffer = new(l_allocbuffer) char32_t[buffersize] {}; //初期化時0クリア
+		utf32_t* utf32buffer = new(l_allocbuffer) utf32_t[buffersize] {}; //初期化時0クリア
 
 
 		if (!ConvertUTF8ToUTF32(pSrc, utf32buffer, nullptr, _allocator_))
@@ -6094,8 +6099,8 @@ namespace SonikLibStringConvert
 
 		uint64_t wcsLen = GetStringCount(pSrc) + 1; //null文字分で+1文字追加
 
-		//自前コードページを実装したのでMBS(SJIS)からUTF16へはwchar_tで分けなくてよくなったためchar16_tで確保する。(utf32を考慮しなくてよくなったのとSJISはサロゲートペアはない)
-		char16_t* wcsbuffer = new(std::nothrow) char16_t[wcsLen] {}; //初期化時0クリア
+		//自前コードページを実装したのでMBS(SJIS)からUTF16へはwchar_tで分けなくてよくなったためutf16_tで確保する。(utf32を考慮しなくてよくなったのとSJISはサロゲートペアはない)
+		utf16_t* wcsbuffer = new(std::nothrow) utf16_t[wcsLen] {}; //初期化時0クリア
 		if (wcsbuffer == nullptr)
 		{
 			return false;
@@ -6171,14 +6176,14 @@ namespace SonikLibStringConvert
 
 		uint64_t wcsLen = GetStringCount(pSrc) + 1; //null文字分で+1文字追加
 
-		//自前コードページを実装したのでMBS(SJIS)からUTF16へはwchar_tで分けなくてよくなったためchar16_tで確保する。(utf32を考慮しなくてよくなったのとSJISはサロゲートペアはない)
-		void* l_allocbuffer = _allocator_->memal(sizeof(char16_t) * wcsLen);
+		//自前コードページを実装したのでMBS(SJIS)からUTF16へはwchar_tで分けなくてよくなったためutf16_tで確保する。(utf32を考慮しなくてよくなったのとSJISはサロゲートペアはない)
+		void* l_allocbuffer = _allocator_->memal(sizeof(utf16_t) * wcsLen);
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		char16_t* wcsbuffer = new(l_allocbuffer) char16_t[wcsLen] {}; //初期化時0クリア
+		utf16_t* wcsbuffer = new(l_allocbuffer) utf16_t[wcsLen] {}; //初期化時0クリア
 
 		{ //スペース区切り
 			//wcsLen分ループ
@@ -6214,7 +6219,7 @@ namespace SonikLibStringConvert
 		if (DestBufferSize != nullptr && pDest == nullptr)
 		{
 			//utf16->utf8 サイズチェック
-			ConvertUTF16ToUTF8(reinterpret_cast<char16_t*>(wcsbuffer), nullptr, DestBufferSize, _allocator_); // バイト数で返却
+			ConvertUTF16ToUTF8(reinterpret_cast<utf16_t*>(wcsbuffer), nullptr, DestBufferSize, _allocator_); // バイト数で返却
 
 			_allocator_->memdel(wcsbuffer);
 			//delete[] wcsbuffer;
@@ -6230,7 +6235,7 @@ namespace SonikLibStringConvert
 		};
 
 		//utf16->utf8 本番
-		if (!ConvertUTF16ToUTF8(reinterpret_cast<char16_t*>(wcsbuffer), pDest, nullptr, _allocator_))
+		if (!ConvertUTF16ToUTF8(reinterpret_cast<utf16_t*>(wcsbuffer), pDest, nullptr, _allocator_))
 		{
 			_allocator_->memdel(wcsbuffer);
 			//delete[] wcsbuffer;
@@ -6262,13 +6267,13 @@ namespace SonikLibStringConvert
 
 		//途中のwchar_tが2Byteでも4Byteでも最大4Byte(UTF16のサロゲートペアを考慮するとUTF16も最大4Byte使う)
 		//そのため、ベストフィットを計算する処理をパフォーマンス優先にして無くして、グッドフィットにする。
-		char32_t* wcsbuffer = new(std::nothrow) char32_t[wcslen] {}; //初期化時0クリア
+		utf32_t* wcsbuffer = new(std::nothrow) utf32_t[wcslen] {}; //初期化時0クリア
 		if (wcsbuffer == nullptr)
 		{
 			return false;
 		}
 
-		if (!ConvertUTF8ToUTF16(pSrc, reinterpret_cast<char16_t*>(wcsbuffer), nullptr))
+		if (!ConvertUTF8ToUTF16(pSrc, reinterpret_cast<utf16_t*>(wcsbuffer), nullptr))
 		{
 			delete[] wcsbuffer;
 			return false;
@@ -6285,10 +6290,10 @@ namespace SonikLibStringConvert
 		{ //スペース区切り
 			//mbslen分ループ
 			uint32_t stroffset = 0;
-			char16_t* l_u16buffer = reinterpret_cast<char16_t*>(wcsbuffer);
+			utf16_t* l_u16buffer = reinterpret_cast<utf16_t*>(wcsbuffer);
 			for (uint32_t i = 0; i < mbslen; ++i)
 			{
-				char16_t l_chr = l_u16buffer[stroffset];
+				utf16_t l_chr = l_u16buffer[stroffset];
 				
 				if (l_chr == 0x0000)
 				{
@@ -6379,15 +6384,15 @@ namespace SonikLibStringConvert
 
 		//途中のwchar_tが2Byteでも4Byteでも最大4Byte(UTF16のサロゲートペアを考慮するとUTF16も最大4Byte使う)
 		//そのため、ベストフィットを計算する処理をパフォーマンス優先にして無くして、グッドフィットにする。
-		void* l_allocbuffer = _allocator_->memal(sizeof(char32_t) * wcslen);
+		void* l_allocbuffer = _allocator_->memal(sizeof(utf32_t) * wcslen);
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		char32_t* wcsbuffer = new(l_allocbuffer) char32_t[wcslen] {}; //初期化時0クリア
+		utf32_t* wcsbuffer = new(l_allocbuffer) utf32_t[wcslen] {}; //初期化時0クリア
 
-		if (!ConvertUTF8ToUTF16(pSrc, reinterpret_cast<char16_t*>(wcsbuffer), nullptr, _allocator_))
+		if (!ConvertUTF8ToUTF16(pSrc, reinterpret_cast<utf16_t*>(wcsbuffer), nullptr, _allocator_))
 		{
 			_allocator_->memdel(wcsbuffer);
 			//delete[] wcsbuffer;
@@ -6409,10 +6414,10 @@ namespace SonikLibStringConvert
 		{ //スペース区切り
 			//mbslen分ループ
 			uint32_t stroffset = 0;
-			char16_t* l_u16buffer = reinterpret_cast<char16_t*>(wcsbuffer);
+			utf16_t* l_u16buffer = reinterpret_cast<utf16_t*>(wcsbuffer);
 			for (uint32_t i = 0; i < mbslen; ++i)
 			{
-				char16_t l_chr = l_u16buffer[stroffset];
+				utf16_t l_chr = l_u16buffer[stroffset];
 
 				if(l_chr == 0x0000)
 				{
@@ -6498,7 +6503,7 @@ namespace SonikLibStringConvert
 
 	//マルチバイト文字列をUTF16文字列に変換します。
 	//内部ではmbstowcs_s関数を使用しますが、一時領域を確保し、コピーして処理を行うため、コピー元領域、コピー先領域が重なっていても正常にコピーされます。
-	DEF_FORCE_INLINE bool ConvertMBStoUTF16(const char* pSrc, char16_t* pDest, uint64_t* DestBufferSize)
+	DEF_FORCE_INLINE bool ConvertMBStoUTF16(const char* pSrc, utf16_t* pDest, uint64_t* DestBufferSize)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -6512,8 +6517,8 @@ namespace SonikLibStringConvert
 
 		uint64_t wcslen = GetStringCount(pSrc) + 1; //null文字分
 
-		//自前コードページを実装したのでMBS(SJIS)からUTF16へはwchar_tで分けなくてよくなったためchar16_tで確保する。(utf32を考慮しなくてよくなったのとSJISはサロゲートペアはない)
-		char16_t* wcsbuffer = new(std::nothrow) char16_t[wcslen] {}; //初期化時0クリア
+		//自前コードページを実装したのでMBS(SJIS)からUTF16へはwchar_tで分けなくてよくなったためutf16_tで確保する。(utf32を考慮しなくてよくなったのとSJISはサロゲートペアはない)
+		utf16_t* wcsbuffer = new(std::nothrow) utf16_t[wcslen] {}; //初期化時0クリア
 		if (wcsbuffer == nullptr)
 		{
 			return false;
@@ -6549,7 +6554,7 @@ namespace SonikLibStringConvert
 			};
 		};
 
-		uint64_t CopySize = GetStringLengthByte(reinterpret_cast<char16_t*>(wcsbuffer)) + 2;
+		uint64_t CopySize = GetStringLengthByte(reinterpret_cast<utf16_t*>(wcsbuffer)) + 2;
 		if (DestBufferSize != nullptr && pDest == nullptr)
 		{
 			(*DestBufferSize) = CopySize; //そのままサイズ返却
@@ -6569,7 +6574,7 @@ namespace SonikLibStringConvert
 		{
 #if defined(_S_STRING_COPY_STL)
 			CopySize >>= 1; //要素数へ変換
-			std::copy_n(reinterpret_cast<char16_t*>(wcsbuffer), CopySize, pDest);
+			std::copy_n(reinterpret_cast<utf16_t*>(wcsbuffer), CopySize, pDest);
 #else
 			std::memcpy(pDest, wcsbuffer, CopySize);
 #endif
@@ -6584,7 +6589,7 @@ namespace SonikLibStringConvert
 		delete[] wcsbuffer;
 		return true;
 	};
-	DEF_FORCE_INLINE bool ConvertMBStoUTF16(const char* pSrc, char16_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	DEF_FORCE_INLINE bool ConvertMBStoUTF16(const char* pSrc, utf16_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -6598,14 +6603,14 @@ namespace SonikLibStringConvert
 
 		uint64_t wcslen = GetStringCount(pSrc) + 1; //null文字分
 
-				//自前コードページを実装したのでMBS(SJIS)からUTF16へはwchar_tで分けなくてよくなったためchar16_tで確保する。(utf32を考慮しなくてよくなったのとSJISはサロゲートペアはない)
-		void* l_allocbuffer = _allocator_->memal(sizeof(char16_t) * wcslen);
+				//自前コードページを実装したのでMBS(SJIS)からUTF16へはwchar_tで分けなくてよくなったためutf16_tで確保する。(utf32を考慮しなくてよくなったのとSJISはサロゲートペアはない)
+		void* l_allocbuffer = _allocator_->memal(sizeof(utf16_t) * wcslen);
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		char16_t* wcsbuffer = new(l_allocbuffer) char16_t[wcslen] {}; //初期化時0クリア
+		utf16_t* wcsbuffer = new(l_allocbuffer) utf16_t[wcslen] {}; //初期化時0クリア
 
 		{ //スペース区切り
 			//wcsLen分ループ
@@ -6637,7 +6642,7 @@ namespace SonikLibStringConvert
 			};
 		};
 
-		uint64_t CopySize = GetStringLengthByte(reinterpret_cast<char16_t*>(wcsbuffer)) + 2;
+		uint64_t CopySize = GetStringLengthByte(reinterpret_cast<utf16_t*>(wcsbuffer)) + 2;
 		if (DestBufferSize != nullptr && pDest == nullptr)
 		{
 			(*DestBufferSize) = CopySize; //そのままサイズ返却
@@ -6660,7 +6665,7 @@ namespace SonikLibStringConvert
 		{
 #if defined(_S_STRING_COPY_STL)
 			CopySize >>= 1; //要素数へ変換
-			std::copy_n(reinterpret_cast<char16_t*>(wcsbuffer), CopySize, pDest);
+			std::copy_n(reinterpret_cast<utf16_t*>(wcsbuffer), CopySize, pDest);
 #else
 			std::memcpy(pDest, wcsbuffer, CopySize);
 #endif
@@ -6680,7 +6685,7 @@ namespace SonikLibStringConvert
 
 	//UTF16文字列をマルチバイト文字列に変換します。
 	//内部ではmbstowcs_s関数を使用しますが、一時領域を確保し、コピーして処理を行うため、コピー元領域、コピー先領域が重なっていても正常にコピーされます。
-	DEF_FORCE_INLINE bool ConvertUTF16toMBS(const char16_t* pSrc, char* pDest, uint64_t* DestBufferSize)
+	DEF_FORCE_INLINE bool ConvertUTF16toMBS(const utf16_t* pSrc, char* pDest, uint64_t* DestBufferSize)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -6691,8 +6696,8 @@ namespace SonikLibStringConvert
 		uint64_t mbslen = wcslen; //変換後mbsが格納できる最大要素数は UTF16の使用バイト数で収まる範囲なのでそのまま渡す。
 
 		wcslen >>= 1; //要素数へ置き換え
-		//char32_tとして4Byteブロックで要素数分確保。これでwchar_tがUTf16, 32どちらであろうと格納できる。
-		char32_t* wcsbuffer = new(std::nothrow) char32_t[wcslen] {}; //初期化時0クリア
+		//utf32_tとして4Byteブロックで要素数分確保。これでwchar_tがUTf16, 32どちらであろうと格納できる。
+		utf32_t* wcsbuffer = new(std::nothrow) utf32_t[wcslen] {}; //初期化時0クリア
 		if (wcsbuffer == nullptr)
 		{
 			return false;
@@ -6702,7 +6707,7 @@ namespace SonikLibStringConvert
 		try
 		{
 #if defined(_S_STRING_COPY_STL)
-			std::copy_n(pSrc, wcslen, reinterpret_cast<char16_t*>(wcsbuffer));
+			std::copy_n(pSrc, wcslen, reinterpret_cast<utf16_t*>(wcsbuffer));
 #else
 			std::memcpy(wcsbuffer, pSrc, (wcslen << 1)); //wcslen は一旦要素数に変換しているので再度Byte数へ
 #endif
@@ -6724,10 +6729,10 @@ namespace SonikLibStringConvert
 		{ //スペース区切り
 			//mbslen分ループ
 			uint32_t stroffset = 0;
-			char16_t* l_u16buffer = reinterpret_cast<char16_t*>(wcsbuffer);
+			utf16_t* l_u16buffer = reinterpret_cast<utf16_t*>(wcsbuffer);
 			for (uint32_t i = 0; i < mbslen; ++i)
 			{
-				char16_t l_chr = l_u16buffer[stroffset];
+				utf16_t l_chr = l_u16buffer[stroffset];
 
 				if (l_chr == 0x0000)
 				{
@@ -6802,7 +6807,7 @@ namespace SonikLibStringConvert
 		delete[] wcsbuffer;
 		return true;
 	};
-	DEF_FORCE_INLINE bool ConvertUTF16toMBS(const char16_t* pSrc, char* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	DEF_FORCE_INLINE bool ConvertUTF16toMBS(const utf16_t* pSrc, char* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -6813,21 +6818,21 @@ namespace SonikLibStringConvert
 		uint64_t mbslen = wcslen; //変換後mbsが格納できる最大要素数は UTF16の使用バイト数で収まる範囲なのでそのまま渡す。
 
 		wcslen >>= 1; //要素数へ置き換え
-		//char32_tとして4Byteブロックで要素数分確保。これでwchar_tがUTf16, 32どちらであろうと格納できる。
-		void* l_allocbuffer = _allocator_->memal(sizeof(char32_t) * wcslen);
+		//utf32_tとして4Byteブロックで要素数分確保。これでwchar_tがUTf16, 32どちらであろうと格納できる。
+		void* l_allocbuffer = _allocator_->memal(sizeof(utf32_t) * wcslen);
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		char32_t* wcsbuffer = new(l_allocbuffer) char32_t[wcslen] {}; //初期化時0クリア
+		utf32_t* wcsbuffer = new(l_allocbuffer) utf32_t[wcslen] {}; //初期化時0クリア
 
 
 		//引数をそのままコピー
 		try
 		{
 #if defined(_S_STRING_COPY_STL)
-			std::copy_n(pSrc, wcslen, reinterpret_cast<char16_t*>(wcsbuffer));
+			std::copy_n(pSrc, wcslen, reinterpret_cast<utf16_t*>(wcsbuffer));
 #else
 			std::memcpy(wcsbuffer, pSrc, (wcslen << 1)); //wcslen は一旦要素数に変換しているので再度Byte数へ
 #endif
@@ -6853,10 +6858,10 @@ namespace SonikLibStringConvert
 		{ //スペース区切り
 			//mbslen分ループ
 			uint32_t stroffset = 0;
-			char16_t* l_u16buffer = reinterpret_cast<char16_t*>(wcsbuffer);
+			utf16_t* l_u16buffer = reinterpret_cast<utf16_t*>(wcsbuffer);
 			for (uint32_t i = 0; i < mbslen; ++i)
 			{
-				char16_t l_chr = l_u16buffer[stroffset];
+				utf16_t l_chr = l_u16buffer[stroffset];
 
 				if (0xD800 <= l_chr && l_chr <= 0xDBFF)
 				{
@@ -6937,7 +6942,7 @@ namespace SonikLibStringConvert
 
 	//マルチバイト文字列をUTF32文字列に変換します。
 	//内部ではmbstowcs_s関数を使用しますが、一時領域を確保し、コピーして処理を行うため、コピー元領域、コピー先領域が重なっていても正常にコピーされます。
-	DEF_FORCE_INLINE bool ConvertMBStoUTF32(const char* pSrc, char32_t* pDest, uint64_t* DestBufferSize)
+	DEF_FORCE_INLINE bool ConvertMBStoUTF32(const char* pSrc, utf32_t* pDest, uint64_t* DestBufferSize)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -6963,7 +6968,7 @@ namespace SonikLibStringConvert
 			return false;
 		};
 
-		char16_t* wcsbuffer = new(std::nothrow) char16_t[wcslen];
+		utf16_t* wcsbuffer = new(std::nothrow) utf16_t[wcslen];
 		if (wcsbuffer == nullptr)
 		{
 			return false;
@@ -7000,7 +7005,7 @@ namespace SonikLibStringConvert
 		};
 
 		//pDest(返却先)に対して直接UTF32に変換。
-		if (!ConvertUTF16ToUTF32(reinterpret_cast<char16_t*>(wcsbuffer), pDest, nullptr))
+		if (!ConvertUTF16ToUTF32(reinterpret_cast<utf16_t*>(wcsbuffer), pDest, nullptr))
 		{
 			delete[] wcsbuffer;
 			return false;
@@ -7009,7 +7014,7 @@ namespace SonikLibStringConvert
 		delete[] wcsbuffer;
 		return true;
 	};
-	DEF_FORCE_INLINE bool ConvertMBStoUTF32(const char* pSrc, char32_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	DEF_FORCE_INLINE bool ConvertMBStoUTF32(const char* pSrc, utf32_t* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -7035,13 +7040,13 @@ namespace SonikLibStringConvert
 			return false;
 		};
 
-		void* l_allocbuffer = _allocator_->memal(sizeof(char32_t) * wcslen);
+		void* l_allocbuffer = _allocator_->memal(sizeof(utf32_t) * wcslen);
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		char16_t* wcsbuffer = new(l_allocbuffer) char16_t[wcslen];
+		utf16_t* wcsbuffer = new(l_allocbuffer) utf16_t[wcslen];
 
 		{ //スペース区切り
 			//wcsLen分ループ
@@ -7074,7 +7079,7 @@ namespace SonikLibStringConvert
 		};
 
 		//pDest(返却先)に対して直接UTF32に変換。
-		if (!ConvertUTF16ToUTF32(reinterpret_cast<char16_t*>(wcsbuffer), pDest, nullptr, _allocator_))
+		if (!ConvertUTF16ToUTF32(reinterpret_cast<utf16_t*>(wcsbuffer), pDest, nullptr, _allocator_))
 		{
 			_allocator_->memdel(wcsbuffer);
 			//delete[] wcsbuffer;
@@ -7088,7 +7093,7 @@ namespace SonikLibStringConvert
 
 	//UTF32文字列をマルチバイト文字列に変換します。
 	//内部ではmbstowcs_s関数を使用しますが、一時領域を確保し、コピーして処理を行うため、コピー元領域、コピー先領域が重なっていても正常にコピーされます。
-	DEF_FORCE_INLINE bool ConvertUTF32toMBS(const char32_t* pSrc, char* pDest, uint64_t* DestBufferSize)
+	DEF_FORCE_INLINE bool ConvertUTF32toMBS(const utf32_t* pSrc, char* pDest, uint64_t* DestBufferSize)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -7098,14 +7103,14 @@ namespace SonikLibStringConvert
 		uint64_t wcslen = GetStringCount(pSrc) + 1;
 
 		//バッファ確保
-		char32_t* wcsbuffer = new(std::nothrow) char32_t[wcslen] {}; //初期化時0クリア
+		utf32_t* wcsbuffer = new(std::nothrow) utf32_t[wcslen] {}; //初期化時0クリア
 		if (wcsbuffer == nullptr)
 		{
 			return false;
 		}
 
 		//UTF16へ変換
-		if (!ConvertUTF32ToUTF16(pSrc, reinterpret_cast<char16_t*>(wcsbuffer), nullptr))
+		if (!ConvertUTF32ToUTF16(pSrc, reinterpret_cast<utf16_t*>(wcsbuffer), nullptr))
 		{
 			delete[] wcsbuffer;
 			return false;
@@ -7123,10 +7128,10 @@ namespace SonikLibStringConvert
 		{ //スペース区切り
 			//mbslen分ループ
 			uint32_t stroffset = 0;
-			char16_t* l_u16buffer = reinterpret_cast<char16_t*>(wcsbuffer);
+			utf16_t* l_u16buffer = reinterpret_cast<utf16_t*>(wcsbuffer);
 			for (uint32_t i = 0; i < mbslen; ++i)
 			{
-				char16_t l_chr = l_u16buffer[stroffset];
+				utf16_t l_chr = l_u16buffer[stroffset];
 
 				if (l_chr == 0x0000)
 				{
@@ -7201,7 +7206,7 @@ namespace SonikLibStringConvert
 		delete[] wcsbuffer;
 		return true;
 	};
-	DEF_FORCE_INLINE bool ConvertUTF32toMBS(const char32_t* pSrc, char* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	DEF_FORCE_INLINE bool ConvertUTF32toMBS(const utf32_t* pSrc, char* pDest, uint64_t* DestBufferSize, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		if (pSrc == nullptr || (*pSrc) == 0)
 		{
@@ -7211,16 +7216,16 @@ namespace SonikLibStringConvert
 		uint64_t wcslen = GetStringCount(pSrc) + 1;
 
 		//バッファ確保
-		void* l_allocbuffer = _allocator_->memal(sizeof(char32_t) * wcslen);
+		void* l_allocbuffer = _allocator_->memal(sizeof(utf32_t) * wcslen);
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		char32_t* wcsbuffer = new(l_allocbuffer) char32_t[wcslen] {}; //初期化時0クリア
+		utf32_t* wcsbuffer = new(l_allocbuffer) utf32_t[wcslen] {}; //初期化時0クリア
 
 		//UTF16へ変換
-		if (!ConvertUTF32ToUTF16(pSrc, reinterpret_cast<char16_t*>(wcsbuffer), nullptr, _allocator_))
+		if (!ConvertUTF32ToUTF16(pSrc, reinterpret_cast<utf16_t*>(wcsbuffer), nullptr, _allocator_))
 		{
 			_allocator_->memdel(wcsbuffer);
 			//delete[] wcsbuffer;
@@ -7242,10 +7247,10 @@ namespace SonikLibStringConvert
 		{ //スペース区切り
 			//mbslen分ループ
 			uint32_t stroffset = 0;
-			char16_t* l_u16buffer = reinterpret_cast<char16_t*>(wcsbuffer);
+			utf16_t* l_u16buffer = reinterpret_cast<utf16_t*>(wcsbuffer);
 			for (uint32_t i = 0; i < mbslen; ++i)
 			{
-				char16_t l_chr = l_u16buffer[stroffset];
+				utf16_t l_chr = l_u16buffer[stroffset];
 
 				if (l_chr == 0x0000)
 				{
@@ -7355,7 +7360,7 @@ namespace SonikLibStringConvert
 		{
 			++StrByte;
 		};
-		char16_t* buffer = new(std::nothrow) char16_t[(StrByte >> 1)]{};
+		utf16_t* buffer = new(std::nothrow) utf16_t[(StrByte >> 1)]{};
 		if (buffer == nullptr)
 		{
 			//確保失敗
@@ -7372,28 +7377,6 @@ namespace SonikLibStringConvert
 
 		while ((*l_convstr) != 0x00)
 		{
-			/*
-			swapbit = SonikMathBit::BitSwap((*l_convstr));
-
-			bitcnt = ~(swapbit);
-
-			bitcnt |= (bitcnt << 1);
-			bitcnt |= (bitcnt << 2);
-			bitcnt |= (bitcnt << 4);
-			bitcnt |= (bitcnt << 8);
-			bitcnt |= (bitcnt << 16);
-			bitcnt |= (bitcnt << 32);
-
-			bitcnt = (bitcnt & 0x5555555555555555) + ((bitcnt >> 1) & 0x5555555555555555);
-			bitcnt = (bitcnt & 0x3333333333333333) + ((bitcnt >> 2) & 0x3333333333333333);
-			bitcnt = (bitcnt & 0x0F0F0F0F0F0F0F0F) + ((bitcnt >> 4) & 0x0F0F0F0F0F0F0F0F);
-			bitcnt = (bitcnt & 0x00FF00FF00FF00FF) + ((bitcnt >> 8) & 0x00FF00FF00FF00FF);
-			bitcnt = (bitcnt & 0x0000FFFF0000FFFF) + ((bitcnt >> 16) & 0x0000FFFF0000FFFF);
-
-			bitcnt = (bitcnt & 0x00000000FFFFFFFF) + ((bitcnt >> 32) & 0x00000000FFFFFFFF);
-
-			bitcnt = (64 - bitcnt);
-			*/
 
 			swapbit = (*l_convstr) & 0xF0;
 
@@ -7497,13 +7480,13 @@ namespace SonikLibStringConvert
 			++StrByte;
 		};
 
-		void* l_allocbuffer = _allocator_->memal(sizeof(char16_t) * (StrByte >> 1));
+		void* l_allocbuffer = _allocator_->memal(sizeof(utf16_t) * (StrByte >> 1));
 		if (l_allocbuffer == nullptr)
 		{
 			return false;
 		};
 
-		char16_t* buffer = new(l_allocbuffer) char16_t[(StrByte >> 1)]{};
+		utf16_t* buffer = new(l_allocbuffer) utf16_t[(StrByte >> 1)]{};
 
 		uint64_t cnt = 0;
 		uint64_t bitcnt = 0;
@@ -7515,28 +7498,6 @@ namespace SonikLibStringConvert
 
 		while ((*l_convstr) != 0x00)
 		{
-			/*
-			swapbit = SonikMathBit::BitSwap((*l_convstr));
-
-			bitcnt = ~(swapbit);
-
-			bitcnt |= (bitcnt << 1);
-			bitcnt |= (bitcnt << 2);
-			bitcnt |= (bitcnt << 4);
-			bitcnt |= (bitcnt << 8);
-			bitcnt |= (bitcnt << 16);
-			bitcnt |= (bitcnt << 32);
-
-			bitcnt = (bitcnt & 0x5555555555555555) + ((bitcnt >> 1) & 0x5555555555555555);
-			bitcnt = (bitcnt & 0x3333333333333333) + ((bitcnt >> 2) & 0x3333333333333333);
-			bitcnt = (bitcnt & 0x0F0F0F0F0F0F0F0F) + ((bitcnt >> 4) & 0x0F0F0F0F0F0F0F0F);
-			bitcnt = (bitcnt & 0x00FF00FF00FF00FF) + ((bitcnt >> 8) & 0x00FF00FF00FF00FF);
-			bitcnt = (bitcnt & 0x0000FFFF0000FFFF) + ((bitcnt >> 16) & 0x0000FFFF0000FFFF);
-
-			bitcnt = (bitcnt & 0x00000000FFFFFFFF) + ((bitcnt >> 32) & 0x00000000FFFFFFFF);
-
-			bitcnt = (64 - bitcnt);
-			*/
 
 			swapbit = (*l_convstr) & 0xF0;
 
@@ -7667,29 +7628,6 @@ namespace SonikLibStringConvert
 
 		while ((*l_convstr) != 0x00)
 		{
-			/*
-			swapbit = SonikMathBit::BitSwap((*l_convstr));
-
-			bitcnt = ~(swapbit);
-
-			bitcnt |= (bitcnt << 1);
-			bitcnt |= (bitcnt << 2);
-			bitcnt |= (bitcnt << 4);
-			bitcnt |= (bitcnt << 8);
-			bitcnt |= (bitcnt << 16);
-			bitcnt |= (bitcnt << 32);
-
-			bitcnt = (bitcnt & 0x5555555555555555) + ((bitcnt >> 1) & 0x5555555555555555);
-			bitcnt = (bitcnt & 0x3333333333333333) + ((bitcnt >> 2) & 0x3333333333333333);
-			bitcnt = (bitcnt & 0x0F0F0F0F0F0F0F0F) + ((bitcnt >> 4) & 0x0F0F0F0F0F0F0F0F);
-			bitcnt = (bitcnt & 0x00FF00FF00FF00FF) + ((bitcnt >> 8) & 0x00FF00FF00FF00FF);
-			bitcnt = (bitcnt & 0x0000FFFF0000FFFF) + ((bitcnt >> 16) & 0x0000FFFF0000FFFF);
-
-			bitcnt = (bitcnt & 0x00000000FFFFFFFF) + ((bitcnt >> 32) & 0x00000000FFFFFFFF);
-
-			bitcnt = (64 - bitcnt);
-			*/
-
 			swapbit = (*l_convstr) & 0xF0;
 
 #if defined(__SONIKLIB_MATHBIT_BITFUNCTION_GCC_OTHER__)

@@ -8,6 +8,7 @@
  //つまりpushbackにより１つ拡張された場合は拡張されたままになります。
 #include "../SmartPointer/SonikSmartPointer.hpp"
 #include "../SonikCAS/SonikAtomicLock.h"
+#include "../CPPGrammarDefines.h"
 
 #include <stdint.h>
 #include <new>
@@ -31,21 +32,21 @@ namespace SonikLib
 				T* ControlPointer;
 
 			public:
-				inline VACIterator(T* _pointer_ = nullptr) noexcept
+				DEF_FORCE_INLINE VACIterator(T* _pointer_ = nullptr) SLIB_CVR_NOEXCEPT
 					:TopPointer(_pointer_)
 					, ControlPointer(_pointer_)
 				{
 					//no process
 				};
 
-				inline VACIterator(const VACIterator& _copy_) noexcept
+				DEF_FORCE_INLINE VACIterator(const VACIterator& _copy_) SLIB_CVR_NOEXCEPT
 					:TopPointer(_copy_.TopPointer)
 					, ControlPointer(_copy_.ControlPointer)
 				{
 					//no process
 				};
 
-				inline VACIterator(VACIterator&& _move_) noexcept
+				DEF_FORCE_INLINE VACIterator(VACIterator&& _move_) SLIB_CVR_NOEXCEPT
 				{
 					TopPointer = std::move(_move_.TopPointer);
 					ControlPointer = std::move(_move_.ControlPointer);
@@ -54,13 +55,13 @@ namespace SonikLib
 					_move_.ControlPointer = nullptr;
 				};
 
-				inline VACIterator& operator ++(void) noexcept
+				DEF_FORCE_INLINE VACIterator& operator ++(void) SLIB_CVR_NOEXCEPT
 				{
 					++ControlPointer;
 					return (*this);
 				};
 
-				inline VACIterator& operator ++(int) noexcept
+				DEF_FORCE_INLINE VACIterator& operator ++(int) SLIB_CVR_NOEXCEPT
 				{
 					VACIterator tmp = (*this);
 
@@ -68,13 +69,13 @@ namespace SonikLib
 					return tmp;
 				};
 
-				inline VACIterator& operator --(void) noexcept
+				DEF_FORCE_INLINE VACIterator& operator --(void) SLIB_CVR_NOEXCEPT
 				{
 					--ControlPointer;
 					return (*this);
 				};
 
-				inline VACIterator& operator --(int) noexcept
+				DEF_FORCE_INLINE VACIterator& operator --(int) SLIB_CVR_NOEXCEPT
 				{
 
 					VACIterator tmp = (*this);
@@ -83,42 +84,42 @@ namespace SonikLib
 					return tmp;
 				};
 
-				inline bool operator ==(const VACIterator& _compare_) const noexcept
+				DEF_FORCE_INLINE bool operator ==(const VACIterator& _compare_) const SLIB_CVR_NOEXCEPT
 				{
 					return ControlPointer == _compare_.ControlPointer;
 				};
 
-				inline bool operator !=(const VACIterator& _compare_) const noexcept
+				DEF_FORCE_INLINE bool operator !=(const VACIterator& _compare_) const SLIB_CVR_NOEXCEPT
 				{
 					return ControlPointer != _compare_.ControlPointer;
 				};
 
-				inline const T& operator[](uint64_t _index_) const
+				DEF_FORCE_INLINE const T& operator[](uint64_t _index_) const
 				{
 					return TopPointer[_index_];
 				};
 
-				inline T& operator[](uint64_t _index_)
+				DEF_FORCE_INLINE T& operator[](uint64_t _index_)
 				{
 					return TopPointer[_index_];
 				};
 
-				inline const T& operator*(void) const
+				DEF_FORCE_INLINE const T& operator*(void) const
 				{
 					return (*ControlPointer);
 				};
 
-				inline T& operator*(void)
+				DEF_FORCE_INLINE T& operator*(void)
 				{
 					return (*ControlPointer);
 				};
 
-				inline const T* operator ->(void) const noexcept
+				DEF_FORCE_INLINE const T* operator ->(void) const SLIB_CVR_NOEXCEPT
 				{
 					return ControlPointer;
 				};
 
-				inline T* operator ->(void) noexcept
+				DEF_FORCE_INLINE T* operator ->(void) SLIB_CVR_NOEXCEPT
 				{
 					return ControlPointer;
 				};
@@ -148,14 +149,29 @@ namespace SonikLib
 				// no process;
 			};
 
-			//コピーとムーヴ禁止
+#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
+			//コピーと代入の禁止
 			SonikVariableArrayContainer(const SonikVariableArrayContainer& _copy_) = delete;
 			SonikVariableArrayContainer(SonikVariableArrayContainer&& _move_) = delete;
 			SonikVariableArrayContainer& operator =(const SonikVariableArrayContainer& _copy_) = delete;
 			SonikVariableArrayContainer& operator =(SonikVariableArrayContainer&& _move_) = delete;
 
+#else //C++ 11 以下
+			//コピーと代入の禁止
+			SonikVariableArrayContainer(const SonikVariableArrayContainer& _copy_);
+			SonikVariableArrayContainer& operator =(const SonikVariableArrayContainer& _copy_);
+
+	#if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
+			//MSVC2010ならmove可能なので定義だけしておく。
+			SonikVariableArrayContainer(SonikVariableArrayContainer&& _move_);
+			SonikVariableArrayContainer& operator =(SonikVariableArrayContainer&& _move_);
+
+	#endif
+#endif
+
+
 			//リザーブ
-			inline bool __RESERVE__(uint64_t _size_) noexcept
+			DEF_FORCE_INLINE bool __RESIZE__(uint64_t _size_) SLIB_CVR_NOEXCEPT
 			{
 				void* l_allocbuffer = m_allocator->memal((sizeof(T) * _size_));
 				if (l_allocbuffer == nullptr)
@@ -182,7 +198,7 @@ namespace SonikLib
 			};
 
 		public:
-			inline static bool CreateContainer(SonikLib::SharedSmtPtr<SonikVariableArrayContainer<T>>& _out_smtptr_, int32_t _ElemCount_ = 300)
+			DEF_FORCE_INLINE static bool CreateContainer(SonikLib::SharedSmtPtr<SonikVariableArrayContainer<T>>& _out_smtptr_, int32_t _ElemCount_ = 300)
 			{
 				if (_ElemCount_ == 0)
 				{
@@ -235,7 +251,7 @@ namespace SonikLib
 				return true;
 
 			};
-			inline static bool CreateContainer(SonikLib::SharedSmtPtr<SonikVariableArrayContainer<T>>& _out_smtptr_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, int32_t _ElemCount_ = 300)
+			DEF_FORCE_INLINE static bool CreateContainer(SonikLib::SharedSmtPtr<SonikVariableArrayContainer<T>>& _out_smtptr_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, int32_t _ElemCount_ = 300)
 			{
 				if (_ElemCount_ == 0)
 				{
@@ -275,7 +291,7 @@ namespace SonikLib
 
 			};
 
-			inline ~SonikVariableArrayContainer(void)
+			DEF_FORCE_INLINE ~SonikVariableArrayContainer(void)
 			{
 				if (AllocAreaPtr != nullptr)
 				{
@@ -290,38 +306,38 @@ namespace SonikLib
 
 			};
 
-			inline VACIterator begin(void) noexcept
+			DEF_FORCE_INLINE VACIterator begin(void) SLIB_CVR_NOEXCEPT
 			{
 				return VACIterator(AllocAreaPtr);
 			};
 
-			inline VACIterator back(void) noexcept
+			DEF_FORCE_INLINE VACIterator back(void) SLIB_CVR_NOEXCEPT
 			{
 				return (AllocCount > 0) ? VACIterator(&AllocAreaPtr[(AllocCount - 1)])
 					: VACIterator(AllocAreaPtr);
 			};
 
-			inline VACIterator end(void) noexcept
+			DEF_FORCE_INLINE VACIterator end(void) SLIB_CVR_NOEXCEPT
 			{
 				return VACIterator(&AllocAreaPtr[AllocCount]);
 			};
 
-			inline VACIterator rend(void) noexcept
+			DEF_FORCE_INLINE VACIterator rend(void) SLIB_CVR_NOEXCEPT
 			{
 				return VACIterator(&(AllocAreaPtr - 1));
 			};
 
-			inline uint64_t GetAllocCount(void) noexcept
+			DEF_FORCE_INLINE uint64_t GetAllocCount(void) SLIB_CVR_NOEXCEPT
 			{
 				return AllocCount;
 			};
 
-			inline uint64_t GetSizeMax(void) noexcept
+			DEF_FORCE_INLINE uint64_t GetSizeMax(void) SLIB_CVR_NOEXCEPT
 			{
 				return MaxCnt;
 			};
 
-			inline bool PushBack(const T& PushItem) noexcept
+			DEF_FORCE_INLINE bool PushBack(const T& PushItem) SLIB_CVR_NOEXCEPT
 			{
 				m_lock.lock();
 
@@ -329,7 +345,7 @@ namespace SonikLib
 
 				if (MaxCnt < AllocCount)
 				{
-					if (!__RESERVE__(AllocCount))
+					if (!__RESIZE__(AllocCount))
 					{
 						--AllocCount;
 						m_lock.unlock();
@@ -345,7 +361,7 @@ namespace SonikLib
 				return true;
 			};
 
-			inline bool PopBack(void) noexcept
+			DEF_FORCE_INLINE bool PopBack(void) SLIB_CVR_NOEXCEPT
 			{
 				m_lock.lock();
 
@@ -363,20 +379,20 @@ namespace SonikLib
 				return true;
 			};
 
-			inline bool Reserve(uint64_t _reserve_size_) noexcept
+			DEF_FORCE_INLINE bool ReSize(uint64_t _resize_size_) SLIB_CVR_NOEXCEPT
 			{
 				m_lock.lock();
 
 				bool ret = false;
 
-				ret = __RESERVE__(_reserve_size_);
+				ret = __RESIZE__(_resize_size_);
 
 				m_lock.unlock();
 
 				return ret;
 			};
 
-			inline void Clear(void) noexcept
+			DEF_FORCE_INLINE void Clear(void) SLIB_CVR_NOEXCEPT
 			{
 				m_lock.lock();
 
@@ -399,12 +415,12 @@ namespace SonikLib
 				return;
 			};
 
-			inline const T& operator[](uint64_t _index_) const
+			DEF_FORCE_INLINE const T& operator[](uint64_t _index_) const
 			{
 				return AllocAreaPtr[_index_];
 			};
 
-			inline T& operator[](uint64_t _index_)
+			DEF_FORCE_INLINE T& operator[](uint64_t _index_)
 			{
 				return AllocAreaPtr[_index_];
 			};

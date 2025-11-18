@@ -1,13 +1,13 @@
-
+//C++11実装
 #include "SonikWorkThreadEx.h"
 
 #include "../FunctionObject/FunctionObjectSystemInterface.hpp"
 #include "../SonikCAS/SonikAtomicLock.h"
 #include "../Container/SonikAtomicQueue.hpp"
+#include "./SonikThreadWaitingObject.hpp"
 
 #include <thread>
 #include <new>
-#include <condition_variable>
 
 namespace SonikLib
 {
@@ -31,7 +31,7 @@ namespace SonikLib
 		SonikLib::S_CAS::SonikAtomicLock atmlock_;
 
 		//静的関数で使う、条件変数
-		SonikLib::SharedSmtPtr<std::condition_variable_any> cond_;
+		SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<>> cond_;
 
 		//1ビット目(0x01): 静的関数終了フラグ
 		//2ビット目(0x02): Queueセット時のセット関数終了フラグの固定フラグ。(0x04ビットを常に立ったままにまします。)
@@ -50,7 +50,7 @@ namespace SonikLib
 
 	public:
 		//コンストラクタです。
-		pImplEx(SonikLib::SharedSmtPtr<std::condition_variable_any>& _cond_, bool DetachThread);
+		pImplEx(SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<>>& _cond_, bool DetachThread);
 
 		//デストラクタ
 		~pImplEx(void);
@@ -60,7 +60,7 @@ namespace SonikLib
 
 		//静的関数内で使用
 		SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>& GetFunctionPointer(void);
-		SonikLib::SharedSmtPtr<std::condition_variable_any>& GetConditionVariable(void);
+		SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<>>& GetConditionVariable(void);
 		SonikLib::S_CAS::SonikAtomicLock& GetCASLockObject(void);
 		uint32_t& GetThreadFlag(void);
 		//キューのあんせっと
@@ -92,7 +92,7 @@ namespace SonikLib
 	void WorkThreadEx::pImplEx::SonikWorkThreadMainEx(WorkThreadEx::pImplEx* ClassObject)
 	{
 		uint32_t& RefFlag = ClassObject->GetThreadFlag();
-		SonikLib::SharedSmtPtr<std::condition_variable_any>& RefCond = ClassObject->GetConditionVariable();
+		SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<>>& RefCond = ClassObject->GetConditionVariable();
 		SonikLib::S_CAS::SonikAtomicLock& RefLock = ClassObject->GetCASLockObject();
 		std::mutex localmtx;
 		SonikLib::SharedSmtPtr<SonikFOSInterface>& RefFuncObj = ClassObject->GetFunctionPointer();
@@ -103,36 +103,38 @@ namespace SonikLib
 		{
 			if (RunTask.IsNullptr())
 			{
-				//condition_variable_anyのwaitで使用。
-				std::unique_lock<std::mutex> lock(localmtx);
-				//RefFuncが0以外になればロック解除。
-				//ラムダ式使用。
-				RefCond->wait(lock,
-					[&RefFuncObj, &RunTask, &ClassObject, &RefFlag]
+				while (1)
+				{
+					//セマフォループで使用。
+					std::unique_lock<std::mutex> lock(localmtx);
+
+					//ThreadMainEx関数終了フラグか、デキュー停止フラグが立っていればサスペンド解除し、後続の処理へ。。
+					if (((RefFlag & 0x08) != 0) || ((RefFlag & 0x01) != 0))
 					{
-						//ThreadMainEx関数終了フラグか、デキュー停止フラグが立っていればサスペンド解除し、後続の処理へ。。
-						if (((RefFlag & 0x08) != 0) || ((RefFlag & 0x01) != 0))
-						{
-							ClassObject->SetThreadStatus_Suspend(false);
-							return true;
-						};
+						ClassObject->SetThreadStatus_Suspend(false);
+						lock.unlock();
+						break;
+					};
 
-						//関数(タスク)取得
-						ClassObject->UpdateQueue();
+					//関数(タスク)取得
+					ClassObject->UpdateQueue();
 
-						//取れてたらサスペンド解除して後続処理へ。
-						if (!RefFuncObj.IsNullptr())
-						{
-							RunTask = RefFuncObj;
-							ClassObject->SetThreadStatus_Suspend(false);
-							return true;
-						};
+					//取れてたらサスペンド解除して後続処理へ。
+					if (!RefFuncObj.IsNullptr())
+					{
+						RunTask = RefFuncObj;
+						ClassObject->SetThreadStatus_Suspend(false);
+						lock.unlock();
+						break;
+					};
 
-						//取れなければサスペンド状態にして再度最初からチェック。
-						ClassObject->SetThreadStatus_Suspend(true);
-						return false;
-					}
-					);
+					//取れなければサスペンド状態にして再度最初からチェック。
+					ClassObject->SetThreadStatus_Suspend(true);
+					lock.unlock();
+
+					RefCond->acquire();
+				};
+
 			};
 
 			if ((RefFlag & 0x08) != 0)
@@ -194,7 +196,7 @@ namespace SonikLib
 	};
 
 	//クラス実装=============================================
-	WorkThreadEx::pImplEx::pImplEx(SonikLib::SharedSmtPtr<std::condition_variable_any>& _cond_, bool DetachThread)
+	WorkThreadEx::pImplEx::pImplEx(SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<>>& _cond_, bool DetachThread)
 		:threads_(&WorkThreadEx::pImplEx::SonikWorkThreadMainEx, this)
 		, FuncQueue_()
 		, cond_(_cond_)
@@ -212,14 +214,11 @@ namespace SonikLib
 	{
 		SetThreadExitFlag(true);
 
-		//完全終了フラグが立つまでひたすら起こしまくる。(たまにデッドロックするときの処置)
-		while (((ThreadFlag & 0x80000000) == 0))
-		{
-			cond_->notify_all();
-		};
-
+		//完全終了フラグを立たせるためにスレッドを起床させる。
+		cond_->release(1);
 		if (!DetachFlag)
 		{
+			//終了待ち。
 			threads_.join();
 		};
 
@@ -247,7 +246,7 @@ namespace SonikLib
 		//セット
 		FuncObj_ = CallFunctionObject;
 		SetChangeSetFuncFlag(_looped_);
-		cond_->notify_all();
+		cond_->release(1);
 		//ミューテックスのアンロックは静的関数内で行う。
 		return true;
 	};
@@ -257,7 +256,7 @@ namespace SonikLib
 		return FuncObj_;
 	};
 
-	SonikLib::SharedSmtPtr<std::condition_variable_any>& WorkThreadEx::pImplEx::GetConditionVariable(void)
+	SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<>>& WorkThreadEx::pImplEx::GetConditionVariable(void)
 	{
 		return cond_;
 	};
@@ -338,7 +337,7 @@ namespace SonikLib
 
 		while ((ThreadFlag & 0x08) != 0)
 		{
-			cond_->notify_all();
+			cond_->release(1);
 		};
 
 	};
@@ -356,7 +355,6 @@ namespace SonikLib
 	WorkThreadEx::WorkThreadEx(bool DetachThread)
 	:ImplObject(nullptr)
 	{
-		std::condition_variable_any* lp_cond = nullptr;
 		SonikLib::SLibAllocateInterface* l_defalloc;
 		try
 		{
@@ -367,23 +365,13 @@ namespace SonikLib
 				throw std::bad_alloc();
 			};
 
-			SonikLib::SharedSmtPtr<std::condition_variable_any> l_cond;
-
-			void* l_allocbuffer = l_defalloc->memal(sizeof(std::condition_variable_any));
-			if(l_allocbuffer == nullptr)
+			SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<>> l_cond;
+			if (!SonikLib::WorkerThreadWaitingObject<>::CreateWaitingObject(l_cond, m_allocator))
 			{
 				throw std::bad_alloc();
 			};
 
-			lp_cond = new(l_allocbuffer) std::condition_variable_any;
-			if (!SonikLib::SharedSmtPtr<std::condition_variable_any>::SmartPointerCreate(lp_cond, l_cond, m_allocator))
-			{
-				lp_cond->~condition_variable_any();
-				l_defalloc->memdel(lp_cond);
-				throw std::bad_alloc();
-			};
-
-			l_allocbuffer = l_defalloc->memal(sizeof(WorkThreadEx::pImplEx));
+			void* l_allocbuffer = l_defalloc->memal(sizeof(WorkThreadEx::pImplEx));
 			if (l_allocbuffer == nullptr)
 			{
 				throw std::bad_alloc();
@@ -401,26 +389,17 @@ namespace SonikLib
 	:ImplObject(nullptr)
 	,m_allocator(_allocator_)
 	{
-		std::condition_variable_any* lp_cond = nullptr;
+		SonikLib::WorkerThreadWaitingObject<>* lp_cond = nullptr;
 		try
 		{
-			SonikLib::SharedSmtPtr<std::condition_variable_any> l_cond;
-
-			void* l_allocbuffer = _allocator_->memal(sizeof(std::condition_variable_any));
-			if (l_allocbuffer == nullptr)
+			SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<>> l_cond;
+			
+			if (!SonikLib::WorkerThreadWaitingObject<>::CreateWaitingObject(l_cond, _allocator_))
 			{
 				throw std::bad_alloc();
 			};
 
-			lp_cond = new(l_allocbuffer) std::condition_variable_any;
-			if (!SonikLib::SharedSmtPtr<std::condition_variable_any>::SmartPointerCreate(lp_cond, l_cond, _allocator_))
-			{
-				lp_cond->~condition_variable_any();
-				_allocator_->memdel(lp_cond);
-				throw std::bad_alloc();
-			};
-
-			l_allocbuffer = _allocator_->memal(sizeof(WorkThreadEx::pImplEx));
+			void* l_allocbuffer = _allocator_->memal(sizeof(WorkThreadEx::pImplEx));
 			if (l_allocbuffer == nullptr)
 			{
 				throw std::bad_alloc();
@@ -435,7 +414,7 @@ namespace SonikLib
 		};
 	};
 
-	WorkThreadEx::WorkThreadEx(SonikLib::SharedSmtPtr<std::condition_variable_any>& _cond_, bool DetachThread)
+	WorkThreadEx::WorkThreadEx(SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<>>& _cond_, bool DetachThread)
 	:ImplObject(nullptr)
 	{
 		SonikLib::SLibAllocateInterface* l_defalloc;
@@ -462,7 +441,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	WorkThreadEx::WorkThreadEx(SonikLib::SharedSmtPtr<std::condition_variable_any>& _cond_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, bool DetachThread)
+	WorkThreadEx::WorkThreadEx(SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<>>& _cond_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, bool DetachThread)
 	:ImplObject(nullptr)
 	,m_allocator(_allocator_)
 	{
@@ -489,7 +468,7 @@ namespace SonikLib
 	{
 		if (ImplObject != 0)
 		{
-			ImplObject->~pImplEx();
+			//ImplObject->~pImplEx();
 			m_allocator->memdel(ImplObject);
 
 			ImplObject = nullptr;
@@ -500,7 +479,7 @@ namespace SonikLib
 	//関数オブジェクトポインタをセットします。
 	//引数1: スレッドで実行する関数オブジェクトを設定します。
 	//引数2: 実行関数の実行終了後、再度繰り返し実行させる場合はtrueを指定します。(default = false, １回コールのみ。)
-	//			  この引数をtrueにした状態のままで関数
+	//
 	//戻り値; スレッドが実行中の場合はfalseが返り、セットされません。
 	//本関数はスレッドセーフです。
 	//確実にセットしたい場合、前にセットされた関数があれば、それが終了し、関数がtrueを返却するまでループします。
@@ -530,7 +509,7 @@ namespace SonikLib
 	//スレッドにデキューの開始を通知します。
 	void WorkThreadEx::dispatchDeQueue(void)
 	{
-		ImplObject->GetConditionVariable()->notify_all();
+		ImplObject->GetConditionVariable()->release();
 	};
 
 	//スレッド実行中に設定を変更したい場合に使う関数群========

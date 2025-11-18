@@ -2,12 +2,36 @@
 #ifndef SMARTPOINTER_SONIK_SMARTPOINTER_HPP_
 #define SMARTPOINTER_SONIK_SMARTPOINTER_HPP_
 
-#include <stdint.h>
-#include <atomic>
+#include <cstdint>
+#include <new>
+//#include <atomic>
 #include <type_traits>
+#include <utility>
 
 #include "../CompilersPreProcesser.h"
 #include "../Memory/AllocateInterface.h"
+#include "../SonikCAS/SonikAtomic.hpp"
+#include "../CPPGrammarDefines.h"
+
+//MSVC2010とC++バージョン判定による可変長テンプレート判定に使う
+//デフォ0(無効化)
+#define SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_VISUALSTUDIO_ENABLE 0
+#define SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_CPP_ENABLE 0
+#if defined(_MSC_VER)
+	#if _MSC_VER >= 1800
+		//2013以上なら値1にする(有効化)
+		#undef SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_VISUALSTUDIO_ENABLE
+		#define SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_VISUALSTUDIO_ENABLE 1
+	#endif
+#endif
+
+#if defined(__cplusplus)
+	#if __cplusplus >= 201103L
+		//C++11以上なら値1にする(有効化
+		#undef SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_CPP_ENABLE
+		#define SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_CPP_ENABLE 1
+	#endif
+#endif
 
 
 //スマートポインタクラスでっす
@@ -82,8 +106,9 @@ namespace SonikLib
 	template <class AllocatorClassType>
 	class AllocatorSharedSmtPtr
 	{
+	private:
 		//↓ポインタ型は許容していません。内部でAllocatorClassType* とするため指定自体はオブジェクト型としてください。
-		static_assert(!std::is_pointer_v<AllocatorClassType>, "Please Used NoPointerType");
+		static_assert(!SLIB_CVRT_IS_POINTER(AllocatorClassType), "Please Used NoPointerType");
 
 		//フレンドクラス, typename std::enable_if<std::is_arithmetic<pType>::value>::type
 		//Shared
@@ -95,32 +120,40 @@ namespace SonikLib
 
 	private:
 		AllocatorClassType* m_Pointer;
-		std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
+		//std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
+		SonikLib::SonikAtomic<uint32_t>* m_Count;
 
 	private:
-		DEF_FORCE_INLINE void AddRef(void) noexcept
+		DEF_FORCE_INLINE void AddRef(void) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Count == nullptr)
 			{
 				return;
 			};
 
-			unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
-			while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt + 1, std::memory_order_acq_rel))
+			//unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			//while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt + 1, std::memory_order_acq_rel))
+			//{
+				//no process
+			//};
+			uint32_t TmpCnt = m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
+			while (!m_Count->CompareExchange_Strong(TmpCnt, TmpCnt + 1, SonikLib::SlibAtomicMemoryOrder::order_acq_rel))
 			{
 				//no process
 			};
 
+
 		};
 
-		DEF_FORCE_INLINE void Release(void) noexcept
+		DEF_FORCE_INLINE void Release(void) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Count == nullptr)
 			{
 				return;
 			};
 
-			unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			//unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			uint32_t TmpCnt = m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
 			if (TmpCnt == 1)
 			{
 				delete m_Pointer;
@@ -131,7 +164,8 @@ namespace SonikLib
 				return;
 			}
 
-			while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt - 1, std::memory_order_acq_rel))
+			//while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt - 1, std::memory_order_acq_rel))
+			while (!m_Count->CompareExchange_Strong(TmpCnt, TmpCnt - 1, SlibAtomicMemoryOrder::order_acq_rel))
 			{
 				//no process
 			};
@@ -158,7 +192,7 @@ namespace SonikLib
 		};
 
 		//コピーコンストラクタ
-		DEF_FORCE_INLINE AllocatorSharedSmtPtr(const AllocatorSharedSmtPtr<AllocatorClassType>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE AllocatorSharedSmtPtr(const AllocatorSharedSmtPtr<AllocatorClassType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_SmtPtr_.m_Pointer)
 			, m_Count(_SmtPtr_.m_Count)
 		{
@@ -166,7 +200,7 @@ namespace SonikLib
 		};
 
 		//ムーヴコンストラクタ
-		DEF_FORCE_INLINE AllocatorSharedSmtPtr(AllocatorSharedSmtPtr<AllocatorClassType>&& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE AllocatorSharedSmtPtr(AllocatorSharedSmtPtr<AllocatorClassType>&& _SmtPtr_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_SmtPtr_.m_Pointer)
 			, m_Count(_SmtPtr_.m_Count)
 		{
@@ -175,13 +209,13 @@ namespace SonikLib
 		};
 
 		//Destructor
-		DEF_FORCE_INLINE ~AllocatorSharedSmtPtr(void) noexcept
+		DEF_FORCE_INLINE ~AllocatorSharedSmtPtr(void) SLIB_CVR_NOEXCEPT
 		{
 			Release();
 		};
 
 		//operator =
-		DEF_FORCE_INLINE AllocatorSharedSmtPtr<AllocatorClassType>& operator =(const AllocatorSharedSmtPtr<AllocatorClassType>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE AllocatorSharedSmtPtr<AllocatorClassType>& operator =(const AllocatorSharedSmtPtr<AllocatorClassType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			//自己代入を解決する実装。
 			if (m_Pointer != _SmtPtr_.m_Pointer)
@@ -200,7 +234,7 @@ namespace SonikLib
 		};
 
 		//MoveEqual
-		DEF_FORCE_INLINE AllocatorSharedSmtPtr<AllocatorClassType>& operator =(AllocatorSharedSmtPtr<AllocatorClassType>&& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE AllocatorSharedSmtPtr<AllocatorClassType>& operator =(AllocatorSharedSmtPtr<AllocatorClassType>&& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			//自己代入を解決する実装。
 			if (m_Pointer != _SmtPtr_.m_Pointer)
@@ -222,7 +256,7 @@ namespace SonikLib
 			return (*this);
 		};
 
-		DEF_FORCE_INLINE bool operator ==(const AllocatorSharedSmtPtr<AllocatorClassType>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE bool operator ==(const AllocatorSharedSmtPtr<AllocatorClassType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == _SmtPtr_.m_Pointer) ? true : false;
 		};
@@ -230,20 +264,20 @@ namespace SonikLib
 		//生ポインタとして取得します。
 		//deleteしないように注意してください。
 #if !defined(SLIB_SMTPTR_ASSERTOFF)
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(SLIB_COMPILER_DEF_GCC) || defined(SLIB_COMPILER_DEF_CLANG)
 	//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 	// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
-		DEF_FORCE_INLINE AllocatorClassType* GetPointer(void) noexcept __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter. \nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it. \n")))
+		DEF_FORCE_INLINE AllocatorClassType* GetPointer(void) SLIB_CVR_NOEXCEPT __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter. \nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it. \n")))
 
-#elif defined(_MSC_VER) 
+#elif defined(SLIB_COMPILER_DEF_MSVC) 
 	//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 	// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
 		__declspec(deprecated("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n"))
-			DEF_FORCE_INLINE AllocatorClassType* GetPointer(void) noexcept
+			DEF_FORCE_INLINE AllocatorClassType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 
 #else
-		DEF_FORCE_INLINE AllocatorClassType* GetPointer(void) noexcept
+		DEF_FORCE_INLINE AllocatorClassType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif	
 		{
 			return m_Pointer;
@@ -251,7 +285,7 @@ namespace SonikLib
 
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
-		DEF_FORCE_INLINE AllocatorClassType* DestroyOwner(void) noexcept
+		DEF_FORCE_INLINE AllocatorClassType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
 		{
 			AllocatorClassType* l_pointer = m_Pointer;
 
@@ -265,11 +299,12 @@ namespace SonikLib
 		//現在のリファレンスカウント値を取得します。
 		DEF_FORCE_INLINE uint32_t GetRefCount(void)
 		{
-			return m_Count->load(std::memory_order_acquire);
+			//return m_Count->load(std::memory_order_acquire);
+			return m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
 		};
 
 		//NullptrならTrue
-		DEF_FORCE_INLINE bool IsNullptr(void) noexcept
+		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -288,14 +323,14 @@ namespace SonikLib
 		//クリエイタ
 		DEF_FORCE_INLINE static bool SmartPointerCreate(AllocatorClassType* _transfer_managed_pointer_, AllocatorSharedSmtPtr<AllocatorClassType>& _out_)
 		{
-			std::atomic<unsigned int>* l_count = nullptr;
-
+			//std::atomic<unsigned int>* l_count = nullptr;
+			SonikLib::SonikAtomic<uint32_t>* l_count = nullptr;
 
 #if defined(SLIB_ALLOCATOR_V_EXCEPTION)
 			try
 			{
-				l_count = new std::atomic<unsigned int>(1);
-
+				//l_count = new std::atomic<unsigned int>(1);
+				l_count = new(std::nothrow) SonikLib::SonikAtomic<uint32_t>(1);
 			}
 			catch (std::bad_alloc)
 			{
@@ -306,7 +341,8 @@ namespace SonikLib
 				throw;
 			};
 #else
-			l_count = new(std::nothrow) std::atomic<unsigned int>(1);
+			//l_count = new(std::nothrow) std::atomic<unsigned int>(1);
+			l_count = new(std::nothrow) SonikLib::SonikAtomic<uint32_t>(1);
 			if (l_count == nullptr)
 			{
 				return false;
@@ -330,7 +366,7 @@ namespace SonikLib
 	class SharedSmtPtr
 	{
 		//ポインタ型は許容していません。内部でpType* とするため指定自体はオブジェクト型としてください。
-		static_assert(!std::is_pointer_v<pType>, "Please Used NoPointerType.");
+		static_assert(!SLIB_CVRT_IS_POINTER(pType), "Please Used NoPointerType.");
 		//Enableパラメータは内部の判定で使用する領域なので使用者は指定しないでください。（指定を省略してください)
 		static_assert(std::is_same<Enable, void>::value, "Enable parameter should not be specified by the user.");
 
@@ -348,33 +384,41 @@ namespace SonikLib
 
 	private:
 		pType* m_Pointer;
-		std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
+		//std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
+		SonikLib::SonikAtomic<uint32_t>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
 		AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> m_Allocate; //アロケータ
 
 	private:
-		DEF_FORCE_INLINE void AddRef(void) noexcept
+		DEF_FORCE_INLINE void AddRef(void) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Count == nullptr)
 			{
 				return;
 			};
 
-			unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
-			while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt + 1, std::memory_order_acq_rel))
+			//unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			//while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt + 1, std::memory_order_acq_rel))
+			//{
+			//	//no process
+			//};
+			uint32_t TmpCnt = m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
+			while (!m_Count->CompareExchange_Strong(TmpCnt, TmpCnt + 1, SonikLib::SlibAtomicMemoryOrder::order_acq_rel))
 			{
 				//no process
 			};
 
+
 		};
 
-		DEF_FORCE_INLINE void Release(void) noexcept
+		DEF_FORCE_INLINE void Release(void) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Count == nullptr)
 			{
 				return;
 			};
 
-			unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			//unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			uint32_t TmpCnt = m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
 			if (TmpCnt == 1)
 			{
 				/*
@@ -382,7 +426,7 @@ namespace SonikLib
 				delete m_Count;
 				*/
 
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Allocate->memdel(m_Count);
 
@@ -391,7 +435,8 @@ namespace SonikLib
 				return;
 			}
 
-			while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt - 1, std::memory_order_acq_rel))
+			//while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt - 1, std::memory_order_acq_rel))
+			while (!m_Count->CompareExchange_Strong(TmpCnt, TmpCnt - 1, SonikLib::SlibAtomicMemoryOrder::order_acq_rel))
 			{
 				//no process
 			};
@@ -404,7 +449,7 @@ namespace SonikLib
 				delete m_Count;
 				*/
 
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Allocate->memdel(m_Count);
 			};
@@ -424,7 +469,7 @@ namespace SonikLib
 		};
 
 		//コピーコンストラクタ
-		DEF_FORCE_INLINE SharedSmtPtr(const SharedSmtPtr<pType>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr(const SharedSmtPtr<pType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_SmtPtr_.m_Pointer)
 			, m_Count(_SmtPtr_.m_Count)
 			, m_Allocate(_SmtPtr_.m_Allocate)
@@ -434,7 +479,7 @@ namespace SonikLib
 		};
 
 		//ムーヴコンストラクタ
-		DEF_FORCE_INLINE SharedSmtPtr(SharedSmtPtr<pType>&& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr(SharedSmtPtr<pType>&& _SmtPtr_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_SmtPtr_.m_Pointer)
 			, m_Count(_SmtPtr_.m_Count)
 			, m_Allocate(std::move(_SmtPtr_.m_Allocate))
@@ -445,13 +490,13 @@ namespace SonikLib
 		};
 
 		//Destructor
-		DEF_FORCE_INLINE ~SharedSmtPtr(void) noexcept
+		DEF_FORCE_INLINE ~SharedSmtPtr(void) SLIB_CVR_NOEXCEPT
 		{
 			Release();
 		};
 
 		//operator =
-		DEF_FORCE_INLINE SharedSmtPtr<pType>& operator =(const SharedSmtPtr<pType>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr<pType>& operator =(const SharedSmtPtr<pType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			//自己代入を解決する実装。
 			if (m_Pointer != _SmtPtr_.m_Pointer)
@@ -472,7 +517,7 @@ namespace SonikLib
 		};
 
 		//MoveEqual
-		DEF_FORCE_INLINE SharedSmtPtr<pType>& operator =(SharedSmtPtr<pType>&& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr<pType>& operator =(SharedSmtPtr<pType>&& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			//自己代入を解決する実装。
 			if (m_Pointer != _SmtPtr_.m_Pointer)
@@ -497,7 +542,7 @@ namespace SonikLib
 			return (*this);
 		};
 
-		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == _SmtPtr_.m_Pointer) ? true : false;
 		};
@@ -508,17 +553,17 @@ namespace SonikLib
 #if defined(__GNUC__) || defined(__clang__)
 	//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 	// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
 
 #elif defined(_MSC_VER) 
 	//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 	// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
 		__declspec(deprecated("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n"))
-			DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+			DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 
 #else
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif	
 		{
 			return m_Pointer;
@@ -526,7 +571,7 @@ namespace SonikLib
 
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
-		DEF_FORCE_INLINE pType* DestroyOwner(void) noexcept
+		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
 		{
 			pType* l_pointer = m_Pointer;
 
@@ -540,11 +585,12 @@ namespace SonikLib
 		//現在のリファレンスカウント値を取得します。
 		DEF_FORCE_INLINE uint32_t GetRefCount(void)
 		{
-			return m_Count->load(std::memory_order_acquire);
+			//return m_Count->load(std::memory_order_acquire);
+			return m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
 		};
 
 		//NullptrならTrue
-		DEF_FORCE_INLINE bool IsNullptr(void) noexcept
+		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -560,6 +606,7 @@ namespace SonikLib
 			return (*m_Pointer);
 		};
 
+#if SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_VISUALSTUDIO_ENABLE || SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_CPP_ENABLE //VS2013以上かC++11以上なら有効化
 		//C++11 以降 ->*演算子オーバーロード(メンバ関数ポインタ用)
 		// メンバ関数ポインタを使用するためのオーバーロード演算子=========================
 		template <class RetType, class ... Args>
@@ -587,11 +634,13 @@ namespace SonikLib
 			return MemberFunctionCaller<RetType, Args...>(m_Pointer, func);
 		};
 		//==================================================
+#endif
 
 		//クリエイタ
 		DEF_FORCE_INLINE static bool SmartPointerCreate(pType* _transfer_managed_pointer_, SharedSmtPtr<pType>& _out_)
 		{
-			std::atomic<unsigned int>* l_count = nullptr;
+			//std::atomic<unsigned int>* l_count = nullptr;
+			SonikLib::SonikAtomic<uint32_t>* l_count = nullptr;
 			AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> l_allocate;
 
 			l_allocate.m_Pointer = new(std::nothrow) SonikLib::SLibAllocateInterface();
@@ -600,7 +649,8 @@ namespace SonikLib
 				return false;
 			};
 
-			l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			//l_allocate.m_Count = new(std::nothrow) std::atomic<uint32_t>(1);
+			l_allocate.m_Count = new(std::nothrow) SonikLib::SonikAtomic<uint32_t>(1);
 			if (l_allocate.m_Count == nullptr)
 			{
 				delete l_allocate.m_Pointer;
@@ -611,7 +661,8 @@ namespace SonikLib
 #if defined(SLIB_ALLOCATOR_V_EXCEPTION)
 			try
 			{
-				void* l_MemBlock = l_allocate->memal_Exception(sizeof(std::atomic<unsigned int>));
+				//void* l_MemBlock = l_allocate->memal_Exception(sizeof(std::atomic<unsigned int>));
+				void* l_MemBlock = l_allocate->memal_Exception(sizeof(SonikLib::SonikAtomic<uint32_t>));
 
 			}
 			catch (std::bad_alloc)
@@ -623,14 +674,16 @@ namespace SonikLib
 				throw;
 			};
 #else
-			void* l_MemBlock = l_allocate->memal(sizeof(std::atomic<unsigned int>));
+			//void* l_MemBlock = l_allocate->memal(sizeof(std::atomic<unsigned int>));
+			void* l_MemBlock = l_allocate->memal(sizeof(SonikLib::SonikAtomic<uint32_t>));
 			if (l_MemBlock == nullptr)
 			{
 				return false;
 			};
 #endif
 
-			l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			//l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			l_count = new(l_MemBlock) SonikLib::SonikAtomic<uint32_t>(1);
 
 			//出力先へ
 			_out_.m_Pointer = _transfer_managed_pointer_;
@@ -643,7 +696,8 @@ namespace SonikLib
 		//クリエイタ(オーバーロード
 		DEF_FORCE_INLINE static bool SmartPointerCreate(pType* _transfer_managed_pointer_, SharedSmtPtr<pType>& _out_, AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>& _allocate_)
 		{
-			std::atomic<unsigned int>* l_count = nullptr;
+			//std::atomic<unsigned int>* l_count = nullptr;
+			SonikLib::SonikAtomic<uint32_t>* l_count = nullptr;
 
 			if (_allocate_.IsNullptr())
 			{
@@ -653,7 +707,8 @@ namespace SonikLib
 #if defined(SLIB_ALLOCATOR_V_EXCEPTION)
 			try
 			{
-				void* l_MemBlock = _allocate_->memal_Exception(sizeof(std::atomic<unsigned int>));
+				//void* l_MemBlock = _allocate_->memal_Exception(sizeof(std::atomic<unsigned int>));
+				void* l_MemBlock = _allocate_->memal_Exception(sizeof(SonikLib::SonikAtomic<uint32_t>));
 
 			}
 			catch (std::bad_alloc)
@@ -665,14 +720,16 @@ namespace SonikLib
 				throw;
 			};
 #else
-			void* l_MemBlock = _allocate_->memal(sizeof(std::atomic<unsigned int>));
+			//void* l_MemBlock = _allocate_->memal(sizeof(std::atomic<unsigned int>));
+			void* l_MemBlock = _allocate_->memal(sizeof(SonikLib::SonikAtomic<uint32_t>));
 			if (l_MemBlock == nullptr)
 			{
 				return false;
 			};
 #endif
 
-			l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			//l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			l_count = new(l_MemBlock) SonikLib::SonikAtomic<uint32_t>(1);
 
 			//出力先へ
 			_out_.m_Pointer = _transfer_managed_pointer_;
@@ -688,6 +745,9 @@ namespace SonikLib
 	template <class pType>
 	class SharedSmtPtr<pType, typename std::enable_if<std::is_arithmetic<pType>::value>::type>
 	{
+		//ポインタ型は許容していません。内部でpType* とするため指定自体はオブジェクト型としてください。
+		static_assert(!SLIB_CVRT_IS_POINTER(pType), "Please Used NoPointerType.");
+
 		template <class before, class after>
 		friend bool SharedCast_Dynamic(SharedSmtPtr<before>& _src_, SharedSmtPtr<after>& _dst_);
 
@@ -699,33 +759,37 @@ namespace SonikLib
 
 	protected:
 		pType* m_Pointer;
-		std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
+		//std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
+		SonikLib::SonikAtomic<uint32_t>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
 		AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> m_Allocate; //アロケータ
 
 	protected:
-		DEF_FORCE_INLINE void AddRef(void) noexcept
+		DEF_FORCE_INLINE void AddRef(void) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Count == nullptr)
 			{
 				return;
 			};
 
-			unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
-			while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt + 1, std::memory_order_acq_rel))
+			//unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			uint32_t TmpCnt = m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
+			//while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt + 1, std::memory_order_acq_rel))
+			while (!m_Count->CompareExchange_Strong(TmpCnt, TmpCnt + 1, SonikLib::SlibAtomicMemoryOrder::order_acq_rel))
 			{
 				//no process
 			};
 
 		};
 
-		DEF_FORCE_INLINE void Release(void) noexcept
+		DEF_FORCE_INLINE void Release(void) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Count == nullptr)
 			{
 				return;
 			};
 
-			unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			//unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			uint32_t TmpCnt = m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
 			if (TmpCnt == 1)
 			{
 				/*
@@ -733,7 +797,7 @@ namespace SonikLib
 				delete m_Count;
 				*/
 
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Allocate->memdel(m_Count);
 
@@ -742,7 +806,8 @@ namespace SonikLib
 				return;
 			}
 
-			while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt - 1, std::memory_order_acq_rel))
+			//while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt - 1, std::memory_order_acq_rel))
+			while (!m_Count->CompareExchange_Strong(TmpCnt, TmpCnt - 1, SonikLib::SlibAtomicMemoryOrder::order_acq_rel))
 			{
 				//no process
 			};
@@ -755,7 +820,7 @@ namespace SonikLib
 				delete m_Count;
 				*/
 
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Allocate->memdel(m_Count);
 			};
@@ -775,7 +840,7 @@ namespace SonikLib
 		};
 
 		//コピーコンストラクタ
-		DEF_FORCE_INLINE SharedSmtPtr(const SharedSmtPtr<pType>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr(const SharedSmtPtr<pType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_SmtPtr_.m_Pointer)
 			, m_Count(_SmtPtr_.m_Count)
 			, m_Allocate(_SmtPtr_.m_Allocate)
@@ -785,7 +850,7 @@ namespace SonikLib
 		};
 
 		//ムーヴコンストラクタ
-		DEF_FORCE_INLINE SharedSmtPtr(SharedSmtPtr<pType>&& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr(SharedSmtPtr<pType>&& _SmtPtr_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_SmtPtr_.m_Pointer)
 			, m_Count(_SmtPtr_.m_Count)
 			, m_Allocate(std::move(_SmtPtr_.m_Allocate))
@@ -796,13 +861,13 @@ namespace SonikLib
 		};
 
 		//Destructor
-		DEF_FORCE_INLINE ~SharedSmtPtr(void) noexcept
+		DEF_FORCE_INLINE ~SharedSmtPtr(void) SLIB_CVR_NOEXCEPT
 		{
 			Release();
 		};
 
 		//operator =
-		DEF_FORCE_INLINE SharedSmtPtr<pType>& operator =(const SharedSmtPtr<pType>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr<pType>& operator =(const SharedSmtPtr<pType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			//自己代入を解決する実装。
 			if (m_Pointer != _SmtPtr_.m_Pointer)
@@ -823,7 +888,7 @@ namespace SonikLib
 		};
 
 		//MoveEqual
-		DEF_FORCE_INLINE SharedSmtPtr<pType>& operator =(SharedSmtPtr<pType>&& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr<pType>& operator =(SharedSmtPtr<pType>&& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			//自己代入を解決する実装。
 			if (m_Pointer != _SmtPtr_.m_Pointer)
@@ -848,7 +913,7 @@ namespace SonikLib
 			return (*this);
 		};
 
-		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == _SmtPtr_.m_Pointer) ? true : false;
 		};
@@ -859,17 +924,17 @@ namespace SonikLib
 #if defined(__GNUC__) || defined(__clang__)
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
 
 #elif defined(_MSC_VER) 
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
 		__declspec(deprecated("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n"))
-			DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+			DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 
 #else
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif	
 		{
 			return m_Pointer;
@@ -877,7 +942,7 @@ namespace SonikLib
 
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
-		DEF_FORCE_INLINE pType* DestroyOwner(void) noexcept
+		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
 		{
 			pType* l_pointer = m_Pointer;
 
@@ -891,11 +956,12 @@ namespace SonikLib
 		//現在のリファレンスカウント値を取得します。
 		DEF_FORCE_INLINE uint32_t GetRefCount(void)
 		{
-			return m_Count->load(std::memory_order_acquire);
+			//return m_Count->load(std::memory_order_acquire);
+			return m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
 		};
 
 		//NullptrならTrue
-		DEF_FORCE_INLINE bool IsNullptr(void) noexcept
+		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -914,7 +980,8 @@ namespace SonikLib
 		//クリエイタ
 		DEF_FORCE_INLINE static bool SmartPointerCreate(pType* _transfer_managed_pointer_, SharedSmtPtr<pType>& _out_)
 		{
-			std::atomic<unsigned int>* l_count = nullptr;
+			//std::atomic<unsigned int>* l_count = nullptr;
+			SonikLib::SonikAtomic<uint32_t>* l_count = nullptr;
 			AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> l_allocate;
 
 			l_allocate.m_Pointer = new(std::nothrow) SonikLib::SLibAllocateInterface();
@@ -923,7 +990,8 @@ namespace SonikLib
 				return false;
 			};
 
-			l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			//l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			l_allocate.m_Count = new(std::nothrow) SonikLib::SonikAtomic<uint32_t>(1);
 			if (l_allocate.m_Count == nullptr)
 			{
 				delete l_allocate.m_Pointer;
@@ -934,7 +1002,8 @@ namespace SonikLib
 #if defined(SLIB_ALLOCATOR_V_EXCEPTION)
 			try
 			{
-				void* l_MemBlock = l_allocate->memal_Exception(sizeof(std::atomic<unsigned int>));
+//				void* l_MemBlock = l_allocate->memal_Exception(sizeof(std::atomic<unsigned int>));
+				void* l_MemBlock = l_allocate->memal_Exception(sizeof(SonikLib::SonikAtomic<uint32_t>));
 
 			}
 			catch (std::bad_alloc)
@@ -946,14 +1015,16 @@ namespace SonikLib
 				throw;
 			};
 #else
-			void* l_MemBlock = l_allocate->memal(sizeof(std::atomic<unsigned int>));
+			//void* l_MemBlock = l_allocate->memal(sizeof(std::atomic<unsigned int>));
+			void* l_MemBlock = l_allocate->memal(sizeof(SonikLib::SonikAtomic<uint32_t>));
 			if (l_MemBlock == nullptr)
 			{
 				return false;
 			};
 #endif
 
-			l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			//l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+            l_count = new(l_MemBlock) SonikLib::SonikAtomic(static_cast<uint32_t>(1));
 
 			//出力先へ
 			_out_.m_Pointer = _transfer_managed_pointer_;
@@ -966,7 +1037,8 @@ namespace SonikLib
 		//クリエイタ(オーバーロード
 		DEF_FORCE_INLINE static bool SmartPointerCreate(pType* _transfer_managed_pointer_, SharedSmtPtr<pType>& _out_, AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>& _allocate_)
 		{
-			std::atomic<unsigned int>* l_count = nullptr;
+			//std::atomic<unsigned int>* l_count = nullptr;
+			SonikLib::SonikAtomic<uint32_t>* l_count = nullptr;
 
 			if (_allocate_.IsNullptr())
 			{
@@ -976,8 +1048,8 @@ namespace SonikLib
 #if defined(SLIB_ALLOCATOR_V_EXCEPTION)
 			try
 			{
-				void* l_MemBlock = _allocate_->memal_Exception(sizeof(std::atomic<unsigned int>));
-
+//				void* l_MemBlock = _allocate_->memal_Exception(sizeof(std::atomic<unsigned int>));
+				void* l_MemBlock = _allocate_->memal_Exception(sizeof(SonikLib::SonikAtomic<uint32_t>));
 			}
 			catch (std::bad_alloc)
 			{
@@ -988,14 +1060,16 @@ namespace SonikLib
 				throw;
 			};
 #else
-			void* l_MemBlock = _allocate_->memal(sizeof(std::atomic<unsigned int>));
+			//void* l_MemBlock = _allocate_->memal(sizeof(std::atomic<unsigned int>));
+			void* l_MemBlock = _allocate_->memal(sizeof(SonikLib::SonikAtomic<uint32_t>));
 			if (l_MemBlock == nullptr)
 			{
 				return false;
 			};
 #endif
 
-			l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			//l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			l_count = new(l_MemBlock) SonikLib::SonikAtomic<uint32_t>(1);
 
 			//出力先へ
 			_out_.m_Pointer = _transfer_managed_pointer_;
@@ -1026,33 +1100,37 @@ namespace SonikLib
 
 	private:
 		pType* m_Pointer;
-		std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
+		//std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
+		SonikLib::SonikAtomic <uint32_t>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
 		AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> m_Allocate; //アロケータ
 
 	private:
-		DEF_FORCE_INLINE void AddRef(void) noexcept
+		DEF_FORCE_INLINE void AddRef(void) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Count == nullptr)
 			{
 				return;
 			};
 
-			unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
-			while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt + 1, std::memory_order_acq_rel))
+			//unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			uint32_t TmpCnt = m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
+			//while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt + 1, std::memory_order_acq_rel))
+			while (!m_Count->CompareExchange_Strong(TmpCnt, TmpCnt + 1, SonikLib::SlibAtomicMemoryOrder::order_acq_rel))
 			{
 				//no process
 			};
 
 		};
 
-		DEF_FORCE_INLINE void Release(void) noexcept
+		DEF_FORCE_INLINE void Release(void) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Count == nullptr)
 			{
 				return;
 			};
 
-			unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			//unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			uint32_t TmpCnt = m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
 			if (TmpCnt == 1)
 			{
 				/*
@@ -1060,7 +1138,7 @@ namespace SonikLib
 				delete m_Count;
 				*/
 
-				m_Allocate->CallDestructor_Array(m_Pointer);
+				//m_Allocate->CallDestructor_Array(m_Pointer);
 				m_Allocate->memdelArray(m_Pointer);
 				m_Allocate->memdel(m_Count);
 
@@ -1069,7 +1147,8 @@ namespace SonikLib
 				return;
 			}
 
-			while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt - 1, std::memory_order_acq_rel))
+			//while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt - 1, std::memory_order_acq_rel))
+			while (!m_Count->CompareExchange_Strong(TmpCnt, TmpCnt - 1, SonikLib::SlibAtomicMemoryOrder::order_acq_rel))
 			{
 				//no process
 			};
@@ -1082,7 +1161,7 @@ namespace SonikLib
 				delete m_Count;
 				*/
 
-				m_Allocate->CallDestructor_Array(m_Pointer);
+				//m_Allocate->CallDestructor_Array(m_Pointer);
 				m_Allocate->memdelArray(m_Pointer);
 				m_Allocate->memdel(m_Count);
 			};
@@ -1102,7 +1181,7 @@ namespace SonikLib
 		};
 
 		//コピーコンストラクタ
-		DEF_FORCE_INLINE SharedSmtPtr(const SharedSmtPtr<pType[]>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr(const SharedSmtPtr<pType[]>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_SmtPtr_.m_Pointer)
 			, m_Count(_SmtPtr_.m_Count)
 			, m_Allocate(_SmtPtr_.m_Allocate)
@@ -1112,7 +1191,7 @@ namespace SonikLib
 		};
 
 		//ムーヴコンストラクタ
-		DEF_FORCE_INLINE SharedSmtPtr(SharedSmtPtr<pType[]>&& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr(SharedSmtPtr<pType[]>&& _SmtPtr_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_SmtPtr_.m_Pointer)
 			, m_Count(_SmtPtr_.m_Count)
 			, m_Allocate(std::move(_SmtPtr_.m_Allocate))
@@ -1123,13 +1202,13 @@ namespace SonikLib
 		};
 
 		//Destructor
-		DEF_FORCE_INLINE ~SharedSmtPtr(void) noexcept
+		DEF_FORCE_INLINE ~SharedSmtPtr(void) SLIB_CVR_NOEXCEPT
 		{
 			Release();
 		};
 
 		//operator =
-		DEF_FORCE_INLINE SharedSmtPtr<pType[]>& operator =(const SharedSmtPtr<pType[]>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr<pType[]>& operator =(const SharedSmtPtr<pType[]>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			//自己代入を解決する実装。
 			if (m_Pointer != _SmtPtr_.m_Pointer)
@@ -1150,7 +1229,7 @@ namespace SonikLib
 		};
 
 		//MoveEqual
-		DEF_FORCE_INLINE SharedSmtPtr<pType[]>& operator =(SharedSmtPtr<pType[]>&& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr<pType[]>& operator =(SharedSmtPtr<pType[]>&& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			//自己代入を解決する実装。
 			if (m_Pointer != _SmtPtr_.m_Pointer)
@@ -1175,7 +1254,7 @@ namespace SonikLib
 			return (*this);
 		};
 
-		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType[]>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType[]>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == _SmtPtr_.m_Pointer) ? true : false;
 		};
@@ -1186,17 +1265,17 @@ namespace SonikLib
 #if defined(__GNUC__) || defined(__clang__)
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
 
 #elif defined(_MSC_VER) 
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
 		__declspec(deprecated("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n"))
-			DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+			DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 
 #else
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif	
 		{
 			return m_Pointer;
@@ -1204,7 +1283,7 @@ namespace SonikLib
 
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
-		DEF_FORCE_INLINE pType* DestroyOwner(void) noexcept
+		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
 		{
 			pType* l_pointer = m_Pointer;
 
@@ -1218,11 +1297,12 @@ namespace SonikLib
 		//現在のリファレンスカウント値を取得します。
 		DEF_FORCE_INLINE uint32_t GetRefCount(void)
 		{
-			return m_Count->load(std::memory_order_acquire);
+			//return m_Count->load(std::memory_order_acquire);
+			return m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
 		};
 
 		//NullptrならTrue
-		DEF_FORCE_INLINE bool IsNullptr(void) noexcept
+		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -1240,7 +1320,8 @@ namespace SonikLib
 		//クリエイタ
 		DEF_FORCE_INLINE static bool SmartPointerCreate(pType* _transfer_managed_pointer_, SharedSmtPtr<pType[]>& _out_)
 		{
-			std::atomic<unsigned int>* l_count = nullptr;
+			//std::atomic<unsigned int>* l_count = nullptr;
+			SonikLib::SonikAtomic<uint32_t>* l_count = nullptr;
 			AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> l_allocate;
 
 			l_allocate.m_Pointer = new(std::nothrow) SonikLib::SLibAllocateInterface();
@@ -1249,7 +1330,8 @@ namespace SonikLib
 				return false;
 			};
 
-			l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			//l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			l_allocate.m_Count = new(std::nothrow) SonikLib::SonikAtomic<uint32_t>(1);
 			if (l_allocate.m_Count == nullptr)
 			{
 				delete l_allocate.m_Pointer;
@@ -1260,7 +1342,8 @@ namespace SonikLib
 #if defined(SLIB_ALLOCATOR_V_EXCEPTION)
 			try
 			{
-				void* l_MemBlock = l_allocate->memal_Exception(sizeof(std::atomic<unsigned int>));
+				//void* l_MemBlock = l_allocate->memal_Exception(sizeof(std::atomic<unsigned int>));
+				void* l_MemBlock = l_allocate->memal_Exception(sizeof(SonikLib::SonikAtomic<uint32_t>));
 
 			}
 			catch (std::bad_alloc)
@@ -1272,14 +1355,16 @@ namespace SonikLib
 				throw;
 			};
 #else
-			void* l_MemBlock = l_allocate->memal(sizeof(std::atomic<unsigned int>));
+			//void* l_MemBlock = l_allocate->memal(sizeof(std::atomic<unsigned int>));
+			void* l_MemBlock = l_allocate->memal(sizeof(SonikLib::SonikAtomic<uint32_t>));
 			if (l_MemBlock == nullptr)
 			{
 				return false;
 			};
 #endif
 
-			l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			//l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			l_count = new(l_MemBlock) SonikLib::SonikAtomic<uint32_t>(1);
 
 			//出力先へ
 			_out_.m_Pointer = _transfer_managed_pointer_;
@@ -1292,7 +1377,8 @@ namespace SonikLib
 		//クリエイタ(オーバーロード
 		DEF_FORCE_INLINE static bool SmartPointerCreate(pType* _transfer_managed_pointer_, SharedSmtPtr<pType[]>& _out_, AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>& _allocate_)
 		{
-			std::atomic<unsigned int>* l_count = nullptr;
+			//std::atomic<unsigned int>* l_count = nullptr;
+			SonikLib::SonikAtomic<uint32_t>* l_count = nullptr;
 
 			if (_allocate_.IsNullptr())
 			{
@@ -1302,8 +1388,8 @@ namespace SonikLib
 #if defined(SLIB_ALLOCATOR_V_EXCEPTION)
 			try
 			{
-				void* l_MemBlock = _allocate_->memal_Exception(sizeof(std::atomic<unsigned int>));
-
+				//void* l_MemBlock = _allocate_->memal_Exception(sizeof(std::atomic<unsigned int>));
+				void* l_MemBlock = _allocate_->memal_Exception(sizeof(SonikLib::SonikAtomic<uint32_t>));
 			}
 			catch (std::bad_alloc)
 			{
@@ -1314,14 +1400,16 @@ namespace SonikLib
 				throw;
 			};
 #else
-			void* l_MemBlock = _allocate_->memal(sizeof(std::atomic<unsigned int>));
+			//void* l_MemBlock = _allocate_->memal(sizeof(std::atomic<unsigned int>));
+			void* l_MemBlock = _allocate_->memal(sizeof(SonikLib::SonikAtomic<uint32_t>));
 			if (l_MemBlock == nullptr)
 			{
 				return false;
 			};
 #endif
 
-			l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			//l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+            l_count = new(l_MemBlock) SonikLib::SonikAtomic(static_cast<uint32_t>(1));
 
 			//出力先へ
 			_out_.m_Pointer = _transfer_managed_pointer_;
@@ -1348,33 +1436,37 @@ namespace SonikLib
 
 	private:
 		pType* m_Pointer;
-		std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
+		//std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
+		SonikLib::SonikAtomic<uint32_t>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
 		AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> m_Allocate; //アロケータ
 
 	private:
-		DEF_FORCE_INLINE void AddRef(void) noexcept
+		DEF_FORCE_INLINE void AddRef(void) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Count == nullptr)
 			{
 				return;
 			};
 
-			unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
-			while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt + 1, std::memory_order_acq_rel))
+			//unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			uint32_t TmpCnt = m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
+			//while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt + 1, std::memory_order_acq_rel))
+			while (!m_Count->CompareExchange_Strong(TmpCnt, TmpCnt + 1, SonikLib::SlibAtomicMemoryOrder::order_acq_rel))
 			{
 				//no process
 			};
 
 		};
 
-		DEF_FORCE_INLINE void Release(void) noexcept
+		DEF_FORCE_INLINE void Release(void) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Count == nullptr)
 			{
 				return;
 			};
 
-			unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			//unsigned int TmpCnt = m_Count->load(std::memory_order_acquire);
+			uint32_t TmpCnt = m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
 			if (TmpCnt == 1)
 			{
 				/*
@@ -1382,7 +1474,7 @@ namespace SonikLib
 				delete m_Count;
 				*/
 
-				m_Allocate->CallDestructor_Array(m_Pointer);
+				//m_Allocate->CallDestructor_Array(m_Pointer);
 				m_Allocate->memdelArray(m_Pointer);
 				m_Allocate->memdel(m_Count);
 
@@ -1391,7 +1483,8 @@ namespace SonikLib
 				return;
 			}
 
-			while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt - 1, std::memory_order_acq_rel))
+			//while (!m_Count->compare_exchange_strong(TmpCnt, TmpCnt - 1, std::memory_order_acq_rel))
+			while (!m_Count->CompareExchange_Strong(TmpCnt, TmpCnt - 1, SonikLib::SlibAtomicMemoryOrder::order_acq_rel))
 			{
 				//no process
 			};
@@ -1404,7 +1497,7 @@ namespace SonikLib
 				delete m_Count;
 				*/
 
-				m_Allocate->CallDestructor_Array(m_Pointer);
+				//m_Allocate->CallDestructor_Array(m_Pointer);
 				m_Allocate->memdelArray(m_Pointer);
 				m_Allocate->memdel(m_Count);
 			};
@@ -1424,7 +1517,7 @@ namespace SonikLib
 		};
 
 		//コピーコンストラクタ
-		DEF_FORCE_INLINE SharedSmtPtr(const SharedSmtPtr<pType[]>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr(const SharedSmtPtr<pType[]>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_SmtPtr_.m_Pointer)
 			, m_Count(_SmtPtr_.m_Count)
 			, m_Allocate(_SmtPtr_.m_Allocate)
@@ -1434,7 +1527,7 @@ namespace SonikLib
 		};
 
 		//ムーヴコンストラクタ
-		DEF_FORCE_INLINE SharedSmtPtr(SharedSmtPtr<pType[]>&& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr(SharedSmtPtr<pType[]>&& _SmtPtr_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_SmtPtr_.m_Pointer)
 			, m_Count(_SmtPtr_.m_Count)
 			, m_Allocate(std::move(_SmtPtr_.m_Allocate))
@@ -1445,13 +1538,13 @@ namespace SonikLib
 		};
 
 		//Destructor
-		DEF_FORCE_INLINE ~SharedSmtPtr(void) noexcept
+		DEF_FORCE_INLINE ~SharedSmtPtr(void) SLIB_CVR_NOEXCEPT
 		{
 			Release();
 		};
 
 		//operator =
-		DEF_FORCE_INLINE SharedSmtPtr<pType[]>& operator =(const SharedSmtPtr<pType[]>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr<pType[]>& operator =(const SharedSmtPtr<pType[]>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			//自己代入を解決する実装。
 			if (m_Pointer != _SmtPtr_.m_Pointer)
@@ -1472,7 +1565,7 @@ namespace SonikLib
 		};
 
 		//MoveEqual
-		DEF_FORCE_INLINE SharedSmtPtr<pType[]>& operator =(SharedSmtPtr<pType[]>&& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE SharedSmtPtr<pType[]>& operator =(SharedSmtPtr<pType[]>&& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			//自己代入を解決する実装。
 			if (m_Pointer != _SmtPtr_.m_Pointer)
@@ -1497,7 +1590,7 @@ namespace SonikLib
 			return (*this);
 		};
 
-		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType>& _SmtPtr_) noexcept
+		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == _SmtPtr_.m_Pointer) ? true : false;
 		};
@@ -1508,17 +1601,17 @@ namespace SonikLib
 #if defined(__GNUC__) || defined(__clang__)
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
 
 #elif defined(_MSC_VER) 
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
 		__declspec(deprecated("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n"))
-			DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+			DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 
 #else
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif	
 		{
 			return m_Pointer;
@@ -1526,7 +1619,7 @@ namespace SonikLib
 
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
-		DEF_FORCE_INLINE pType* DestroyOwner(void) noexcept
+		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
 		{
 			pType* l_pointer = m_Pointer;
 
@@ -1540,11 +1633,12 @@ namespace SonikLib
 		//現在のリファレンスカウント値を取得します。
 		DEF_FORCE_INLINE uint32_t GetRefCount(void)
 		{
-			return m_Count->load(std::memory_order_acquire);
+			//return m_Count->load(std::memory_order_acquire);
+			return m_Count->load(SonikLib::SlibAtomicMemoryOrder::order_acquire);
 		};
 
 		//NullptrならTrue
-		DEF_FORCE_INLINE bool IsNullptr(void) noexcept
+		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -1562,7 +1656,8 @@ namespace SonikLib
 		//クリエイタ
 		DEF_FORCE_INLINE static bool SmartPointerCreate(pType* _transfer_managed_pointer_, SharedSmtPtr<pType[]>& _out_)
 		{
-			std::atomic<unsigned int>* l_count = nullptr;
+			//std::atomic<unsigned int>* l_count = nullptr;
+			SonikLib::SonikAtomic<uint32_t>* l_count = nullptr;
 			AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> l_allocate;
 
 			l_allocate.m_Pointer = new(std::nothrow) SonikLib::SLibAllocateInterface();
@@ -1571,7 +1666,8 @@ namespace SonikLib
 				return false;
 			};
 
-			l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			//l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			l_allocate.m_Count = new(std::nothrow) SonikLib::SonikAtomic<uint32_t>(1);
 			if (l_allocate.m_Count == nullptr)
 			{
 				delete l_allocate.m_Pointer;
@@ -1582,7 +1678,8 @@ namespace SonikLib
 #if defined(SLIB_ALLOCATOR_V_EXCEPTION)
 			try
 			{
-				void* l_MemBlock = l_allocate->memal_Exception(sizeof(std::atomic<unsigned int>));
+				//void* l_MemBlock = l_allocate->memal_Exception(sizeof(std::atomic<unsigned int>));
+				void* l_MemBlock = l_allocate->memal_Exception(sizeof(SonikLib::SonikAtomic<uint32_t>));
 
 			}
 			catch (std::bad_alloc)
@@ -1594,14 +1691,16 @@ namespace SonikLib
 				throw;
 			};
 #else
-			void* l_MemBlock = l_allocate->memal(sizeof(std::atomic<unsigned int>));
+			//void* l_MemBlock = l_allocate->memal(sizeof(std::atomic<unsigned int>));
+			void* l_MemBlock = l_allocate->memal(sizeof(SonikLib::SonikAtomic<uint32_t>));
 			if (l_MemBlock == nullptr)
 			{
 				return false;
 			};
 #endif
 
-			l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			//l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			l_count = new(l_MemBlock) SonikLib::SonikAtomic<uint32_t>(1);
 
 			//出力先へ
 			_out_.m_Pointer = _transfer_managed_pointer_;
@@ -1614,7 +1713,8 @@ namespace SonikLib
 		//クリエイタ(オーバーロード
 		DEF_FORCE_INLINE static bool SmartPointerCreate(pType* _transfer_managed_pointer_, SharedSmtPtr<pType[]>& _out_, AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>& _allocate_)
 		{
-			std::atomic<unsigned int>* l_count = nullptr;
+			//std::atomic<unsigned int>* l_count = nullptr;
+			SonikLib::SonikAtomic<uint32_t>* l_count = nullptr;
 
 			if (_allocate_.IsNullptr())
 			{
@@ -1624,7 +1724,8 @@ namespace SonikLib
 #if defined(SLIB_ALLOCATOR_V_EXCEPTION)
 			try
 			{
-				void* l_MemBlock = _allocate_->memal_Exception(sizeof(std::atomic<unsigned int>));
+				//void* l_MemBlock = _allocate_->memal_Exception(sizeof(std::atomic<unsigned int>));
+				void* l_MemBlock = _allocate_->memal_Exception(sizeof(SonikLib::SonikAtomic<uint32_t>));
 
 			}
 			catch (std::bad_alloc)
@@ -1636,14 +1737,16 @@ namespace SonikLib
 				throw;
 			};
 #else
-			void* l_MemBlock = _allocate_->memal(sizeof(std::atomic<unsigned int>));
+			//void* l_MemBlock = _allocate_->memal(sizeof(std::atomic<unsigned int>));
+			void* l_MemBlock = _allocate_->memal(sizeof(SonikLib::SonikAtomic<uint32_t>));
 			if (l_MemBlock == nullptr)
 			{
 				return false;
 			};
 #endif
 
-			l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			//l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
+			l_count = new(l_MemBlock) SonikLib::SonikAtomic<uint32_t>(1);
 
 			//出力先へ
 			_out_.m_Pointer = _transfer_managed_pointer_;
@@ -1660,6 +1763,8 @@ namespace SonikLib
 	template <class pType, class Enable>
 	class UniqueSmtPtr
 	{
+		//ポインタ型は許容していません。内部でpType* とするため指定自体はオブジェクト型としてください。
+		static_assert(!SLIB_CVRT_IS_POINTER(pType), "Please Used NoPointerType.");
 		//Enableパラメータは内部の判定で使用する領域なので使用者は指定しないでください。（指定を省略してください)
 		static_assert(std::is_same<Enable, void>::value, "Enable parameter should not be specified by the user.");
 
@@ -1678,14 +1783,14 @@ namespace SonikLib
 
 	public:
 		//コンストラクタ
-		DEF_FORCE_INLINE UniqueSmtPtr(void) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(void) SLIB_CVR_NOEXCEPT
 			:m_Pointer(nullptr)
 		{
 			//no process
 		};
 
 		//コピーコンストラクタ（実質ユニークポインタなのでムーヴコンストラクタに等しい、がstd::moveをいちいち使うのもめんどくさい場合もあるので。)
-		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType>& _OwnerSwap_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType>& _OwnerSwap_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_OwnerSwap_.m_Pointer)
 			, m_Allocate(std::move(_OwnerSwap_.m_Allocate))
 		{
@@ -1694,7 +1799,7 @@ namespace SonikLib
 		};
 
 		//ムーヴコンストラクタ。本当のムーヴコンストラクタ。std::move使用時にコールされまっせ。
-		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType>&& _OwnerSwap_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType>&& _OwnerSwap_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_OwnerSwap_.m_Pointer)
 			, m_Allocate(std::move(_OwnerSwap_.m_Allocate))
 		{
@@ -1705,16 +1810,16 @@ namespace SonikLib
 		//デストラクタ
 		DEF_FORCE_INLINE ~UniqueSmtPtr(void)
 		{
-			m_Allocate->CallDestructor(m_Pointer);
+			//m_Allocate->CallDestructor(m_Pointer);
 			m_Allocate->memdel(m_Pointer);
 		};
 
 		//operator = (Copy)
-		DEF_FORCE_INLINE UniqueSmtPtr<pType>& operator =(UniqueSmtPtr<pType>& _SetObj_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr<pType>& operator =(UniqueSmtPtr<pType>& _SetObj_) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Pointer != _SetObj_.m_Pointer)
 			{
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Pointer = _SetObj_.m_Pointer;
 				m_Allocate = std::move(_SetObj_.m_Allocate);
@@ -1727,11 +1832,11 @@ namespace SonikLib
 		};
 
 		//operator =(Move)
-		DEF_FORCE_INLINE UniqueSmtPtr<pType>& operator =(UniqueSmtPtr<pType>&& _SetObj_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr<pType>& operator =(UniqueSmtPtr<pType>&& _SetObj_) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Pointer != _SetObj_.m_Pointer)
 			{
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Pointer = _SetObj_.m_Pointer;
 				m_Allocate = std::move(_SetObj_.m_Allocate);
@@ -1744,7 +1849,7 @@ namespace SonikLib
 		};
 
 		//Null なら True
-		DEF_FORCE_INLINE bool IsNullptr(void) noexcept
+		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -1755,16 +1860,16 @@ namespace SonikLib
 #if defined(__GNUC__) || defined(__clang__)
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
 
 #elif defined(_MSC_VER) 
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
 		__declspec(deprecated("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n"))
-			DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+			DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 #else
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 		{
 			return m_Pointer;
@@ -1772,7 +1877,7 @@ namespace SonikLib
 
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
-		DEF_FORCE_INLINE pType* DestroyOwner(void) noexcept
+		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
 		{
 			pType* l_pointer = m_Pointer;
 			m_Pointer = nullptr;
@@ -1791,6 +1896,7 @@ namespace SonikLib
 			return (*m_Pointer);
 		};
 
+#if SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_VISUALSTUDIO_ENABLE || SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_CPP_ENABLE //VS2013以上かC++11以上なら有効化
 		//C++11 以降 ->*演算子オーバーロード(メンバ関数ポインタ用)
 		// メンバ関数ポインタを使用するためのオーバーロード演算子=========================
 		template <class RetType, class ... Args>
@@ -1818,6 +1924,7 @@ namespace SonikLib
 			return MemberFunctionCaller<RetType, Args...>(m_Pointer, func);
 		};
 		//==================================================
+#endif
 
 		//クリエイタ
 		DEF_FORCE_INLINE static bool SmartPointerCreate(pType* _transfer_managed_pointer_, UniqueSmtPtr<pType>& _out_)
@@ -1830,7 +1937,8 @@ namespace SonikLib
 				return false;
 			};
 
-			l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			//l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			l_allocate.m_Count = new(std::nothrow) SonikLib::SonikAtomic<uint32_t>(1);
 			if (l_allocate.m_Count == nullptr)
 			{
 				delete l_allocate.m_Pointer;
@@ -1861,6 +1969,9 @@ namespace SonikLib
 	template  <class pType>
 	class UniqueSmtPtr<pType, typename std::enable_if<std::is_arithmetic<pType>::value>::type>
 	{
+		//ポインタ型は許容していません。内部でpType* とするため指定自体はオブジェクト型としてください。
+		static_assert(!SLIB_CVRT_IS_POINTER(pType), "Please Used NoPointerType.");
+
 		template <class before, class after>
 		friend bool UniqueCast_Dynamic(UniqueSmtPtr<before>& _src_, UniqueSmtPtr<after>& _dst_);
 
@@ -1876,14 +1987,14 @@ namespace SonikLib
 
 	public:
 		//コンストラクタ
-		DEF_FORCE_INLINE UniqueSmtPtr(void) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(void) SLIB_CVR_NOEXCEPT
 			:m_Pointer(nullptr)
 		{
 			//no process
 		};
 
 		//コピーコンストラクタ（実質ユニークポインタなのでムーヴコンストラクタに等しい、がstd::moveをいちいち使うのもめんどくさい場合もあるので。)
-		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType>& _OwnerSwap_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType>& _OwnerSwap_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_OwnerSwap_.m_Pointer)
 			, m_Allocate(std::move(_OwnerSwap_.m_Allocate))
 		{
@@ -1892,7 +2003,7 @@ namespace SonikLib
 		};
 
 		//ムーヴコンストラクタ。本当のムーヴコンストラクタ。std::move使用時にコールされまっせ。
-		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType>&& _OwnerSwap_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType>&& _OwnerSwap_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_OwnerSwap_.m_Pointer)
 			, m_Allocate(std::move(_OwnerSwap_.m_Allocate))
 		{
@@ -1903,16 +2014,16 @@ namespace SonikLib
 		//デストラクタ
 		DEF_FORCE_INLINE ~UniqueSmtPtr(void)
 		{
-			m_Allocate->CallDestructor(m_Pointer);
+			//m_Allocate->CallDestructor(m_Pointer);
 			m_Allocate->memdel(m_Pointer);
 		};
 
 		//operator = (Copy)
-		DEF_FORCE_INLINE UniqueSmtPtr<pType>& operator =(UniqueSmtPtr<pType>& _SetObj_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr<pType>& operator =(UniqueSmtPtr<pType>& _SetObj_) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Pointer != _SetObj_.m_Pointer)
 			{
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Pointer = _SetObj_.m_Pointer;
 				m_Allocate = std::move(_SetObj_.m_Allocate);
@@ -1925,11 +2036,11 @@ namespace SonikLib
 		};
 
 		//operator =(Move)
-		DEF_FORCE_INLINE UniqueSmtPtr<pType>& operator =(UniqueSmtPtr<pType>&& _SetObj_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr<pType>& operator =(UniqueSmtPtr<pType>&& _SetObj_) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Pointer != _SetObj_.m_Pointer)
 			{
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Pointer = _SetObj_.m_Pointer;
 				m_Allocate = std::move(_SetObj_.m_Allocate);
@@ -1942,7 +2053,7 @@ namespace SonikLib
 		};
 
 		//Null なら True
-		DEF_FORCE_INLINE bool IsNullptr(void) noexcept
+		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -1953,16 +2064,16 @@ namespace SonikLib
 #if defined(__GNUC__) || defined(__clang__)
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
 
 #elif defined(_MSC_VER) 
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
 		__declspec(deprecated("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n"))
-			DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+			DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 #else
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 		{
 			return m_Pointer;
@@ -1970,7 +2081,7 @@ namespace SonikLib
 
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
-		DEF_FORCE_INLINE pType* DestroyOwner(void) noexcept
+		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
 		{
 			pType* l_pointer = m_Pointer;
 			m_Pointer = nullptr;
@@ -2000,7 +2111,8 @@ namespace SonikLib
 				return false;
 			};
 
-			l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			//l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+            l_allocate.m_Count = new(std::nothrow) SonikLib::SonikAtomic(static_cast<uint32_t>(1));
 			if (l_allocate.m_Count == nullptr)
 			{
 				delete l_allocate.m_Pointer;
@@ -2049,14 +2161,14 @@ namespace SonikLib
 
 	public:
 		//コンストラクタ
-		DEF_FORCE_INLINE UniqueSmtPtr(void) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(void) SLIB_CVR_NOEXCEPT
 			:m_Pointer(nullptr)
 		{
 			//no process
 		};
 
 		//コピーコンストラクタ（実質ユニークポインタなのでムーヴコンストラクタに等しい、がstd::moveをいちいち使うのもめんどくさい場合もあるので。)
-		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType[]>& _OwnerSwap_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType[]>& _OwnerSwap_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_OwnerSwap_.m_Pointer)
 			, m_Allocate(std::move(_OwnerSwap_.m_Allocate))
 		{
@@ -2065,7 +2177,7 @@ namespace SonikLib
 		};
 
 		//ムーヴコンストラクタ。本当のムーヴコンストラクタ。std::move使用時にコールされまっせ。
-		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType[]>&& _OwnerSwap_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType[]>&& _OwnerSwap_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_OwnerSwap_.m_Pointer)
 			, m_Allocate(std::move(_OwnerSwap_.m_Allocate))
 		{
@@ -2076,16 +2188,16 @@ namespace SonikLib
 		//デストラクタ
 		DEF_FORCE_INLINE ~UniqueSmtPtr(void)
 		{
-			m_Allocate->CallDestructor(m_Pointer);
+			//m_Allocate->CallDestructor(m_Pointer);
 			m_Allocate->memdel(m_Pointer);
 		};
 
 		//operator = (Copy)
-		DEF_FORCE_INLINE UniqueSmtPtr<pType[]>& operator =(UniqueSmtPtr<pType[]>& _SetObj_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr<pType[]>& operator =(UniqueSmtPtr<pType[]>& _SetObj_) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Pointer != _SetObj_.m_Pointer)
 			{
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Pointer = _SetObj_.m_Pointer;
 				m_Allocate = std::move(_SetObj_.m_Allocate);
@@ -2098,11 +2210,11 @@ namespace SonikLib
 		};
 
 		//operator =(Move)
-		DEF_FORCE_INLINE UniqueSmtPtr<pType[]>& operator =(UniqueSmtPtr<pType[]>&& _SetObj_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr<pType[]>& operator =(UniqueSmtPtr<pType[]>&& _SetObj_) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Pointer != _SetObj_.m_Pointer)
 			{
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Pointer = _SetObj_.m_Pointer;
 				m_Allocate = std::move(_SetObj_.m_Allocate);
@@ -2115,7 +2227,7 @@ namespace SonikLib
 		};
 
 		//Null なら True
-		DEF_FORCE_INLINE bool IsNullptr(void) noexcept
+		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -2126,16 +2238,16 @@ namespace SonikLib
 #if defined(__GNUC__) || defined(__clang__)
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
 
 #elif defined(_MSC_VER) 
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
 		__declspec(deprecated("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n"))
-			DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+			DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 #else
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 		{
 			return m_Pointer;
@@ -2143,7 +2255,7 @@ namespace SonikLib
 
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
-		DEF_FORCE_INLINE pType* DestroyOwner(void) noexcept
+		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
 		{
 			pType* l_pointer = m_Pointer;
 			m_Pointer = nullptr;
@@ -2173,7 +2285,8 @@ namespace SonikLib
 				return false;
 			};
 
-			l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			//l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			l_allocate.m_Count = new(std::nothrow) SonikLib::SonikAtomic<uint32_t>(1);
 			if (l_allocate.m_Count == nullptr)
 			{
 				delete l_allocate.m_Pointer;
@@ -2219,14 +2332,14 @@ namespace SonikLib
 
 	public:
 		//コンストラクタ
-		DEF_FORCE_INLINE UniqueSmtPtr(void) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(void) SLIB_CVR_NOEXCEPT
 			:m_Pointer(nullptr)
 		{
 			//no process
 		};
 
 		//コピーコンストラクタ（実質ユニークポインタなのでムーヴコンストラクタに等しい、がstd::moveをいちいち使うのもめんどくさい場合もあるので。)
-		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType[]>& _OwnerSwap_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType[]>& _OwnerSwap_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_OwnerSwap_.m_Pointer)
 			, m_Allocate(std::move(_OwnerSwap_.m_Allocate))
 		{
@@ -2235,7 +2348,7 @@ namespace SonikLib
 		};
 
 		//ムーヴコンストラクタ。本当のムーヴコンストラクタ。std::move使用時にコールされまっせ。
-		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType[]>&& _OwnerSwap_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr(UniqueSmtPtr<pType[]>&& _OwnerSwap_) SLIB_CVR_NOEXCEPT
 			:m_Pointer(_OwnerSwap_.m_Pointer)
 			, m_Allocate(std::move(_OwnerSwap_.m_Allocate))
 		{
@@ -2246,16 +2359,16 @@ namespace SonikLib
 		//デストラクタ
 		DEF_FORCE_INLINE ~UniqueSmtPtr(void)
 		{
-			m_Allocate->CallDestructor(m_Pointer);
+			//m_Allocate->CallDestructor(m_Pointer);
 			m_Allocate->memdel(m_Pointer);
 		};
 
 		//operator = (Copy)
-		DEF_FORCE_INLINE UniqueSmtPtr<pType[]>& operator =(UniqueSmtPtr<pType[]>& _SetObj_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr<pType[]>& operator =(UniqueSmtPtr<pType[]>& _SetObj_) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Pointer != _SetObj_.m_Pointer)
 			{
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Pointer = _SetObj_.m_Pointer;
 				m_Allocate = std::move(_SetObj_.m_Allocate);
@@ -2268,11 +2381,11 @@ namespace SonikLib
 		};
 
 		//operator =(Move)
-		DEF_FORCE_INLINE UniqueSmtPtr<pType[]>& operator =(UniqueSmtPtr<pType[]>&& _SetObj_) noexcept
+		DEF_FORCE_INLINE UniqueSmtPtr<pType[]>& operator =(UniqueSmtPtr<pType[]>&& _SetObj_) SLIB_CVR_NOEXCEPT
 		{
 			if (m_Pointer != _SetObj_.m_Pointer)
 			{
-				m_Allocate->CallDestructor(m_Pointer);
+				//m_Allocate->CallDestructor(m_Pointer);
 				m_Allocate->memdel(m_Pointer);
 				m_Pointer = _SetObj_.m_Pointer;
 				m_Allocate = std::move(_SetObj_.m_Allocate);
@@ -2285,7 +2398,7 @@ namespace SonikLib
 		};
 
 		//Null なら True
-		DEF_FORCE_INLINE bool IsNullptr(void) noexcept
+		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -2296,16 +2409,16 @@ namespace SonikLib
 #if defined(__GNUC__) || defined(__clang__)
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n")))
 
 #elif defined(_MSC_VER) 
 		//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
 		// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
 		__declspec(deprecated("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n"))
-			DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+			DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 #else
-		DEF_FORCE_INLINE pType* GetPointer(void) noexcept
+		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
 		{
 			return m_Pointer;
@@ -2313,7 +2426,7 @@ namespace SonikLib
 
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
-		DEF_FORCE_INLINE pType* DestroyOwner(void) noexcept
+		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
 		{
 			pType* l_pointer = m_Pointer;
 			m_Pointer = nullptr;
@@ -2343,7 +2456,8 @@ namespace SonikLib
 				return false;
 			};
 
-			l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			//l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
+			l_allocate.m_Count = new(std::nothrow) SonikLib::SonikAtomic<uint32_t>(1);
 			if (l_allocate.m_Count == nullptr)
 			{
 				delete l_allocate.m_Pointer;
@@ -2492,14 +2606,16 @@ namespace SonikLib
 	template <class PtrTemplateValueType>
 	DEF_FORCE_INLINE void SmtPtrConvert_UniqueToShared(UniqueSmtPtr<PtrTemplateValueType>& _unique_, SharedSmtPtr<PtrTemplateValueType>& _shared_)
 	{
-		void* l_mblock = _unique_.m_Allocate.MemAlloc(sizeof(std::atomic<unsigned int>));
+		//void* l_mblock = _unique_.m_Allocate.MemAlloc(sizeof(std::atomic<unsigned int>));
+		void* l_mblock = _unique_.m_Allocate.MemAlloc(sizeof(SonikLib::SonikAtomic<uint32_t>));
 		if (l_mblock == nullptr)
 		{
 			//失敗
 			return;
 		};
 
-		std::atomic<unsigned int>* l_count = new(l_mblock) std::atomic<unsigned int>(1);
+		//std::atomic<unsigned int>* l_count = new(l_mblock) std::atomic<unsigned int>(1);
+		SonikLib::SonikAtomic<uint32_t>* l_count = new(l_mblock) SonikLib::SonikAtomic<uint32_t>(1);
 
 		_shared_.Release();
 
@@ -2516,14 +2632,16 @@ namespace SonikLib
 	DEF_FORCE_INLINE void SmtPtrConvert_UniqueToShared(UniqueSmtPtr<PtrTemplateValueType[]>& _unique_, SharedSmtPtr<PtrTemplateValueType[]>& _shared_)
 	{
 		//配列じゃない処理とかわらんとです。
-		void* l_mblock = _unique_.m_Allocate.MemAlloc(sizeof(std::atomic<unsigned int>));
+		//void* l_mblock = _unique_.m_Allocate.MemAlloc(sizeof(std::atomic<unsigned int>));
+		void* l_mblock = _unique_.m_Allocate.MemAlloc(sizeof(SonikLib::SonikAtomic<uint32_t>));
 		if (l_mblock == nullptr)
 		{
 			//失敗
 			return;
 		};
 
-		std::atomic<unsigned int>* l_count = new(l_mblock) std::atomic<unsigned int>(1);
+		//std::atomic<unsigned int>* l_count = new(l_mblock) std::atomic<unsigned int>(1);
+		SonikLib::SonikAtomic<uint32_t>* l_count = new(l_mblock) SonikLib::SonikAtomic<uint32_t>(1);
 
 		_shared_.Release();
 

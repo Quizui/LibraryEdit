@@ -111,7 +111,7 @@ namespace SonikLib
     };
     
     //SingletonCreate
-    SonikAssignFreeNumber& SonikAssignFreeNumber::CreateSingletonObject(void)
+    SonikAssignFreeNumber& SonikAssignFreeNumber::SingletonCreate(void)
     {
         static SonikAssignFreeNumber _inst_;
         return _inst_;
