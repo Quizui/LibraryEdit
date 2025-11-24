@@ -315,6 +315,12 @@ namespace SonikLib
 
 		};
 
+		DEF_FORCE_INLINE AllocatorClassType* operator ->(void) const
+		{
+			return m_Pointer;
+
+		};
+
 		DEF_FORCE_INLINE AllocatorClassType& operator*(void) const
 		{
 			return (*m_Pointer);
@@ -596,6 +602,12 @@ namespace SonikLib
 		};
 
 		DEF_FORCE_INLINE pType* operator ->(void)
+		{
+			return m_Pointer;
+
+		};
+
+		DEF_FORCE_INLINE pType* operator ->(void) const
 		{
 			return m_Pointer;
 
@@ -967,6 +979,12 @@ namespace SonikLib
 		};
 
 		DEF_FORCE_INLINE pType* operator ->(void)
+		{
+			return m_Pointer;
+
+		};
+
+		DEF_FORCE_INLINE pType* operator ->(void) const
 		{
 			return m_Pointer;
 
@@ -1891,6 +1909,12 @@ namespace SonikLib
 
 		};
 
+		DEF_FORCE_INLINE pType* operator ->(void) const
+		{
+			return m_Pointer;
+
+		};
+
 		DEF_FORCE_INLINE pType& operator*(void) const
 		{
 			return (*m_Pointer);
@@ -2090,6 +2114,12 @@ namespace SonikLib
 		};
 
 		DEF_FORCE_INLINE pType* operator ->(void)
+		{
+			return m_Pointer;
+
+		};
+
+		DEF_FORCE_INLINE pType* operator ->(void) const
 		{
 			return m_Pointer;
 

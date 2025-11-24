@@ -61,15 +61,15 @@
 },
 {
   "directory": "D:/TheiaProject_Edit/SonikLibraryAPI/Debug_x64",
-  "command": "D:\\Development\\MSYS64\\clang64\\bin\\clang++.exe -DSLIB_SMTPTR_ASSERTOFF -D_DEBUG -D_WIN64 -D__SONIK_x86_64__ -D__cplusplus=202002L -I/include -g -g -std=c++20 -fmessage-length=0 -finput-charset=UTF-8 -fexec-charset=UTF-8 -fno-omit-frame-pointer -Wall -std=gnu++20 -o CMakeFiles\\Dx64_SonikLibraryAPI.dir\\MathBit\\SonikMathStandard.cpp.obj -c D:\\TheiaProject_Edit\\SonikLibraryAPI\\MathBit\\SonikMathStandard.cpp",
-  "file": "D:/TheiaProject_Edit/SonikLibraryAPI/MathBit/SonikMathStandard.cpp",
-  "output": "D:/TheiaProject_Edit/SonikLibraryAPI/Debug_x64/CMakeFiles/Dx64_SonikLibraryAPI.dir/MathBit/SonikMathStandard.cpp.obj"
+  "command": "D:\\Development\\MSYS64\\clang64\\bin\\clang++.exe -DSLIB_SMTPTR_ASSERTOFF -D_DEBUG -D_WIN64 -D__SONIK_x86_64__ -D__cplusplus=202002L -I/include -g -g -std=c++20 -fmessage-length=0 -finput-charset=UTF-8 -fexec-charset=UTF-8 -fno-omit-frame-pointer -Wall -std=gnu++20 -o CMakeFiles\\Dx64_SonikLibraryAPI.dir\\MathBit\\SonikMathNumeric.cpp.obj -c D:\\TheiaProject_Edit\\SonikLibraryAPI\\MathBit\\SonikMathNumeric.cpp",
+  "file": "D:/TheiaProject_Edit/SonikLibraryAPI/MathBit/SonikMathNumeric.cpp",
+  "output": "D:/TheiaProject_Edit/SonikLibraryAPI/Debug_x64/CMakeFiles/Dx64_SonikLibraryAPI.dir/MathBit/SonikMathNumeric.cpp.obj"
 },
 {
   "directory": "D:/TheiaProject_Edit/SonikLibraryAPI/Debug_x64",
-  "command": "D:\\Development\\MSYS64\\clang64\\bin\\clang++.exe -DSLIB_SMTPTR_ASSERTOFF -D_DEBUG -D_WIN64 -D__SONIK_x86_64__ -D__cplusplus=202002L -I/include -g -g -std=c++20 -fmessage-length=0 -finput-charset=UTF-8 -fexec-charset=UTF-8 -fno-omit-frame-pointer -Wall -std=gnu++20 -o CMakeFiles\\Dx64_SonikLibraryAPI.dir\\MathBit\\SonikMathTrigonometric.cpp.obj -c D:\\TheiaProject_Edit\\SonikLibraryAPI\\MathBit\\SonikMathTrigonometric.cpp",
-  "file": "D:/TheiaProject_Edit/SonikLibraryAPI/MathBit/SonikMathTrigonometric.cpp",
-  "output": "D:/TheiaProject_Edit/SonikLibraryAPI/Debug_x64/CMakeFiles/Dx64_SonikLibraryAPI.dir/MathBit/SonikMathTrigonometric.cpp.obj"
+  "command": "D:\\Development\\MSYS64\\clang64\\bin\\clang++.exe -DSLIB_SMTPTR_ASSERTOFF -D_DEBUG -D_WIN64 -D__SONIK_x86_64__ -D__cplusplus=202002L -I/include -g -g -std=c++20 -fmessage-length=0 -finput-charset=UTF-8 -fexec-charset=UTF-8 -fno-omit-frame-pointer -Wall -std=gnu++20 -o CMakeFiles\\Dx64_SonikLibraryAPI.dir\\MathBit\\SonikMathStandard.cpp.obj -c D:\\TheiaProject_Edit\\SonikLibraryAPI\\MathBit\\SonikMathStandard.cpp",
+  "file": "D:/TheiaProject_Edit/SonikLibraryAPI/MathBit/SonikMathStandard.cpp",
+  "output": "D:/TheiaProject_Edit/SonikLibraryAPI/Debug_x64/CMakeFiles/Dx64_SonikLibraryAPI.dir/MathBit/SonikMathStandard.cpp.obj"
 },
 {
   "directory": "D:/TheiaProject_Edit/SonikLibraryAPI/Debug_x64",

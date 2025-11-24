@@ -6,10 +6,7 @@
  */
 
 #include "SonikMathStandard.h"
-#include "SonikMathTrigonometric.h"
-#include "memory.h"
-#include <stdint.h>
-#include <stdexcept>
+#include <cstdint>
 
 //#include <fftw3.h>
 
@@ -50,105 +47,71 @@ namespace SonikMath
 	//小数点以下の切り捨てを行います。
 	double floor(double _val_)
 	{
-	    int intValue = static_cast<int>(_val_);
+	    int64_t intValue = static_cast<int64_t>(_val_);
 	    if (_val_ < 0 && _val_ != intValue) {
 	        return intValue - 1;
 	    }
-	    return intValue;
+	    return static_cast<double>(intValue);
 	};
 
 	//余剰の計算をします。
 	double mod(double _num_, double _denom_)
 	{
-	    if (_denom_ == 0.0)
-	    {
-	        // ０除算対策
-	        return 0.0;
-	    };
+    	if(_denom_ == 0.0)
+		{
+			return 0.0;
+		};
 
-	    double result = _num_ - _denom_ * SonikMath::floor(_num_ / _denom_);
+    	double q = SonikMath::floor(_num_ / _denom_);
+    	double result = _num_ - _denom_ * q;
 
-	    // 結果が負で、分母が正の場合、結果に分母を加えます
-	    if (result < 0.0 && _denom_ > 0.0)
-	    {
-	        result += _denom_;
-	    }
-	    // 結果が正で、分母が負の場合、結果から分母を引きます
-	    else if (result > 0.0 && _denom_< 0.0)
-	    {
-	        result -= _denom_;
-	    }
+    	if (result < 0.0)
+		{
+        	result += SonikMath::abs(_denom_);
+    	};
 
 	    return result;
 	};
 	float mod(float _num_, float _denom_)
 	{
-	    if (_denom_ == 0.0)
-	    {
-	        // ０除算対策
-	        return 0.0;
-	    };
+    	if(_denom_ == 0.0f)
+		{
+			return 0.0f;
+		};
 
-	    float result = _num_ - _denom_ * SonikMath::floor(_num_ / _denom_);
+    	double q = SonikMath::floor(_num_ / _denom_);
+    	double result = _num_ - _denom_ * q;
 
-	    // 結果が負で、分母が正の場合、結果に分母を加えます
-	    if (result < 0.0 && _denom_ > 0.0)
-	    {
-	        result += _denom_;
-	    }
-	    // 結果が正で、分母が負の場合、結果から分母を引きます
-	    else if (result > 0.0 && _denom_< 0.0)
-	    {
-	        result -= _denom_;
-	    }
+    	if (result < 0.0f)
+		{
+        	result += SonikMath::abs(_denom_);
+    	};
 
-	    return static_cast<float>(result);
+	    return result;
 	};
 	int64_t mod(int64_t _num_, int64_t _denom_)
 	{
-	    if (_denom_ == 0)
-	    {
-	        // ０除算対策
-	        return 0;
-	    };
-
-	    double result = _num_ - _denom_ * (_num_ / _denom_);
-
-	    // 結果が負で、分母が正の場合、結果に分母を加えます
-	    if (result < 0.0 && _denom_ > 0.0)
-	    {
-	        result += _denom_;
-	    }
-	    // 結果が正で、分母が負の場合、結果から分母を引きます
-	    else if (result > 0.0 && _denom_< 0.0)
-	    {
-	        result -= _denom_;
-	    }
-
-	    return static_cast<int64_t>(result);
+    	if(_denom_ == 0)
+		{
+			return 0;
+		};
+		
+		int64_t result = _num_ % _denom_;
+		if (result < 0)
+		{
+			result += SonikMath::abs(_denom_);
+		};
+		
+		return result;
 	};
 	uint64_t mod(uint64_t _num_, uint64_t _denom_)
 	{
-	    if (_denom_ == 0)
-	    {
-	        // ０除算対策
-	        return 0;
-	    };
-
-	    double result = _num_ - _denom_ * (_num_ / _denom_);
-
-	    // 結果が負で、分母が正の場合、結果に分母を加えます
-	    if (result < 0.0 && _denom_ > 0.0)
-	    {
-	        result += _denom_;
-	    }
-	    // 結果が正で、分母が負の場合、結果から分母を引きます
-	    else if (result > 0.0 && _denom_< 0.0)
-	    {
-	        result -= _denom_;
-	    }
-
-	    return static_cast<uint64_t>(result);
+    	if (_denom_ == 0)
+		{
+			return 0;
+		};
+		
+    	return _num_ % _denom_; // 常に正なのでそのままでOK
 	};
 
 
@@ -159,7 +122,11 @@ namespace SonikMath
 	};
 	double abs(double _abs_) noexcept
 	{
-		 return (_abs_ < 0) ? (-_abs_) : _abs_;
+		 return (_abs_ < 0.0) ? (-_abs_) : _abs_;
+	};
+	float abs(float _abs_) noexcept
+	{
+		 return (_abs_ < 0.0f) ? (-_abs_) : _abs_;
 	};
 
 	//負の数の対応した平方根を計算します。

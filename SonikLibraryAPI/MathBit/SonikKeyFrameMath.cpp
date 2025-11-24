@@ -9,7 +9,7 @@
 
 #include <math.h>
 #include "SonikMathDistance.h"
-#include "SonikMathTrigonometric.h"
+#include "SonikMathnumeric.h"
 
 namespace SonikMath
 {

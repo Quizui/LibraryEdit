@@ -327,12 +327,12 @@ namespace SonikLib
 				return VACIterator(&(AllocAreaPtr - 1));
 			};
 
-			DEF_FORCE_INLINE uint64_t GetAllocCount(void) SLIB_CVR_NOEXCEPT
+			DEF_FORCE_INLINE uint64_t GetAllocCount(void) const SLIB_CVR_NOEXCEPT
 			{
 				return AllocCount;
 			};
 
-			DEF_FORCE_INLINE uint64_t GetSizeMax(void) SLIB_CVR_NOEXCEPT
+			DEF_FORCE_INLINE uint64_t GetSizeMax(void) const SLIB_CVR_NOEXCEPT
 			{
 				return MaxCnt;
 			};

@@ -13,12 +13,6 @@
 //未分類や使用範囲が広い計算類を実装します。
 namespace SonikMath
 {
-	struct SonikComplex
-	{
-		uint32_t r; //実部、実数
-		uint32_t i; //虚部、虚数
-	};
-
 	//2を底とする対数を計算します。
 	int log2(int x);
 	//指定した値の2の累乗(るいじょう)数を計算します。
@@ -36,6 +30,7 @@ namespace SonikMath
 	//絶対値を計算します。
 	int64_t abs(int64_t _abs_) noexcept;
 	double abs(double _abs_) noexcept;
+	float abs(float _abs_) noexcept;
 
 	//負の数の対応した平方根を計算します。
 	//第2引数：精度を指定することが可能です。
