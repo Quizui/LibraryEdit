@@ -3,7 +3,7 @@
 #ifndef __SONIKLIB_STRING_FUNCTION_VARIABLES_TYPE_PERMISSIBLE_LIMIT_TEMPLATE_H__
 #define __SONIKLIB_STRING_FUNCTION_VARIABLES_TYPE_PERMISSIBLE_LIMIT_TEMPLATE_H__
 
-#include "../CPPGrammarDefines.h"
+#include <CPPGrammarDefines.h>
 
 //char8_t互換対応
 #if defined(_MSC_VER) && _MSC_VER <= 1600

@@ -1,10 +1,10 @@
 #ifndef __SONIKLIB_NUMERIC_HEDDER__
 #define __SONIKLIB_NUMERIC_HEDDER__
 
-#include "../CPPGrammarDefines.h"
-#include "../CompilersPreProcesser.h"
-#include "../SmartPointer/SonikSmartPointer.hpp"
-#include "../Container/RangedForContainer.hpp"
+#include <CPPGrammarDefines.h>
+#include <CompilersPreProcesser.h>
+#include <SmartPointer/SonikSmartPointer.hpp>
+#include <Container/RangedForContainer.hpp>
 
 namespace SonikMath
 {
@@ -170,6 +170,7 @@ namespace SonikMath
     //Disntance Fourier Transform(離散フーリエ変換)
     SLIB_CVR_USING(SLIB_SAMPLINGLIST, SonikLib::SharedSmtPtr<SonikLib::Container::SonikVariableArrayContainer<SonikComplex>>);
     bool DFT(const SLIB_SAMPLINGLIST in_Sampling, SLIB_SAMPLINGLIST& out_Sampling);
+    bool IDFT(const SLIB_SAMPLINGLIST in_Sampling, SLIB_SAMPLINGLIST& out_Sampling);
 
 
 #ifdef _DEBUG

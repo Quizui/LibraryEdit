@@ -1,9 +1,9 @@
 #pragma once
 
-#ifndef SONIKATOMICQUEUE_H_
-#define SONIKATOMICQUEUE_H_
+#ifndef SONIKATOMICSTACK_H_
+#define SONIKATOMICSTACK_H_
 
- //一般的なQueue機構を提供します。
+//一般的なStack(LIFO)機構を提供します。
 
 #include <cstdint>
 #include <new>
@@ -18,44 +18,45 @@ namespace SonikLib
 	namespace Container
 	{
 		//ポインタ型を指定した場合は使用者側の所有権としています。内部ではdeleteしません。
-		template<class QueueType>
-		class SonikAtomicQueue
+		template<class StackType>
+		class SonikAtomicStack
 		{
 		private:
 			//インナークラス。ノードを外に出す実装はないので...。
 			template<class ClsType>
-			class QueueNode
+			class StackNode
 			{
 			public:
 				ClsType m_TemplateObject;						//実際のオブジェクト
-				QueueNode<ClsType>* Next;	//次のQueueへのポインタ
+				StackNode<ClsType>* Next;	//次のStackへのポインタ
 
 			public:
 				//construcotr
-				DEF_FORCE_INLINE QueueNode(void) SLIB_CVR_NOEXCEPT
+				DEF_FORCE_INLINE StackNode(void) SLIB_CVR_NOEXCEPT
 					:Next(0)
 				{
 				};
 				//destructor
-				DEF_FORCE_INLINE ~QueueNode(void) SLIB_CVR_NOEXCEPT
+				DEF_FORCE_INLINE ~StackNode(void) SLIB_CVR_NOEXCEPT
 				{
 
 				};
 			};
 
-			using TypeNode = QueueNode<QueueType>;
+			//using TypeNode = StackNode<StackType>;
+			SLIB_CVR_USING(TypeNode, StackNode<StackType>);
 
 		private:
 			//フリーアイテムリスト
-			TypeNode* m_QueueAllocArea; //配列先頭のポインタ。
+			TypeNode* m_StackAllocArea; //配列先頭のポインタ。
 			TypeNode* m_Free; // リンクリストを操作するポインタ。
 
-			//QueueされたNode
+			//StackされたNode
 			TypeNode* _first;
 			TypeNode* _last;
 
 			//設定した最大キュー数
-			uint32_t Queue_RoundCount;
+			uint32_t Stack_RoundCount;
 
 			//アトミックブロッククラス。マルチスレッド対応にするための排他制御クラスです。
 			SonikLib::S_CAS::SonikAtomicLock shortblock;
@@ -63,36 +64,21 @@ namespace SonikLib
 			SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> m_allocator;
 
 		private:
-		#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
-        	//コピーと代入の禁止
-			SonikAtomicQueue(const SonikAtomicQueue& _copy_) = delete;
-			SonikAtomicQueue(SonikAtomicQueue&& _move_) = delete;
-			SonikAtomicQueue& operator =(const SonikAtomicQueue& _copy_) = delete;
-			SonikAtomicQueue& operator =(SonikAtomicQueue&& _move_) = delete;
-
-   	 	#else //C++ 11 以下
-        	//コピーと代入の禁止
-			SonikAtomicQueue(const SonikAtomicQueue& _copy_);
-			SonikAtomicQueue& operator =(const SonikAtomicQueue& _copy_);
-
-        	#if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
-            	//MSVC2010ならmove可能なので定義だけしておく。
-            	SonikAtomicQueue(SonikAtomicQueue&& _copy_);
-            	SonikAtomicQueue& operator =(SonikAtomicQueue&& _copy_);
-
-        	#endif
-    	#endif
+			SonikAtomicStack(const SonikAtomicStack& _copy_) = delete;
+			SonikAtomicStack(SonikAtomicStack&& _move_) = delete;
+			SonikAtomicStack& operator =(const SonikAtomicStack& _copy_) = delete;
+			SonikAtomicStack& operator =(SonikAtomicStack&& _move_) = delete;
 
 		public:
-			DEF_FORCE_INLINE SonikAtomicQueue(uint32_t QueueItemNum = 100)
+			DEF_FORCE_INLINE SonikAtomicStack(uint32_t StackItemNum = 100)
 				:_first(nullptr)
 				, _last(nullptr)
-				, Queue_RoundCount(QueueItemNum)
+				, Stack_RoundCount(StackItemNum)
 			{
 
-				if (Queue_RoundCount >= UINT32_MAX)
+				if (Stack_RoundCount >= UINT32_MAX)
 				{
-					--Queue_RoundCount;
+					--Stack_RoundCount;
 				};
 
 				SonikLib::SLibAllocateInterface* l_alloc_obj = nullptr;
@@ -106,14 +92,15 @@ namespace SonikLib
 						throw std::bad_alloc();
 					};
 
-					void* l_allocbuffer = m_allocator->memalArray_Exception(sizeof(TypeNode), Queue_RoundCount);
+					void* l_allocbuffer = m_allocator->memalArray_Exception(sizeof(TypeNode), Stack_RoundCount);
 					//オブジェクトをカウント分ヒープからnewして再利用しまくる。
-					m_QueueAllocArea = new(l_allocbuffer) TypeNode[Queue_RoundCount];
+					m_StackAllocArea = new(l_allocbuffer) TypeNode[Stack_RoundCount];
 
 
-				}catch (std::bad_alloc&)
+				}
+				catch (std::bad_alloc&)
 				{
-					if( m_allocator.IsNullptr() )
+					if (m_allocator.IsNullptr())
 					{
 						delete l_alloc_obj;
 					};
@@ -121,30 +108,30 @@ namespace SonikLib
 				};
 
 				//リンクをつなげる。
-				m_Free = m_QueueAllocArea;
-				for (uint32_t i = 0; i < (Queue_RoundCount - 1); ++i)
+				m_Free = m_StackAllocArea;
+				for (uint32_t i = 0; i < (Stack_RoundCount - 1); ++i)
 				{
 					m_Free[i].Next = &m_Free[i + 1];
 				};
 
 			};
-			DEF_FORCE_INLINE SonikAtomicQueue(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, uint32_t QueueItemNum = 100)
-			:_first(nullptr)
-			, _last(nullptr)
-			, Queue_RoundCount(QueueItemNum)
-			,m_allocator(_allocator_)
+			DEF_FORCE_INLINE SonikAtomicStack(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, uint32_t StackItemNum = 100)
+				:_first(nullptr)
+				, _last(nullptr)
+				, Stack_RoundCount(StackItemNum)
+				, m_allocator(_allocator_)
 			{
 
-				if (Queue_RoundCount >= UINT32_MAX)
+				if (Stack_RoundCount >= UINT32_MAX)
 				{
-					--Queue_RoundCount;
+					--Stack_RoundCount;
 				};
 
 				try
 				{
-					void* l_allocbuffer = m_allocator->memalArray_Exception(sizeof(TypeNode), Queue_RoundCount);
+					void* l_allocbuffer = m_allocator->memalArray_Exception(sizeof(TypeNode), Stack_RoundCount);
 					//オブジェクトをカウント分ヒープからnewして再利用しまくる。
-					m_QueueAllocArea = new(l_allocbuffer) TypeNode[Queue_RoundCount];
+					m_StackAllocArea = new(l_allocbuffer) TypeNode[Stack_RoundCount];
 
 
 				}
@@ -154,65 +141,65 @@ namespace SonikLib
 				};
 
 				//リンクをつなげる。
-				m_Free = m_QueueAllocArea;
-				for (uint32_t i = 0; i < (Queue_RoundCount - 1); ++i)
+				m_Free = m_StackAllocArea;
+				for (uint32_t i = 0; i < (Stack_RoundCount - 1); ++i)
 				{
 					m_Free[i].Next = &m_Free[i + 1];
 				};
 
 			};
 
-			DEF_FORCE_INLINE ~SonikAtomicQueue(void)
+			DEF_FORCE_INLINE ~SonikAtomicStack(void)
 			{
-				//Queue内のオブジェクトの破棄までの責任は持たないので、そのまま配列delete
-				if (m_QueueAllocArea != nullptr)
+				//Stack内のオブジェクトの破棄までの責任は持たないので、そのまま配列delete
+				if (m_StackAllocArea != nullptr)
 				{
-					//m_allocator->CallDestructor_Array(m_QueueAllocArea, Queue_RoundCount);
-					m_allocator->memdelArray(m_QueueAllocArea, Queue_RoundCount);
+					//m_allocator->CallDestructor_Array(m_StackAllocArea, Stack_RoundCount);
+					m_allocator->memdelArray(m_StackAllocArea, Stack_RoundCount);
 				};
 
 			};
 
-			DEF_FORCE_INLINE bool Initialize(uint32_t QueueItemMax) SLIB_CVR_NOEXCEPT
+			DEF_FORCE_INLINE bool Initialize(uint32_t StackItemMax) SLIB_CVR_NOEXCEPT
 			{
-				if (QueueItemMax >= UINT32_MAX)
+				if (StackItemMax >= UINT32_MAX)
 				{
-					--QueueItemMax;
+					--StackItemMax;
 				};
 
 				//新しい領域を確保
-				void* l_allocbuffer = m_allocator->memalArray(sizeof(TypeNode), QueueItemMax);
-				if(l_allocbuffer == nullptr)
+				void* l_allocbuffer = m_allocator->memalArray(sizeof(TypeNode), StackItemMax);
+				if (l_allocbuffer == nullptr)
 				{
 					return false;
 				};
 
 				//元々の領域を破棄。
-				if (m_QueueAllocArea != nullptr)
+				if (m_StackAllocArea != nullptr)
 				{
-					m_allocator->CallDestructor_Array(m_QueueAllocArea);
-					m_allocator->memdelArray(m_QueueAllocArea);
+					m_allocator->CallDestructor_Array(m_StackAllocArea);
+					m_allocator->memdelArray(m_StackAllocArea);
 
-					m_QueueAllocArea = nullptr;
+					m_StackAllocArea = nullptr;
 				};
 
 				//オブジェクトをカウント分newして再利用しまくる。
-				m_QueueAllocArea = new(l_allocbuffer) TypeNode[QueueItemMax];
+				m_StackAllocArea = new(l_allocbuffer) TypeNode[StackItemMax];
 
 				//リンクをつなげる。
-				m_Free = m_QueueAllocArea;
-				for (uint32_t i = 0; i < (QueueItemMax - 1); ++i)
+				m_Free = m_StackAllocArea;
+				for (uint32_t i = 0; i < (StackItemMax - 1); ++i)
 				{
 					m_Free[i].Next = &m_Free[i + 1];
 				};
 
 				//変数セットして終了
-				Queue_RoundCount = QueueItemMax;
+				Stack_RoundCount = StackItemMax;
 				return true;
 			};
 
-			//書き込み(エンキュー)
-			DEF_FORCE_INLINE bool EnQueue(QueueType SetData) SLIB_CVR_NOEXCEPT
+			//書き込み(プッシュ)
+			DEF_FORCE_INLINE bool Push(StackType SetData) SLIB_CVR_NOEXCEPT
 			{
 				TypeNode* lp_ptr;
 
@@ -229,22 +216,19 @@ namespace SonikLib
 				lp_ptr = m_Free;
 				m_Free = m_Free->Next;
 
-				//nextをnullptrに初期化。
-				lp_ptr->Next = nullptr;
+				//LIFO実装
+				//新しいノードの Next を、現在の先頭ノード (_first) に繋げる。
+				lp_ptr->Next = _first;
 
-				if (_first == nullptr && _last == nullptr)
+				//新しいノード (lp_ptr) を、新しい先頭ノード (_first) とする。
+				_first = lp_ptr;
+
+				//_last の更新: リストが空だった場合にのみ更新する。(リストが空のときは、新しい要素が最初で最後の要素となるため)
+				if (_last == nullptr)
 				{
-					//初回ならそれぞれ挿入。
-					_first = lp_ptr;
-					_last = lp_ptr;
-				}
-				else
-				{
-					//すでにオブジェクトがあるなら最後尾に挿入
-					//フリーリストから取得。
-					_last->Next = lp_ptr;
 					_last = lp_ptr;
 				};
+
 
 				//値設定。
 				lp_ptr->m_TemplateObject = SetData;
@@ -256,9 +240,9 @@ namespace SonikLib
 				return true;
 			};
 
-			//取得（デキュー)
+			//取得（Pop)
 			//TryLock版(ロックが取れなければすぐに処理が返ります。
-			DEF_FORCE_INLINE bool TryDeQueue(QueueType& GetValue) SLIB_CVR_NOEXCEPT
+			DEF_FORCE_INLINE bool TryPop(StackType& GetValue) SLIB_CVR_NOEXCEPT
 			{
 
 				if (!shortblock.try_lock())
@@ -279,15 +263,16 @@ namespace SonikLib
 				//とりあえず取得してポインタを進める。
 				pTmp = _first;
 
-				if (_first == _last)
+				//先頭を次のノードへ進める
+				_first = _first->Next;
+
+				//_firstがnullptrになった場合（リストが空になった場合）、_lastもクリアする
+				if (_first == nullptr)
 				{
-					//要素トップのポインタとラストのポインタが一緒なら最終要素のため、lastを更新。
 					_last = nullptr;
 				}
 
-				_first = _first->Next;
-
-				//DeQueueしたものはフリーブロックへ移動させる。
+				//Popしたものはフリーブロックへ移動させる。
 				pTmp->Next = m_Free;
 				m_Free = pTmp;
 
@@ -303,9 +288,9 @@ namespace SonikLib
 				return true;
 			};
 
-			//取得（デキュー)
+			//取得（Pop)
 			//通常ロック版(ビジーループでロックが取れるまで待ちます。)
-			DEF_FORCE_INLINE bool DeQueue(QueueType& GetValue) SLIB_CVR_NOEXCEPT
+			DEF_FORCE_INLINE bool Pop(StackType& GetValue) SLIB_CVR_NOEXCEPT
 			{
 
 				shortblock.lock();
@@ -323,15 +308,16 @@ namespace SonikLib
 				//とりあえず取得してポインタを進める。
 				pTmp = _first;
 
-				if (_first == _last)
+				//先頭を次のノードへ進める
+				_first = _first->Next;
+
+				//_firstがnullptrになった場合（リストが空になった場合）、_lastもクリアする
+				if (_first == nullptr)
 				{
-					//要素トップのポインタとラストのポインタが一緒なら最終要素のため、lastを更新。
 					_last = nullptr;
 				}
 
-				_first = _first->Next;
-
-				//DeQueueしたものはフリーブロックへ移動させる。
+				//Popしたものはフリーブロックへ移動させる。
 				pTmp->Next = m_Free;
 				m_Free = pTmp;
 
@@ -353,4 +339,4 @@ namespace SonikLib
 }; //end namespace SonikLib
 
 
-#endif /* SONIKATOMICQUEUE_H_ */
+#endif /* SONIKATOMICSTACK_H_ */

@@ -10,7 +10,7 @@
 #ifndef __SONIKSTRING_SONIKSTRING_DEFINITION_H__
 #define __SONIKSTRING_SONIKSTRING_DEFINITION_H__
 
-#include "../CPPGrammarDefines.h"
+#include <CPPGrammarDefines.h>
 
 #if defined(SONIKSTRING_USED_UTF8)
 #if defined(SONIKSTRING_USED_UTF16) || defined(SONIKSTRING_USED_WIDE)

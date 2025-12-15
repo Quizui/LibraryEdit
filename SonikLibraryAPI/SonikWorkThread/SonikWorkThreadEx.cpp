@@ -1,9 +1,9 @@
 //C++11実装
 #include "SonikWorkThreadEx.h"
 
-#include "../FunctionObject/FunctionObjectSystemInterface.hpp"
-#include "../SonikCAS/SonikAtomicLock.h"
-#include "../Container/SonikAtomicQueue.hpp"
+#include <FunctionObject/FunctionObjectSystemInterface.hpp>
+#include <SonikCAS/SonikAtomicLock.h>
+#include <Container/SonikAtomicQueue.hpp>
 #include "./SonikThreadWaitingObject.hpp"
 
 #include <thread>

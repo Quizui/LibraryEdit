@@ -1,7 +1,7 @@
 #include <new>
 #include "SonikAssignFreeNumber.h"
-#include "../Container/RangedForContainer.hpp"
-#include "../MathBit/MathBit.hpp"
+#include <Container/RangedForContainer.hpp>
+#include <MathBit/MathBit.hpp>
 
 namespace SonikLib
 {

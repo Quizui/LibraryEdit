@@ -3,7 +3,7 @@
 #define __SONIKLIB_SONIKSTRING_H__
 
 #include "SonikStringBase.h"
-#include "../CPPGrammarDefines.h"
+#include <CPPGrammarDefines.h>
 
  //前方宣言===================================
 namespace SonikLib

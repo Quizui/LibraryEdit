@@ -7,14 +7,13 @@
 
 #include <fstream>
 #include <stdio.h>
-#include <map>
 
 #include "./LoadFunction.h"
+#include "./WaveBitConvert.h"
 
-#include "../../SonikString/SonikString.h"
+#include <SonikString/SonikString.h>
+#include <Audio/Format/SonikWindowsWaveFormat.h>
 
-#include "../Format/SonikWindowsWaveFormat.h"
-#include "..//Functions/WaveBitConvert.h"
 
 namespace SonikAudioLoadFunction
 {

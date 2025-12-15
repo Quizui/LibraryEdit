@@ -233,6 +233,12 @@ namespace SonikMath
     {
         //公式：X[k] = Σ_{n=0}^{N-1} x[n] * e^(-i*2πkn/N)
         int N = in_Sampling->GetAllocCount();
+		if(N == 0)
+		{
+			//0除算対策。0なら変換しない。
+			return false;
+		};
+		
         SonikComplex sumcomp; // Σ の「足し合わせる器」 → 出力 X[k] を作るための累積変数
         SonikComplex tmpcomplex; //ループ内計算用
         double theta; // θ
@@ -268,6 +274,60 @@ namespace SonikMath
         out_Sampling = outobj;
         return true;
     };
+
+	//Inverse Disntance Fourier Transform(逆離散フーリエ変換)
+	//DFTのSIN算出の符号が逆になるだけ。
+    bool IDFT(const SLIB_SAMPLINGLIST in_Sampling, SLIB_SAMPLINGLIST& out_Sampling)
+	{
+        //公式：x[n] = (1/N) Σ_{k=0}^{N-1} X[k] * e^(+i*2πkn/N)
+        int N = in_Sampling->GetAllocCount();
+		if(N == 0)
+		{
+			//0除算対策。0なら変換しない。
+			return false;
+		};
+
+		double InvN = 1 / static_cast<double>(N);
+        SonikComplex sumcomp; 	 // Σ の「足し合わせる器」 → 出力 X[k] を作るための累積変数
+        SonikComplex tmpcomplex; //ループ内計算用
+        double theta; 			 // θ
+        SLIB_SAMPLINGLIST outobj;
+
+        if(!SonikLib::Container::SonikVariableArrayContainer<SonikComplex>::CreateContainer(outobj, N))
+        {
+            return false;
+        };
+
+        for(uint32_t n=0; n < N; ++n)
+        {
+            sumcomp.re = 0.0;
+            sumcomp.im = 0.0;
+
+            for(uint32_t k=0; k < N; ++k)
+            {
+                // Σ の範囲 (k=0 → N-1)
+                // θ = 2πkn/N ※+i* は imに代入するという意味なので計算には入れない。
+                theta =  2.0 * __SONIK_MATH_M_PI_D * k * n / N;
+                
+                // e^(-iθ) = cosθ - i sinθ
+                tmpcomplex.re = Cos(theta);  // 実部 = cosθ
+                tmpcomplex.im = Sin(theta);  // 虚部 = (+sinθ)i
+                
+                // Σ の中身：x[k] * e^(-iθ)
+                sumcomp += (*in_Sampling)[k] * tmpcomplex;
+            };
+            // Σ の結果を代入
+			// (1/N) に対してΣ以降計算の算出値を掛ける
+            (*outobj)[n].re = InvN * sumcomp.re;
+			(*outobj)[n].im = InvN * sumcomp.im;
+
+        };
+
+        out_Sampling = outobj;
+        return true;
+
+	}
+
 
 #ifdef _DEBUG
 

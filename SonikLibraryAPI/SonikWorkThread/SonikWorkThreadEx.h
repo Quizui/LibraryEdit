@@ -15,7 +15,7 @@
   *
   */
 
-#include "../SmartPointer/SonikSmartPointer.hpp"
+#include <SmartPointer/SonikSmartPointer.hpp>
 
 namespace SonikLib
 {

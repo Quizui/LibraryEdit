@@ -8,10 +8,10 @@
 #include <type_traits>
 #include <utility>
 
-#include "../CompilersPreProcesser.h"
-#include "../Memory/AllocateInterface.h"
-#include "../SonikCAS/SonikAtomic.hpp"
-#include "../CPPGrammarDefines.h"
+#include <CompilersPreProcesser.h>
+#include <Memory/AllocateInterface.h>
+#include <SonikCAS/SonikAtomic.hpp>
+#include <CPPGrammarDefines.h>
 
 //MSVC2010とC++バージョン判定による可変長テンプレート判定に使う
 //デフォ0(無効化)

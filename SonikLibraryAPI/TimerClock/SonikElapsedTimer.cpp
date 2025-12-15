@@ -5,8 +5,6 @@
  *      Author: SONIK
  */
 
-#ifdef __SONIK_x86_64__
-
 #include <chrono>
 #include <thread>
 #include "SonikElapsedTimer.h"
@@ -202,4 +200,3 @@ namespace SonikLib
 
 };
 
-#endif

@@ -3,8 +3,8 @@
 #ifndef SONIKFILESYSTEMS_H_
 #define SONIKFILESYSTEMS_H_
 
-#include "../SmartPointer/SonikSmartPointer.hpp"
-#include "../SonikString/SonikString.h"
+#include <SmartPointer/SonikSmartPointer.hpp>
+#include <SonikString/SonikString.h>
 
 #include <cstdint>
 

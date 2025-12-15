@@ -6,7 +6,6 @@
  */
 
 #include "SonikMathStandard.h"
-#include <cstdint>
 
 //#include <fftw3.h>
 
@@ -116,22 +115,22 @@ namespace SonikMath
 
 
 	//絶対値を計算します。
-	int64_t abs(int64_t _abs_) noexcept
+	int64_t abs(int64_t _abs_) SLIB_CVR_NOEXCEPT
 	{
 		return (_abs_ < 0) ? (-_abs_) : _abs_;
 	};
-	double abs(double _abs_) noexcept
+	double abs(double _abs_) SLIB_CVR_NOEXCEPT
 	{
 		 return (_abs_ < 0.0) ? (-_abs_) : _abs_;
 	};
-	float abs(float _abs_) noexcept
+	float abs(float _abs_) SLIB_CVR_NOEXCEPT
 	{
 		 return (_abs_ < 0.0f) ? (-_abs_) : _abs_;
 	};
 
 	//負の数の対応した平方根を計算します。
 	//第2引数：精度を指定することが可能です。
-	double sqrt(double _sqrtval_, double _threshold_) noexcept
+	double sqrt(double _sqrtval_, double _threshold_) SLIB_CVR_NOEXCEPT
 	{
 	    if (_sqrtval_ < 0)
 	    {
@@ -162,7 +161,7 @@ namespace SonikMath
 	};
 
 	//精度を犠牲にして高速に平方根を計算します。
-	double sqrt_Quick(double _srtval_) noexcept
+	double sqrt_Quick(double _srtval_) SLIB_CVR_NOEXCEPT
 	{
 		long i;
 		double x2, y;
@@ -177,7 +176,7 @@ namespace SonikMath
 
 		return (y != 0) ? (1/y) : 0.0;
 	};
-	float sqrtF_Quick(float _srtval_) noexcept
+	float sqrtF_Quick(float _srtval_) SLIB_CVR_NOEXCEPT
 	{
 		long i;
 		float x2, y;
@@ -193,7 +192,7 @@ namespace SonikMath
 		return (y != 0) ? (1/y) : 0.0;
 	};
 	//精度を犠牲にして高速に逆平方根を計算します。
-	double rsqrt_Quick(double _srtval_) noexcept
+	double rsqrt_Quick(double _srtval_) SLIB_CVR_NOEXCEPT
 	{
 		long i;
 		double x2, y;
@@ -208,7 +207,7 @@ namespace SonikMath
 
 		return y;
 	};
-	float rsqrtF_Quick(float _srtval_) noexcept
+	float rsqrtF_Quick(float _srtval_) SLIB_CVR_NOEXCEPT
 	{
 		long i;
 		double x2, y;
@@ -223,21 +222,6 @@ namespace SonikMath
 
 		return y;
 	};
-
-	//FFT(高速フーリエ変換)を行います。
-	//作成途中。
-	//void FFT_1d(SonikComplex* p_complex, int TargetSampling)
-	//{
-		//オイラーの公式
-		//e^iθ = cosθ -i sinθ
-		// i = -1の平方根(√-1)
-
-		//
-
-	//};
-
-	//IFFT(逆高速フーリエ変換を行います。
-	//void IFFT_1d(SonikComplex* p_complex, int TargetSampling);
 };
 
 

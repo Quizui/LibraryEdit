@@ -8,7 +8,7 @@
 #ifndef SONIKPRIORITYLIST_SONIKPRIORITYLIST_H_
 #define SONIKPRIORITYLIST_SONIKPRIORITYLIST_H_
 
-#include "../SonikCAS/SonikAtomicLock.h"
+#include <SonikCAS/SonikAtomicLock.h>
 //#include "../SonikLoggerUse.h"
 #include <string>
 #include "SonikPriorityListLinearSearch.hpp"
@@ -40,10 +40,26 @@ namespace SonikLib
 		SonikLib::S_CAS::SonikAtomicLock lock_;
 
 	private:
+	#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
+    	//コピーと代入の禁止
 		SonikPriorityList(const SonikPriorityList<ListType>& _copy_) = delete;
 		SonikPriorityList(SonikPriorityList&& _move_) =delete;
 		SonikPriorityList& operator =(SonikPriorityList<ListType>& _copy_) = delete;
 		SonikPriorityList& operator =(SonikPriorityList&& _move_) =delete;
+
+
+   	#else //C++ 11 以下
+        //コピーと代入の禁止
+		SonikPriorityList(const SonikPriorityList& _copy_);
+		SonikPriorityList& operator =(const SonikPriorityList& _copy_);
+
+        #if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
+           	//MSVC2010ならmove可能なので定義だけしておく。
+           	SonikPriorityList(SonikPriorityList&& _copy_);
+           	SonikPriorityList& operator =(SonikPriorityList&& _copy_);
+
+        #endif
+    #endif
 
 		//プライベートソート関数 StartとEndを含む範囲内を挿入ソートします。
 		//引数1及び、2の位置は置き換わります。

@@ -8,7 +8,7 @@
 #ifndef SONIKPRIORITYLIST_SONIKPRIORITYLISTLINEARSEARCH_H_
 #define SONIKPRIORITYLIST_SONIKPRIORITYLISTLINEARSEARCH_H_
 
-#include "../SonikCAS/SonikAtomicLock.h"
+#include <SonikCAS/SonikAtomicLock.h>
 #include "SonikPriorityListNode.hpp"
 
 namespace SonikLib

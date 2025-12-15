@@ -37,11 +37,11 @@
 	//______________________________________|
 	#if __INTEL_COMPILER >= 1700
 		//ICC 17.0以降は__builtin_assume
-        #define LIB_ASSUME(cond) __builtin_assume(cond)
+        #define SLIB_ASSUME(cond) __builtin_assume(cond)
 
 	#else
 		//古いICCは__builtin_unreachable で代用
-        #define LIB_ASSUME(cond) ((void)((cond) ? 0 : __builtin_unreachable()))
+        #define SLIB_ASSUME(cond) ((void)((cond) ? 0 : __builtin_unreachable()))
 
 	#endif
 
@@ -116,7 +116,7 @@
 	//									　	|
 	//		assumeキーワード				|
 	//______________________________________|
-    #define LIB_ASSUME(cond) __analysis_assume(cond)
+    #define SLIB_ASSUME(cond) __analysis_assume(cond)
 
 
 #elif defined(__GNUC__) || defined(__clang__) //GCC or clang
@@ -164,21 +164,21 @@
 	#if defined (__clang__)
 		#if __has_builtin(__builtin_assume)
 			//Clang 15+なら
-            #define LIB_ASSUME(cond) __builtin_assume(cond)
+            #define SLIB_ASSUME(cond) __builtin_assume(cond)
 		#else
 
-            #define LIB_ASSUME(cond) ((void)((cond) ? 0 : __builtin_unreachable()))
+            #define SLIB_ASSUME(cond) ((void)((cond) ? 0 : __builtin_unreachable()))
 
 		#endif
 	
 	#elif defined(__GNUC__)
 		//GCCは__builtin_unreachableが基本だがバージョン4.5以前であれば何もしない処理へ。
 		#if (__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5) //GCCのメジャー/マイナーで4.5以上 であればIN
-            #define LIB_ASSUME(cond) ((void)((cond) ? 0 : __builtin_unreachable()))
+            #define SLIB_ASSUME(cond) ((void)((cond) ? 0 : __builtin_unreachable()))
 		
 		#else
 			//何もしない処理へ。
-            #define LIB_ASSUME(cond) ((void)(cond))
+            #define SLIB_ASSUME(cond) ((void)(cond))
 
 		#endif
 

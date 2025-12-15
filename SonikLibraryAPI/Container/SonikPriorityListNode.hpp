@@ -8,7 +8,7 @@
 #ifndef SONIKPRIORITYLIST_SONIKPRIORITYLISTNODE_H_
 #define SONIKPRIORITYLIST_SONIKPRIORITYLISTNODE_H_
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace SonikLib
 {

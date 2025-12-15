@@ -4,9 +4,9 @@
 #ifndef __SONIK_ASSIGN_FEEE_NUMBER_CLASS_HEADER__
 #define __SONIK_ASSIGN_FEEE_NUMBER_CLASS_HEADER__
 
-#include <stdint.h>
-#include "../SmartPointer/SonikSmartPointer.hpp"
-#include "../SonikCAS/SonikAtomicLock.h"
+#include <cstdint>
+#include <SmartPointer/SonikSmartPointer.hpp>
+#include <SonikCAS/SonikAtomicLock.h>
 
 //前方宣言
 namespace SonikLib

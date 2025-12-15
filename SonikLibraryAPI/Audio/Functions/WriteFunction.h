@@ -10,7 +10,7 @@
 #ifndef LOADFUNCTION_WRITEFUNCTION_H_
 #define LOADFUNCTION_WRITEFUNCTION_H_
 
-#include "../AudioLoadTypedef.h"
+#include <Audio/AudioLoadTypedef.h>
 
 namespace SonikAudioWriteFunction
 {

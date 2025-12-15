@@ -4,7 +4,8 @@
 #include <cstdint>
 #include <new>
 #include <type_traits>
-#include "../CompilersPreProcesser.h"
+#include <CompilersPreProcesser.h>
+#include <CPPGrammarDefines.h>
 
 namespace SonikLib
 {
@@ -63,21 +64,21 @@ namespace SonikLib
 		};
 
 	public:
-		DEF_FORCE_INLINE SLibAllocateInterface(void) noexcept
+		DEF_FORCE_INLINE SLibAllocateInterface(void) SLIB_CVR_NOEXCEPT
 			:m_enabled_state(SLibAllocEnums::EnableRet::ENABLE_DEFAULT)
 		{
 			//no porcess;
 		};
 
 		//コピーコンストラクタ
-		DEF_FORCE_INLINE SLibAllocateInterface(const SLibAllocateInterface& _copy_) noexcept
+		DEF_FORCE_INLINE SLibAllocateInterface(const SLibAllocateInterface& _copy_) SLIB_CVR_NOEXCEPT
 			:m_enabled_state(SLibAllocEnums::EnableRet::ENABLE_DEFAULT)
 		{
 			//no process;
 		};
 
 		//ムーヴコンストラクタ
-		DEF_FORCE_INLINE SLibAllocateInterface(SLibAllocateInterface&& _move_) noexcept
+		DEF_FORCE_INLINE SLibAllocateInterface(SLibAllocateInterface&& _move_) SLIB_CVR_NOEXCEPT
 			:m_enabled_state(SLibAllocEnums::EnableRet::ENABLE_DEFAULT)
 		{
 			//no process;
@@ -90,19 +91,19 @@ namespace SonikLib
 		};
 
 		//operator = copy
-		DEF_FORCE_INLINE SLibAllocateInterface& operator =(const SLibAllocateInterface& _copy_) noexcept
+		DEF_FORCE_INLINE SLibAllocateInterface& operator =(const SLibAllocateInterface& _copy_) SLIB_CVR_NOEXCEPT
 		{
 			return (*this);
 		};
 
 		//operator = move
-		DEF_FORCE_INLINE SLibAllocateInterface& operator =(SLibAllocateInterface& _move_) noexcept
+		DEF_FORCE_INLINE SLibAllocateInterface& operator =(SLibAllocateInterface& _move_) SLIB_CVR_NOEXCEPT
 		{
 			return (*this);
 		};
 
 		//現在の有効状態を取得します。
-		DEF_FORCE_INLINE SLibAllocEnums::EnableRet GetNowEnabledState(void) noexcept
+		DEF_FORCE_INLINE SLibAllocEnums::EnableRet GetNowEnabledState(void) SLIB_CVR_NOEXCEPT
 		{
 			return m_enabled_state;
 		};
@@ -132,11 +133,11 @@ namespace SonikLib
 
 		};
 
-		DEF_FORCE_INLINE virtual void* memal(size_t _size_) noexcept
+		DEF_FORCE_INLINE virtual void* memal(size_t _size_) SLIB_CVR_NOEXCEPT
 		{
 			return ::operator new(_size_, std::nothrow);
 		};
-		DEF_FORCE_INLINE virtual void* memal(size_t _size_, SLibAllocEnums::EnableRet& _errcode_) noexcept//エラーコード出力バージョン
+		DEF_FORCE_INLINE virtual void* memal(size_t _size_, SLibAllocEnums::EnableRet& _errcode_) SLIB_CVR_NOEXCEPT//エラーコード出力バージョン
 		{
 			void* ret = ::operator new(_size_, std::nothrow);
 			_errcode_ = (ret == nullptr) ? SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE : SLibAllocEnums::EnableRet::ENABLED_OK;
@@ -148,11 +149,11 @@ namespace SonikLib
 			return ::operator new(_size_);
 		};
 
-		DEF_FORCE_INLINE virtual void* memalArray(size_t _size_, size_t _elem_) noexcept
+		DEF_FORCE_INLINE virtual void* memalArray(size_t _size_, size_t _elem_) SLIB_CVR_NOEXCEPT
 		{
 			return ::operator new[](_size_* _elem_, std::nothrow);
 		};
-		DEF_FORCE_INLINE virtual void* memalArray(size_t _size_, size_t _elem_, SLibAllocEnums::EnableRet& _errcode_) noexcept//エラーコード出力バージョン
+		DEF_FORCE_INLINE virtual void* memalArray(size_t _size_, size_t _elem_, SLibAllocEnums::EnableRet& _errcode_) SLIB_CVR_NOEXCEPT//エラーコード出力バージョン
 		{
 			void* ret = ::operator new[](_size_* _elem_, std::nothrow);
 			_errcode_ = (ret == nullptr) ? SLibAllocEnums::EnableRet::MEM_AL_ERR_OVERSIZE : SLibAllocEnums::EnableRet::ENABLED_OK;

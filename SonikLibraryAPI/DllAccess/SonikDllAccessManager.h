@@ -3,17 +3,17 @@
 #ifndef SONIKDLLACCESSMANAGER_H_
 #define SONIKDLLACCESSMANAGER_H_
 
-#include <stdint.h>
-#include "../SonikString/SonikStringDefinition.h"
-#include "../SmartPointer/SonikSmartPointer.hpp"
-#include "../SonikCAS/SonikAtomicLock.h"
+#include <cstdint>
+#include <SmartPointer/SonikSmartPointer.hpp>
+#include <SonikCAS/SonikAtomicLock.h>
+#include <CPPGrammarDefines.h>
 
 #if defined(__linux__)
-using SONIK_DLL_ACCESS_MANAGER_POINTER = void*;
+SLIB_CVR_USING(SONIK_DLL_ACCESS_MANAGER_POINTER, void*);
 
 #elif defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
-using SONIK_DLL_ACCESS_MANAGER_POINTER = HINSTANCE__*;
+SLIB_CVR_USING(SONIK_DLL_ACCESS_MANAGER_POINTER, HINSTANCE__*);
 
 #endif
 
@@ -79,13 +79,25 @@ namespace SonikLib
 		,SentinelNode_End(nullptr)
 		,DllHandleListCnt(0)
 		{/*no process*/};
-
-		//copy constructor
+	#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
+    	//コピーと代入の禁止
 		SonikDllHandleManager(const SonikDllHandleManager& _copy_) = delete;
 		SonikDllHandleManager(SonikDllHandleManager&& _move_) = delete;
-		//override operator equal
 		SonikDllHandleManager& operator =(const SonikDllHandleManager& _copy_) = delete;
 		SonikDllHandleManager& operator =(SonikDllHandleManager&& _move_) = delete;
+
+   	#else //C++ 11 以下
+        //コピーと代入の禁止
+		SonikDllHandleManager(const SonikDllHandleManager& _copy_);
+		SonikDllHandleManager& operator =(const SonikDllHandleManager& _copy_);
+
+        #if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
+           	//MSVC2010ならmove可能なので定義だけしておく。
+           	SonikDllHandleManager(SonikDllHandleManager&& _copy_);
+           	SonikDllHandleManager& operator =(SSonikDllHandleManager&& _copy_);
+
+        #endif
+    #endif
 
 	public:
 		//Destructor

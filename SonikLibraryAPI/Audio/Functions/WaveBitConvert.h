@@ -8,8 +8,7 @@
 #ifndef LOADFUNCTION_WAVEBITCONVERT_H_
 #define LOADFUNCTION_WAVEBITCONVERT_H_
 
-#include <stdint.h>
-#include "../AudioLoadTypedef.h"
+#include <cstdint>
 
 
 namespace SonikAudioFormat

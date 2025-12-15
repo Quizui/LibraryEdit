@@ -2,8 +2,8 @@
 #include "SonikWorkThreadManagerEx.h"
 #include "SonikWorkThreadEx.h"
 
-#include "../Container/SonikAtomicQueue.hpp"
-#include "../FunctionObject/FunctionObjectSystemInterface.hpp"
+#include <Container/SonikAtomicQueue.hpp>
+#include <FunctionObject/FunctionObjectSystemInterface.hpp>
 #include "./SonikThreadWaitingObject.hpp"
 
 #include <new>

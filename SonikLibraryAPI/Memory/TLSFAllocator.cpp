@@ -3,12 +3,9 @@
 #include "AllocateInterface.h"
 
 #include <new>
-#include <utility>
 #include <cstdlib>
-#include <atomic>
 
 #include <cassert>
-#include <cstdint>
 #include <cstring>
 
 #define SLIB_TLSF_CONST_BIT_ONE			 0x00000001u //0b00000000000000000000000000000001
@@ -28,12 +25,6 @@ namespace SonikLib
 	// 静的チェック（サイズが極端に大きくなっていないか確認）
 	static_assert(SLIB_TLSF_CATEGORY_BIT_CNT == 32u, "Category bit count must be 32");
 	static_assert(SLIB_TLSF_FREELIST_ADDRESS_BLOCK_CNT == 1024u, "Free list address block count must be 1024");
-
-
-	//front, back や next, prev 操作時にそれぞれ加算する固定値。
-	static constexpr uint8_t S_CONST_PLUS_PREV = 1;
-	static constexpr uint8_t S_CONST_PLUS_NEXT = 2;
-
 
 	class SLIB_TLSF_MEMBLOCK
 	{
@@ -709,7 +700,7 @@ namespace SonikLib
 			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
 			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
 			uint32_t idx = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat;
-			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[idx]);
 			l_block->free_next = l_control_block;
 			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
 			
@@ -922,7 +913,7 @@ namespace SonikLib
 			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
 			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
 			uint32_t idx = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat;
-			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[idx]);
 			l_block->free_next = l_control_block;
 			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
 
@@ -1139,7 +1130,7 @@ namespace SonikLib
 			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
 			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
 			uint32_t idx = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat;
-			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[idx]);
 			l_block->free_next = l_control_block;
 			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
 
@@ -1347,7 +1338,7 @@ namespace SonikLib
 			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
 			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
 			uint32_t idx = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat;
-			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[idx]);
 			l_block->free_next = l_control_block;
 			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
 
@@ -1562,7 +1553,7 @@ namespace SonikLib
 			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
 			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
 			uint32_t idx = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat;
-			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[idx]);
 			l_block->free_next = l_control_block;
 			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
 
@@ -1778,7 +1769,7 @@ namespace SonikLib
 			//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
 			//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
 			uint32_t idx = (SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat;
-			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat]);
+			SLIB_TLSF_FREELISTMEMBLOCK* l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[idx]);
 			l_block->free_next = l_control_block;
 			lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_use_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_block);
 
@@ -1893,8 +1884,8 @@ namespace SonikLib
 		//該当のフリーリストアドレス保存場所へ、空き領域へのアドレスを登録する。
 		//移動量は1行32列(2^5) で32行(2^5)まであるため、 SLIB_TLSF_CATEGORY_BIT_CNT(=32) * ファーストカテゴリMSB値で 行をずらす。これに + セカンドカテゴリMSB値することでずらした先の列を特定する。
 		//フリーリストの先頭を今回登録するオブジェクトのnextへ設定して先頭に今回のオブジェクトを登録
-		uint32_t testindex = (SLIB_TLSF_CATEGORY_BIT_CNT * l_fcat) + l_scat;
-		l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_fcat) + l_scat]);
+		uint32_t idx = (SLIB_TLSF_CATEGORY_BIT_CNT * l_fcat) + l_scat;
+		l_control_block = reinterpret_cast<SLIB_TLSF_FREELISTMEMBLOCK*>(lp_freelist_bit->FreeAreaAddressBlock[idx]);
 		l_freepoint->free_next = l_control_block;
 		lp_freelist_bit->FreeAreaAddressBlock[(SLIB_TLSF_CATEGORY_BIT_CNT * l_fcat) + l_scat] = reinterpret_cast<uintptr_t>(l_freepoint);
 

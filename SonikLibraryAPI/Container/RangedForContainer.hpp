@@ -1,16 +1,14 @@
-#pragma once
-
 #ifndef SONIKSTRING_RANGEDFORCONTAINER_HPP_
 #define SONIKSTRING_RANGEDFORCONTAINER_HPP_
 
  //拡張式配列の機能を提供します。
  //配列サイズは拡張方向のみで、縮小はしません。
  //つまりpushbackにより１つ拡張された場合は拡張されたままになります。
-#include "../SmartPointer/SonikSmartPointer.hpp"
-#include "../SonikCAS/SonikAtomicLock.h"
-#include "../CPPGrammarDefines.h"
+#include <SmartPointer/SonikSmartPointer.hpp>
+#include <SonikCAS/SonikAtomicLock.h>
+#include <CPPGrammarDefines.h>
 
-#include <stdint.h>
+#include <cstdint>
 #include <new>
 #include <algorithm>
 
@@ -169,36 +167,98 @@ namespace SonikLib
 	#endif
 #endif
 
-
 			//リザーブ
-			DEF_FORCE_INLINE bool __RESIZE__(uint64_t _size_) SLIB_CVR_NOEXCEPT
+			DEF_FORCE_INLINE bool __RESERVE__(void) SLIB_CVR_NOEXCEPT
 			{
-				void* l_allocbuffer = m_allocator->memal((sizeof(T) * _size_));
+				//新しいサイズを計算
+				//現在のMaxSizeから1.5倍する。
+				uint64_t l_new_size = MaxCnt + (MaxCnt >> 1);
+
+				//1.5倍したサイズが現在のAlllocCountより少なければAllocCountの数に合わせる
+				if (l_new_size < AllocCount)
+				{
+					l_new_size = AllocCount;
+				};
+
+				//別に極端に小さい値を拒んでいるわけではないので、初期値として64等は設定しない。
+				//現状PushBackからしかコールされず、必ずAllocCountが1以上になるためl_new_sizeは0にならない。
+				//今後RESERVEを直接コールできるようになった場合はコール元で0を弾く。
+
+				void* l_allocbuffer = m_allocator->memal((sizeof(T) * l_new_size));
 				if (l_allocbuffer == nullptr)
 				{
 					return false;
 				};
 
-				int8_t* l_tmparea = new(l_allocbuffer) int8_t[(sizeof(T) * _size_)]{};
+				int8_t* l_tmparea = new(l_allocbuffer) int8_t[(sizeof(T) * l_new_size)]{};
 
 				T* l_new_area = reinterpret_cast<T*>(l_tmparea);
 				T* old_area = AllocAreaPtr;
 
 				for (uint64_t i = 0; i < AllocCount; ++i)
 				{
-					new(&l_new_area[i]) T(std::move(old_area[i]));
+					new(&l_new_area[i]) T(SLIB_CVR_STDMOVE(old_area[i]));
 					old_area[i].~T(); //デストラクタコール
 				};
 
 				m_allocator->memdel(AllocAreaPtr);
 				AllocAreaPtr = reinterpret_cast<T*>(l_tmparea);
-				MaxCnt = _size_;
+				MaxCnt = l_new_size;
 
 				return true;
 			};
 
+			//リサイズ
+			DEF_FORCE_INLINE bool __RESIZE__(uint64_t _targetsize_) SLIB_CVR_NOEXCEPT
+			{
+				//容量拡張が必要かチェック
+    			if (_targetsize_ > MaxCnt)
+    			{
+        			// ターゲットサイズが現在の容量を超えている場合、まず容量をリザーブ（拡張）する。
+        			// リザーブにはAllocCountの値が関係するため、一時的にターゲットサイズに合わせておく
+        			// (PushBackの動作を模倣し、RESERVEに論理サイズを教える)
+        			uint64_t l_old_count = AllocCount;
+        			AllocCount = _targetsize_;
+        
+        			if (!__RESERVE__())
+        			{
+            			// RESERVE失敗時はAllocCountを元に戻して終了
+            			AllocCount = l_old_count;
+            			return false;
+        			};
+        			// RESERVE成功時は、MaxCntが新しいサイズに更新されている
+    			};
+
+				//要素数の増減処理
+    			if (_targetsize_ < AllocCount)
+    			{
+        			//要素数を減らす場合 (縮小)
+        			//縮小される要素のデストラクタを明示的に呼び出す。
+        			for (uint64_t i = _targetsize_; i < AllocCount; ++i)
+        			{
+            			AllocAreaPtr[i].~T();
+        			};
+        			//論理サイズを更新
+        			AllocCount = _targetsize_;
+
+    			}else if (_targetsize_ > AllocCount)
+    			{		
+        			//要素数を増やす場合 (拡張)
+        			//増える分の要素を配置 new でデフォルト構築する。
+        			for (uint64_t i = AllocCount; i < _targetsize_; ++i)
+        			{
+            			//Tがデフォルト構築可能であることを要求する（std::vectorと同じ）
+            			new(&AllocAreaPtr[i]) T(); 
+        			};
+        			//論理サイズを更新
+        			AllocCount = _targetsize_;
+    			};
+
+    			return true;
+			};
+
 		public:
-			DEF_FORCE_INLINE static bool CreateContainer(SonikLib::SharedSmtPtr<SonikVariableArrayContainer<T>>& _out_smtptr_, int32_t _ElemCount_ = 300)
+			DEF_FORCE_INLINE static bool CreateContainer(SonikLib::SharedSmtPtr<SonikVariableArrayContainer<T>>& _out_smtptr_, int32_t _ElemCount_ = 64)
 			{
 				if (_ElemCount_ == 0)
 				{
@@ -251,7 +311,7 @@ namespace SonikLib
 				return true;
 
 			};
-			DEF_FORCE_INLINE static bool CreateContainer(SonikLib::SharedSmtPtr<SonikVariableArrayContainer<T>>& _out_smtptr_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, int32_t _ElemCount_ = 300)
+			DEF_FORCE_INLINE static bool CreateContainer(SonikLib::SharedSmtPtr<SonikVariableArrayContainer<T>>& _out_smtptr_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_, int32_t _ElemCount_ = 64)
 			{
 				if (_ElemCount_ == 0)
 				{
@@ -345,7 +405,7 @@ namespace SonikLib
 
 				if (MaxCnt < AllocCount)
 				{
-					if (!__RESIZE__(AllocCount))
+					if (!__RESERVE__())
 					{
 						--AllocCount;
 						m_lock.unlock();
@@ -385,7 +445,7 @@ namespace SonikLib
 
 				bool ret = false;
 
-				ret = __RESIZE__(_resize_size_);
+				ret =  __RESIZE__(_resize_size_);
 
 				m_lock.unlock();
 
@@ -406,8 +466,6 @@ namespace SonikLib
 				{
 					AllocAreaPtr[i].~T();
 				};
-
-				std::fill_n(reinterpret_cast<int8_t*>(AllocAreaPtr), (sizeof(T) * AllocCount), 0);
 
 				AllocCount = 0;
 

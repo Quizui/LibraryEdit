@@ -2,9 +2,9 @@
 #ifndef __SONIKLIB_SONIKSTRINGBASED_DEFINITION_H__
 #define __SONIKLIB_SONIKSTRINGBASED_DEFINITION_H__
 
-#include "./SonikStringEnums.h"
-#include "../SmartPointer/SonikSmartPointer.hpp"
-#include "TypePermissibleTemplate.hpp"
+#include <SonikString/SonikStringEnums.h>
+#include <SmartPointer/SonikSmartPointer.hpp>
+#include <SonikString/TypePermissibleTemplate.hpp>
 
 namespace SonikLib
 {	//スプリット用クラス(Stringクラスそのままコピーはマルチスレッドアクセスでのnewでロックがかかってしまって遅くなるので..。
@@ -89,24 +89,34 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		//文字列中の全角カナを半角カナに変換します。
 		bool ConvertFWKNtoHWKN(void);
 
+		//文字列中から指定文字を全て削除します。
+		void EraseChar(char erastarget);
 		//c: 指定位置の文字を削除します。
-		void EraseChar(uint64_t ChrPoint);
+		void EraseCharPoint(uint64_t ChrPoint);
 		//c: 指定の開始位置から指定された文字数を削除します。
 		void EraseStr(uint64_t ChrStartPoint, uint64_t ChrEndPoint);
 
 		//c: 文字列同士を比較します。(strcmp)
 		//c: 一致の場合true 不一致の場合 falseを返却します。
 		bool operator ==(const char* Str);
+		bool operator ==(const char* Str) const;
 		bool operator ==(const utf16_t* w_Str);
+		bool operator ==(const utf16_t* w_Str) const;
 		bool operator ==(const wchar_t* w_Str);
+		bool operator ==(const wchar_t* w_Str) const;
 		bool operator ==(const utf8_t* utf8_Str);
+		bool operator ==(const utf8_t* utf8_Str) const;
 
 		//c: 文字列同士を比較します。(strcmp)
 		//c: 不一致の場合true　一致の場合 falseを返却します。
 		bool operator !=(const char* Str);
+		bool operator !=(const char* Str) const;
 		bool operator !=(const utf16_t* w_Str);
+		bool operator !=(const utf16_t* w_Str) const;
 		bool operator !=(const wchar_t* w_Str);
+		bool operator !=(const wchar_t* w_Str) const;
 		bool operator !=(const utf8_t* utf8_Str);
+		bool operator !=(const utf8_t* utf8_Str) const;
 
 	};
 

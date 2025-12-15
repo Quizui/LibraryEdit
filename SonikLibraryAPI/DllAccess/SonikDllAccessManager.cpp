@@ -1,8 +1,8 @@
-
 #include "SonikDllAccessManager.h"
 #include "SonikDllLoader.h"
 
-#include "../SonikAssignFreeNumber/SonikAssignFreeNumber.h"
+#include <SonikAssignFreeNumber/SonikAssignFreeNumber.h>
+#include <SonikString/SonikString.h>
 
 namespace SonikLib
 {

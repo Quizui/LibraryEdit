@@ -2,7 +2,7 @@
 #ifndef WORKER_FUNCTOR_SONIKLIBRARY_
 #define WORKER_FUNCTOR_SONIKLIBRARY_
 
-#include "../SmartPointer/SonikSmartPointer.hpp"
+#include <SmartPointer/SonikSmartPointer.hpp>
 
 //前方宣言
 namespace SonikFunctionObjectDefines

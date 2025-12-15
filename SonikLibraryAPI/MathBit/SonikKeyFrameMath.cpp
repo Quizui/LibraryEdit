@@ -8,6 +8,7 @@
 #include "SonikKeyFrameMath.h"
 
 #include <math.h>
+#include "SonikMathStandard.h"
 #include "SonikMathDistance.h"
 #include "SonikMathnumeric.h"
 
@@ -206,7 +207,8 @@ namespace SonikMath
 		s_point.SetXY(0.0, CriteriaY);
 		double distant_Top = Distance(f_point, s_point);//SonikMath::TwoPointDistance(ObjectPosY, CriteriaY);
 		//半径
-		double Radius = sqrt( ((distant_Base * distant_Base) + (distant_Top * distant_Top)) );
+		//double Radius = sqrt( ((distant_Base * distant_Base) + (distant_Top * distant_Top)) );
+		double Radius = SonikMath::sqrt( ((distant_Base * distant_Base) + (distant_Top * distant_Top)) );
 
 		GetX = Radius * SonikMath::Cos(digree);
 		GetY = Radius * SonikMath::Sin(digree);
@@ -233,7 +235,8 @@ namespace SonikMath
 		s_point.SetXY(0.0, CriteriaY);
 		float distant_Top = static_cast<float>(Distance(f_point, s_point));//SonikMath::TwoPointDistance(ObjectPosY, CriteriaY);
 		//半径
-		float Radius = sqrtf( ((distant_Base * distant_Base) + (distant_Top * distant_Top)) );
+		//float Radius = sqrtf( ((distant_Base * distant_Base) + (distant_Top * distant_Top)) );
+		float Radius = static_cast<float>(SonikMath::sqrt( ((distant_Base * distant_Base) + (distant_Top * distant_Top)) ));
 
 		GetX = Radius * SonikMath::CosF(digree);
 		GetY = Radius * SonikMath::SinF(digree);

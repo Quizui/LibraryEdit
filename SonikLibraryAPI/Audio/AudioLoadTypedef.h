@@ -8,8 +8,8 @@
 #ifndef SAUDIO_LOAD_FUNCTION_TYPEDEF_H_
 #define SAUDIO_LOAD_FUNCTION_TYPEDEF_H_
 
-#include "../SmartPointer/SonikSmartPointer.hpp"
-#include "./Format/SonikAudioFormat.h"
+#include <SmartPointer/SonikSmartPointer.hpp>
+#include <Audio/Format/SonikAudioFormat.h>
 
 namespace SonikAudio
 {

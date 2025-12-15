@@ -8,7 +8,7 @@
 #ifndef SONIKDLLLOADER_H_
 #define SONIKDLLLOADER_H_
 
-#include <stdint.h>
+#include <cstdint>
 
 #if defined(_WIN32) || defined(_WIN64)
 	#include <windows.h>

@@ -10,10 +10,10 @@
 #include <string> //memset
 
 
-#include "../Functions/WaveBitConvert.h"
+#include <Audio/Functions/WaveBitConvert.h>
 
-#include "../../MathBit/SonikNormalize.h"
-#include "../Format/SonikAudioFormat_InnerUse.h"
+#include <MathBit/SonikNormalize.h>
+#include <Audio/Format/SonikAudioFormat_InnerUse.h>
 #include "fftw3.h"
 
 namespace SonikAudioWAVEBitConvert

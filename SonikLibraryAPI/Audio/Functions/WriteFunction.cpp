@@ -10,9 +10,9 @@
 
 #include "./WriteFunction.h"
 
-#include "../../SonikString/SonikString.h"
-#include "../Format/SonikAudioFormat.h"
-#include "../Format/SonikWindowsWaveFormat.h"
+#include <SonikString/SonikString.h>
+#include <Audio/Format/SonikAudioFormat.h>
+#include <Audio/Format/SonikWindowsWaveFormat.h>
 
 
 namespace SonikAudioWriteFunction

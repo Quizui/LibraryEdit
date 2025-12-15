@@ -2,8 +2,8 @@
 #define SONIKLIB_SONIKATOMIC_DEFINITION_HPP_
 
 #include <cstdint>
-#include "../PlatFormDefinitions.h"
-#include "../CPPGrammarDefines.h"
+#include <PlatFormDefinitions.h>
+#include <CPPGrammarDefines.h>
 
 #if defined(_MSC_VER)
     //MSVC環境

@@ -27,7 +27,7 @@
 
 #endif
 
-#include "../CompilersPreProcesser.h"
+#include <CompilersPreProcesser.h>
 
 
 namespace SonikMathBit

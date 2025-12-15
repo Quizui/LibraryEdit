@@ -8,7 +8,7 @@
 #include "SonikMathDistance.h"
 #include "SonikMathStandard.h"
 
-#include <stdint.h>
+#include <cstdint>
 #include <new>
 
 namespace SonikMathDataBox
@@ -778,13 +778,13 @@ namespace SonikMathDataBox
 namespace SonikMath
 {
 	//指定した3DPointのベクトルの長さを計算します。
-	double VectorLength(SonikMathDataBox::Sonik3DPoint& _point_) noexcept
+	double VectorLength(SonikMathDataBox::Sonik3DPoint& _point_) SLIB_CVR_NOEXCEPT
 	{
 		return SonikMath::sqrt( (*(_point_.x)) * (*(_point_.x)) + (*(_point_.y)) * (*(_point_.y)) + (*(_point_.z)) * (*(_point_.z)));
 	};
 
 	//二点間の差を表すベクトルを取得します。
-	void diffVec(SonikMathDataBox::Sonik3DPoint& _f_pos_, SonikMathDataBox::Sonik3DPoint& _s_pos_, SonikMathDataBox::Sonik3DPoint& _outpoint_) noexcept
+	void diffVec(SonikMathDataBox::Sonik3DPoint& _f_pos_, SonikMathDataBox::Sonik3DPoint& _s_pos_, SonikMathDataBox::Sonik3DPoint& _outpoint_) SLIB_CVR_NOEXCEPT
 	{
 	   (*( _outpoint_.x)) = (*(_s_pos_.x)) - (*(_f_pos_.x));
 	   (*( _outpoint_.y)) = (*(_s_pos_.y)) - (*(_f_pos_.y));
@@ -793,14 +793,14 @@ namespace SonikMath
 	};
 
 	//二点間のドット積を計算します。
-	double DotProductVec(SonikMathDataBox::Sonik3DPoint& _f_pos_, SonikMathDataBox::Sonik3DPoint& _s_pos_) noexcept
+	double DotProductVec(SonikMathDataBox::Sonik3DPoint& _f_pos_, SonikMathDataBox::Sonik3DPoint& _s_pos_) SLIB_CVR_NOEXCEPT
 	{
 		return (*(_f_pos_.x)) * (*(_s_pos_.x)) + (*(_f_pos_.y)) * (*(_s_pos_.y)) + (*(_f_pos_.z)) * (*(_s_pos_.z));
 	};
 
 
 	//本クラスと引数で指定されたオブジェクト或いは座標との距離を算出します。
-	double Distance(SonikMathDataBox::Sonik3DPoint& _f_point_, SonikMathDataBox::Sonik3DPoint& _s_point_) noexcept
+	double Distance(SonikMathDataBox::Sonik3DPoint& _f_point_, SonikMathDataBox::Sonik3DPoint& _s_point_) SLIB_CVR_NOEXCEPT
 	{
 		double _distance[3];
 
@@ -812,7 +812,7 @@ namespace SonikMath
 
 	};
 
-	double Distance(double _fx_, double _fy_, double _fz_, double _sx_, double _sy_, double _sz_) noexcept
+	double Distance(double _fx_, double _fy_, double _fz_, double _sx_, double _sy_, double _sz_) SLIB_CVR_NOEXCEPT
 	{
 
 		double _distance[3];
@@ -830,7 +830,7 @@ namespace SonikMath
 	//diff, veclenを指定する場合は、それぞれ、diffVec, VectorLengthで事前計算した値を指定することを想定しています。
 	//LisVec は リスナの方向ベクトルをVectorLengthで計算した結果を指定します。
 	//PlyVecは リスナーの位置ベクトルと、音源(Player）の位置ベクトルをdiffVecで計算した結果の値をVectorLengthで計算した結果を指定します。
-	double Panning(SonikMathDataBox::Sonik3DPoint& _lispos_, SonikMathDataBox::Sonik3DPoint& _plypos_, SonikMathDataBox::Sonik3DPoint& _lisdir_, SonikMathDataBox::Sonik3DPoint& _plydir_, double _atten_max_, double _attenuate_) noexcept
+	double Panning(SonikMathDataBox::Sonik3DPoint& _lispos_, SonikMathDataBox::Sonik3DPoint& _plypos_, SonikMathDataBox::Sonik3DPoint& _lisdir_, SonikMathDataBox::Sonik3DPoint& _plydir_, double _atten_max_, double _attenuate_) SLIB_CVR_NOEXCEPT
 	{
 	    // リスナーから音源へのベクトルを計算
 		SonikMathDataBox::Sonik3DPoint l_point;
@@ -871,7 +871,7 @@ namespace SonikMath
 	    // パンニングと音の強さを考慮した最終的な音量を計算
 	    return panning * adjustedVolume;
 	};
-	double Panning(double _dotproduct_, double _lisdirveclen_, double _diffveclen_, double _dotproductdir_, double _plydirveclen_, double _atten_max_, double _attenuate_) noexcept
+	double Panning(double _dotproduct_, double _lisdirveclen_, double _diffveclen_, double _dotproductdir_, double _plydirveclen_, double _atten_max_, double _attenuate_) SLIB_CVR_NOEXCEPT
 	{
 	    // 長さの逆数を計算
 	    double invListenerDirLength = 1.0 / _lisdirveclen_;

@@ -12,9 +12,6 @@ set(CMAKE_CXX_COMPILER "D:/Development/MSYS64/clang64/bin/clang++.exe")
 ##ビルド除外ターゲット
 list(FILTER SOURCES EXCLUDE REGEX ".*CMakeCXXCompilerId.cpp")
 
-#include directory
-include_directories(${MINGW_HOME}/include)
-
 #共通define
 add_definitions(-D__SONIK_x86_64__)
 
@@ -92,14 +89,30 @@ file(GLOB_RECURSE SOURCES "./*.cpp")
 #ビルド除外ターゲット
 list(FILTER SOURCES EXCLUDE REGEX "Allocator/back/.*")
 
+#include directory
+#include_directories(${MINGW_HOME}/include)
+#include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
 #ビルド
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-add_library(Dx64_${V_ProjectName} STATIC ${SOURCES})
+    add_library(Dx64_${V_ProjectName} STATIC ${SOURCES})
+    target_include_directories(Dx64_${V_ProjectName}
+                                PUBLIC
+                                ${MINGW_HOME}/include
+                                ${CMAKE_CURRENT_SOURCE_DIR}
+                              )
+
 
 else(CMAKE_BUILD_TYPE STREQUAL "Release")
-add_library(Rx64_${V_ProjectName} STATIC ${SOURCES})
+    add_library(Rx64_${V_ProjectName} STATIC ${SOURCES})
+    target_include_directories(Rx64_${V_ProjectName}
+                                PUBLIC
+                                ${MINGW_HOME}/include
+                                ${CMAKE_CURRENT_SOURCE_DIR}
+                              )
 
 endif()
+
 
 
 #add_executable(TestBuild ${SOURCES})

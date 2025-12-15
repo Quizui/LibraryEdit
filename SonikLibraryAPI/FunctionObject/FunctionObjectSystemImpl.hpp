@@ -3,7 +3,6 @@
 #define WORKER_FUNCTOR_DEFINITION_SONIKLIBRARY_
 
 #include "FunctionObjectSystemInterface.hpp"
-#include "../SmartPointer/SonikSmartPointer.hpp"
 
 //引数を10個まで取れるテンプレートクラスを定義します。
 //それぞれクラスのメンバ関数を登録する場合において、ポインタのポインタ型は指定できません。

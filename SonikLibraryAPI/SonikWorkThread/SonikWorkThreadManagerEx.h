@@ -3,7 +3,7 @@
 #ifndef SONIKWORKTHREADMANAGEREX_H_
 #define SONIKWORKTHREADMANAGEREX_H_
 
-#include "../SmartPointer/SonikSmartPointer.hpp"
+#include <SmartPointer/SonikSmartPointer.hpp>
 #include "./ThreadImplePreProcesser.h"
 
  //前方宣言===================================

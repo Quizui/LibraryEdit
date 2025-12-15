@@ -8,7 +8,7 @@
 #ifndef AUDIOLOADFUNCTION_LOADFUNCTION_H_
 #define AUDIOLOADFUNCTION_LOADFUNCTION_H_
 
-#include "../AudioLoadTypedef.h"
+#include <Audio/AudioLoadTypedef.h>
 
 namespace SonikAudioLoadFunction
 {

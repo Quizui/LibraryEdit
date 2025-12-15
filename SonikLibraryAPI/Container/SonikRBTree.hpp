@@ -8,18 +8,19 @@
 #ifndef SONIKBALANCEDTREE_RB_SONIKRBTREE_H_
 #define SONIKBALANCEDTREE_RB_SONIKRBTREE_H_
 
-
-
+#if defined(_DEBUG) || defined(DEBUG)
+#include <SonikString/SonikString.h>
+#endif
 
 #include <utility>
-#include <stdint.h>
+#include <cstdint>
 #include <new>
 #include <iostream>
 
 
-#include "../SonikCAS/SonikAtomicLock.h"
-#include "../SmartPointer/SonikSmartPointer.hpp"
-#include "../CompilersPreProcesser.h"
+#include <SonikCAS/SonikAtomicLock.h>
+#include <SmartPointer/SonikSmartPointer.hpp>
+#include <CompilersPreProcesser.h>
 
  //赤黒木
 namespace SonikLib
@@ -131,19 +132,34 @@ namespace SonikLib
 		SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> m_allocator;
 
 	private:
+	#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
+    	//コピーと代入の禁止
 		SonikRBTree(const SonikRBTree<Key_T, Val_T>& _copy_) = delete;
 		SonikRBTree(SonikRBTree<Key_T, Val_T>&& _move_) = delete;
 		SonikRBTree& operator =(const SonikRBTree<Key_T, Val_T>& _copy_) = delete;
 		SonikRBTree& operator =(SonikRBTree<Key_T, Val_T>&& _move_) = delete;
 
+   	#else //C++ 11 以下
+        //コピーと代入の禁止
+		SonikRBTree(const SonikRBTree& _copy_);
+		SonikRBTree& operator =(const SonikRBTree& _copy_);
+
+        #if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
+           	//MSVC2010ならmove可能なので定義だけしておく。
+           	SonikRBTree(SonikRBTree&& _copy_);
+           	SonikRBTree& operator =(SonikRBTree&& _copy_);
+
+        #endif
+    #endif
+
 		//指定されたノードの色値がND_BLACK or ND_NILなら黒としてtrueを返却します。
-		DEF_FORCE_INLINE DEF_NO_DISCARD bool __INNER_IsBLACK__(RBNode* _checknode_) const
+		DEF_PRE_NO_DISCARD DEF_FORCE_INLINE bool __INNER_IsBLACK__(RBNode* _checknode_) const DEF_POST_NO_DISCARD
 		{
 			return (_checknode_->m_color == NODECOLOR::ND_BLACK || _checknode_->m_color == NODECOLOR::ND_NIL);
 		};
 
 		//指定されたノードの色値がND_REDなら赤としてtrueを返却します。
-		DEF_FORCE_INLINE DEF_NO_DISCARD bool __INNER_IsRED__(RBNode* _checknode_) const
+		DEF_PRE_NO_DISCARD DEF_FORCE_INLINE bool __INNER_IsRED__(RBNode* _checknode_) const DEF_POST_NO_DISCARD
 		{
 			return (_checknode_->m_color == NODECOLOR::ND_RED);
 		};
@@ -614,7 +630,7 @@ namespace SonikLib
 				debug_str = "違反を検知\n";
 				debug_str += "Root Color Not Black ：ルートの色が黒以外の色で違反しています。\n";
 
-				MessageBoxW(nullptr, debug_str.str_wchar(), L"検知", MB_OK);
+				//MessageBoxW(nullptr, debug_str.str_wchar(), L"検知", MB_OK);
 
 				return;
 			};
@@ -641,7 +657,7 @@ namespace SonikLib
 						debug_str = "違反を検知\n";
 						debug_str += "Parent ⇔ Child UnMatched Link Pointer ：親から子、子から親へのポインタに相違があります。\n";
 
-						MessageBoxW(nullptr, debug_str.str_wchar(), L"検知", MB_OK);
+						//MessageBoxW(nullptr, debug_str.str_wchar(), L"検知", MB_OK);
 
 						return;
 					};
@@ -656,7 +672,7 @@ namespace SonikLib
 							debug_str = "違反を検知\n";
 							debug_str += "Parent→Child Red→Red ：赤赤連続違反をしています。\n";
 
-							MessageBoxW(nullptr, debug_str.str_wchar(), L"検知", MB_OK);
+							//MessageBoxW(nullptr, debug_str.str_wchar(), L"検知", MB_OK);
 							return;
 						};
 					};
@@ -705,7 +721,7 @@ namespace SonikLib
 					debug_str += "Black_Height_Vioration ：黒高さ違反をしています。\n";
 					debug_str += "回転とかミスってる可能性があります。\n";
 
-					MessageBoxW(nullptr, debug_str.str_wchar(), L"検知", MB_OK);
+					//MessageBoxW(nullptr, debug_str.str_wchar(), L"検知", MB_OK);
 
 					printf("黒高さ違反 at key=%d: 左=%u, 右=%u\n",
 						Current->m_key, lb, rb);

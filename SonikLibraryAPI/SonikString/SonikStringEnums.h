@@ -4,7 +4,7 @@
 #define SONIKSTRING_SONIKSTRINGLOCALEENMUS_H_
 
 #include "./TypePermissibleTemplate.hpp"
-#include "../CPPGrammarDefines.h"
+#include <CPPGrammarDefines.h>
 
 SLIB_CVR_ENUMCLASS(SonikLibConvertType)
 {
@@ -35,14 +35,8 @@ SLIB_CVR_ENUMCLASS(SonikLibConvertType)
 #else
 
 	#if defined(_MSC_VER) && _MSC_VER >= 1900
-		static SLIB_CVR_CONSTEXPR SonikLibConvertType SCHTYPE_SJIS		= SonikLibConvertType::SCHTYPE_SJIS;
-		static SLIB_CVR_CONSTEXPR SonikLibConvertType SCHTYPE_UTF8		= SonikLibConvertType::SCHTYPE_UTF8;
-		static SLIB_CVR_CONSTEXPR SonikLibConvertType SCHTYPE_BOMUTF8	= SonikLibConvertType::SCHTYPE_BOMUTF8;
-		static SLIB_CVR_CONSTEXPR SonikLibConvertType SCHTYPE_UTF16		= SonikLibConvertType::SCHTYPE_UTF16;
-		static SLIB_CVR_CONSTEXPR SonikLibConvertType SCHTYPE_UTF32		= SonikLibConvertType::SCHTYPE_UTF32;
-		static SLIB_CVR_CONSTEXPR SonikLibConvertType SCHTYPE_UNKNOWN	= SonikLibConvertType::SCHTYPE_UNKNOWN;
-		static SLIB_CVR_CONSTEXPR SonikLibConvertType SCHTYPE_NULLTEXT	= SonikLibConvertType::SCHTYPE_NULLTEXT;
-
+		using enum SonikLibConvertType;
+		
 	#else
 		//define定義
 		#define SCHTYPE_SJIS		SonikLibConvertType::SCHTYPE_SJIS

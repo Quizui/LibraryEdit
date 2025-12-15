@@ -3,11 +3,11 @@
 #ifndef SONIKFILECONTROLLER_H_
 #define SONIKFILECONTROLLER_H_
 
-#include "../SonikString/SonikString.h"
-#include "../SonikCAS/SonikAtomicLock.h"
-#include "../SmartPointer/SonikSmartPointer.hpp"
-#include "../EnumsBitOperatorTemplate.hpp"
-#include "../CPPGrammarDefines.h"
+#include <SonikString/SonikString.h>
+#include <SonikCAS/SonikAtomicLock.h>
+#include <SmartPointer/SonikSmartPointer.hpp>
+#include <EnumsBitOperatorTemplate.hpp>
+#include <CPPGrammarDefines.h>
 
 #include <cstdint>
 

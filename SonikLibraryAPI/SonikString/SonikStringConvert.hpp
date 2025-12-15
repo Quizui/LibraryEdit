@@ -5099,8 +5099,8 @@ namespace SonikLibStringConvert
 				numBytes = 2;
 
 				//C6385警告及び、C6386警告対処。(範囲は大丈夫なので。)
-				LIB_ASSUME((utf8_i + 1) < lopsize);
-				LIB_ASSUME(utf32_i < SrcLen);
+				SLIB_ASSUME((utf8_i + 1) < lopsize);
+				SLIB_ASSUME(utf32_i < SrcLen);
 
 				if (!(0x80 <= (*(control_src + 1)) && (*(control_src + 1)) < 0xC0))
 				{
@@ -5124,8 +5124,8 @@ namespace SonikLibStringConvert
 				numBytes = 3;
 
 				//C6385警告及び、C6386警告対処。(範囲は大丈夫なので。)
-				LIB_ASSUME((utf8_i + 2) < lopsize);
-				LIB_ASSUME(utf32_i < SrcLen);
+				SLIB_ASSUME((utf8_i + 2) < lopsize);
+				SLIB_ASSUME(utf32_i < SrcLen);
 
 				if ((!(0x80 <= (*(control_src + 1)) && (*(control_src + 1)) < 0xC0)) ||
 					(!(0x80 <= (*(control_src + 2)) && (*(control_src + 2)) < 0xC0))
@@ -5153,8 +5153,8 @@ namespace SonikLibStringConvert
 				numBytes = 4;
 
 				//C6385警告及び、C6386警告対処。(範囲は大丈夫なので。)
-				LIB_ASSUME((utf8_i + 3) < lopsize);
-				LIB_ASSUME(utf32_i < SrcLen);
+				SLIB_ASSUME((utf8_i + 3) < lopsize);
+				SLIB_ASSUME(utf32_i < SrcLen);
 
 				if ((!(0x80 <= (*(control_src + 1)) && (*(control_src + 1)) < 0xC0)) ||
 					(!(0x80 <= (*(control_src + 2)) && (*(control_src + 2)) < 0xC0)) ||

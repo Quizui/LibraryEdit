@@ -9,8 +9,8 @@
 #define MULTIMEDIA_SONIKMULTIMEDIAINTERFACE_H_
 
 //c 共通ヘッダ
-#include "../SmartPointer/SonikSmartPointer.hpp"
-#include "../SonikCAS/SonikAtomicLock.h"
+#include <SmartPointer/SonikSmartPointer.hpp>
+#include <SonikCAS/SonikAtomicLock.h>
 #include "SonikMM_AudioInfo.h"
 
 

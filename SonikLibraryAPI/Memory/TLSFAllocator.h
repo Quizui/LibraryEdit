@@ -5,8 +5,8 @@
 #include <cstdint>
 
 #include "./AllocateInterface.h"
-#include "../SonikCAS/SonikAtomicLock.h"
-#include "../SmartPointer/SonikSmartPointer.hpp"
+#include <SonikCAS/SonikAtomicLock.h>
+#include <SmartPointer/SonikSmartPointer.hpp>
 
 namespace std
 {
@@ -49,12 +49,12 @@ namespace SonikLib
 		//InnerFunctions
 
 		//スマートポインタ式に変更したためこちらに移動。しかし一応処理は残しておく(戻せる様になったときにまた実装はめんどくさいので)
-		TLSFAllocator(void) noexcept;
+		TLSFAllocator(void) SLIB_CVR_NOEXCEPT;
 
-		TLSFAllocator(const TLSFAllocator& _copy_) noexcept;
-		TLSFAllocator(TLSFAllocator&& _move_) noexcept;
-		TLSFAllocator& operator =(const TLSFAllocator& _copy_) noexcept;
-		TLSFAllocator& operator =(TLSFAllocator&& _move_) noexcept;
+		TLSFAllocator(const TLSFAllocator& _copy_) SLIB_CVR_NOEXCEPT;
+		TLSFAllocator(TLSFAllocator&& _move_) SLIB_CVR_NOEXCEPT;
+		TLSFAllocator& operator =(const TLSFAllocator& _copy_) SLIB_CVR_NOEXCEPT;
+		TLSFAllocator& operator =(TLSFAllocator&& _move_) SLIB_CVR_NOEXCEPT;
 
 	public:
 
@@ -64,14 +64,14 @@ namespace SonikLib
 		//失敗の場合はサイズ調整の上で再度実施してみてください。
 		static SLibAllocEnums::EnableRet CreateAllocator(SonikLib::AllocatorSharedSmtPtr<SLibAllocateInterface>& _out_, uint32_t _CreateMemorySize_);
 
-		void* memal(size_t _size_) noexcept override;
-		void* memal(size_t _size_, SLibAllocEnums::EnableRet& _errcode_) noexcept override;//エラーコード出力バージョン
+		void* memal(size_t _size_) SLIB_CVR_NOEXCEPT override;
+		void* memal(size_t _size_, SLibAllocEnums::EnableRet& _errcode_) SLIB_CVR_NOEXCEPT override;//エラーコード出力バージョン
 		void* memal_Exception(size_t _size_) override; //例外送出版
-		void* memalArray(size_t _sizeof_, size_t _elemcnt_ = 1) noexcept override;
-		void* memalArray(size_t _sizeof_, size_t _elemcnt_, SLibAllocEnums::EnableRet& _errcode_) noexcept override;//エラーコード出力バージョン
+		void* memalArray(size_t _sizeof_, size_t _elemcnt_ = 1) SLIB_CVR_NOEXCEPT override;
+		void* memalArray(size_t _sizeof_, size_t _elemcnt_, SLibAllocEnums::EnableRet& _errcode_) SLIB_CVR_NOEXCEPT override;//エラーコード出力バージョン
 		void* memalArray_Exception(size_t _sizeof_, size_t _elemcnt_ = 1) override; //例外送出版
-		void __vfunc_memdel__(void* _pfree_) noexcept override;
-		void __vfung_memdelarray__(void* _pfree_) noexcept override;
+		void __vfunc_memdel__(void* _pfree_) SLIB_CVR_NOEXCEPT override;
+		void __vfung_memdelarray__(void* _pfree_) SLIB_CVR_NOEXCEPT override;
 
 	};
 

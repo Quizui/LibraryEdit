@@ -4,9 +4,9 @@
 #define SONIK_THREAD_WAITING_OBJECT_H_
 
 #include "ThreadImplePreProcesser.h"
-#include "../CompilersPreProcesser.h"
-#include "../SmartPointer/SonikSmartPointer.hpp"
-#include "../Memory/AllocateInterface.h"
+#include <CompilersPreProcesser.h>
+#include <SmartPointer/SonikSmartPointer.hpp>
+#include <Memory/AllocateInterface.h>
 
 #if defined(SONIK_THREAD_IMPLE_TO_CPP_STD)
 #include <semaphore>
@@ -48,7 +48,7 @@ namespace SonikLib
 		WorkerThreadWaitingObject& operator =(WorkerThreadWaitingObject&&) = delete;
 
 		//コンストラクタ
-		WorkerThreadWaitingObject(int64_t initial = 0) SLIB_CVR_NOEXCEPT
+		WorkerThreadWaitingObject(int64_t initial = 0) noexcept
 		:m_sem(initial)
 		{
 			//none
@@ -132,13 +132,13 @@ namespace SonikLib
 		};
 
 		// blocking
-		DEF_FORCE_INLINE void acquire(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE void acquire(void) noexcept
 		{
 			m_sem.acquire();
 		};
 
 		// immediate try
-		DEF_PRE_NO_DISCARD DEF_FORCE_INLINE bool try_acquire(void) SLIB_CVR_NOEXCEPT DEF_POST_NO_DISCARD
+		DEF_PRE_NO_DISCARD DEF_FORCE_INLINE bool try_acquire(void) noexcept DEF_POST_NO_DISCARD
 		{
 			return m_sem.try_acquire();
 		};
@@ -171,7 +171,7 @@ namespace SonikLib
 		};
 
 		//release(increase count)
-		DEF_FORCE_INLINE void release(int32_t update = 1) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE void release(int32_t update = 1) noexcept
 		{
 			for (int32_t i = 0; i < update; ++i)
 			{
@@ -196,7 +196,7 @@ namespace SonikLib
 		WorkerThreadWaitingObject& operator =(WorkerThreadWaitingObject&&) = delete;
 
 		//コンストラクタ
-		WorkerThreadWaitingObject(void) SLIB_CVR_NOEXCEPT
+		WorkerThreadWaitingObject(void) noexcept
 		: m_sem(nullptr)
 		{
 			//none
@@ -322,13 +322,13 @@ namespace SonikLib
 		};
 
 		// blocking
-		DEF_FORCE_INLINE void acquire(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE void acquire(void) noexcept
 		{
 			WaitForSingleObject(m_sem, INFINITE);
 		};
 
 		// immediate try
-		DEF_FORCE_INLINE DEF_NO_DISCARD bool try_acquire(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE DEF_NO_DISCARD bool try_acquire(void) noexcept
 		{
 			return WaitForSingleObject(m_sem, 0) == WAIT_OBJECT_0;
 		};
@@ -421,7 +421,7 @@ namespace SonikLib
 #endif
 
 		//release(increase count)
-		DEF_FORCE_INLINE void release(int32_t update = 1) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE void release(int32_t update = 1) noexcept
 		{
 			ReleaseSemaphore(m_sem, update, nullptr);
 		};
