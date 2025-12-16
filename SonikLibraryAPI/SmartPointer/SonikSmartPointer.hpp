@@ -1,4 +1,3 @@
-
 #ifndef SMARTPOINTER_SONIK_SMARTPOINTER_HPP_
 #define SMARTPOINTER_SONIK_SMARTPOINTER_HPP_
 
@@ -10,7 +9,7 @@
 
 #include <CompilersPreProcesser.h>
 #include <Memory/AllocateInterface.h>
-#include <SonikCAS/SonikAtomic.hpp>
+#include <SonikCAS/SonikAtomicLock.h>
 #include <CPPGrammarDefines.h>
 
 //MSVC2010とC++バージョン判定による可変長テンプレート判定に使う
@@ -18,19 +17,19 @@
 #define SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_VISUALSTUDIO_ENABLE 0
 #define SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_CPP_ENABLE 0
 #if defined(_MSC_VER)
-	#if _MSC_VER >= 1800
-		//2013以上なら値1にする(有効化)
-		#undef SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_VISUALSTUDIO_ENABLE
-		#define SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_VISUALSTUDIO_ENABLE 1
-	#endif
+#if _MSC_VER >= 1800
+	//2013以上なら値1にする(有効化)
+#undef SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_VISUALSTUDIO_ENABLE
+#define SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_VISUALSTUDIO_ENABLE 1
+#endif
 #endif
 
 #if defined(__cplusplus)
-	#if __cplusplus >= 201103L
-		//C++11以上なら値1にする(有効化
-		#undef SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_CPP_ENABLE
-		#define SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_CPP_ENABLE 1
-	#endif
+#if __cplusplus >= 201103L
+	//C++11以上なら値1にする(有効化
+#undef SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_CPP_ENABLE
+#define SLIB_SMARTPOINTER_VARIABLE_TEMPLATE_CPP_ENABLE 1
+#endif
 #endif
 
 
@@ -94,6 +93,52 @@ namespace SonikLib
 	template <class PtrTemplateValueType>
 	void SmtPtrConvert_UniqueToShared(UniqueSmtPtr<PtrTemplateValueType[]>& _unique_, SharedSmtPtr<PtrTemplateValueType[]>& _shared_);
 
+	//逆比較関数を定義します。
+	template <class T, class E>
+	bool operator==(T* _p, const SharedSmtPtr<T, E>& _rvalue);
+	template <class T, class E>
+	bool operator!=(T* _p, const SharedSmtPtr<T, E>& _rvalue);
+	template <class T, class E>
+	bool operator==(uint64_t _p, const SharedSmtPtr<T, E>& _rvalue);
+	template <class T, class E>
+	bool operator!=(uint64_t _p, const SharedSmtPtr<T, E>& _rvalue);
+
+	template <class T, class E>
+	bool operator==(T* _p, const SharedSmtPtr<T[], E>& _rvalue);
+	template <class T, class E>
+	bool operator!=(T* _p, const SharedSmtPtr<T[], E>& _rvalue);
+	template <class T, class E>
+	bool operator==(uint64_t _p, const SharedSmtPtr<T[], E>& _rvalue);
+	template <class T, class E>
+	bool operator!=(uint64_t _p, const SharedSmtPtr<T[], E>& _rvalue);
+
+	template <class T, class E>
+	bool operator==(T* _p, const UniqueSmtPtr<T, E>& _rvalue);
+	template <class T, class E>
+	bool operator!=(T* _p, const UniqueSmtPtr<T, E>& _rvalue);
+	template <class T, class E>
+	bool operator==(uint64_t _p, const UniqueSmtPtr<T, E>& _rvalue);
+	template <class T, class E>
+	bool operator!=(uint64_t _p, const UniqueSmtPtr<T, E>& _rvalue);
+
+	template <class T, class E>
+	bool operator==(T* _p, const UniqueSmtPtr<T[], E>& _rvalue);
+	template <class T, class E>
+	bool operator!=(T* _p, const UniqueSmtPtr<T[], E>& _rvalue);
+	template <class T, class E>
+	bool operator==(uint64_t _p, const UniqueSmtPtr<T[], E>& _rvalue);
+	template <class T, class E>
+	bool operator!=(uint64_t _p, const UniqueSmtPtr<T[], E>& _rvalue);
+
+	template <class T, class A>
+	bool operator==(T* _p, const AllocatorSharedSmtPtr<A>& _rvalue);
+	template <class T, class A>
+	bool operator!=(T* _p, const AllocatorSharedSmtPtr<A>& _rvalue);
+	template <class T, class A>
+	bool operator==(uint64_t _p, const AllocatorSharedSmtPtr<A>& _rvalue);
+	template <class T, class A>
+	bool operator!=(uint64_t _p, const AllocatorSharedSmtPtr<A>& _rvalue);
+
 };
 
 namespace SonikLib
@@ -118,6 +163,14 @@ namespace SonikLib
 		template <class pType, class Enable>
 		friend class UniqueSmtPtr;
 
+		template <class T, class A>
+		friend bool operator==(T* _p, const AllocatorSharedSmtPtr<A>& _rvalue);
+		template <class T, class A>
+		friend bool operator!=(T* _p, const AllocatorSharedSmtPtr<A>& _rvalue);
+		template <class T, class A>
+		friend bool operator==(uint64_t _p, const AllocatorSharedSmtPtr<A>& _rvalue);
+		template <class T, class A>
+		friend bool operator!=(uint64_t _p, const AllocatorSharedSmtPtr<A>& _rvalue);
 	private:
 		AllocatorClassType* m_Pointer;
 		//std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
@@ -256,21 +309,48 @@ namespace SonikLib
 			return (*this);
 		};
 
-		DEF_FORCE_INLINE bool operator ==(const AllocatorSharedSmtPtr<AllocatorClassType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool operator ==(const AllocatorSharedSmtPtr<AllocatorClassType>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
 		{
-			return (m_Pointer == _SmtPtr_.m_Pointer) ? true : false;
+			return (m_Pointer == _SmtPtr_.m_Pointer);
+		};
+		DEF_FORCE_INLINE bool operator !=(const AllocatorSharedSmtPtr<AllocatorClassType>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _SmtPtr_.m_Pointer);
+		};
+
+
+		//生ポインタ比較を追加
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator ==(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer == _raw_ptr_);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator !=(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _raw_ptr_);
+		};
+
+		//リテラル比較
+		DEF_FORCE_INLINE bool operator ==(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer == _literal_);
+		};
+		DEF_FORCE_INLINE bool operator !=(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _literal_);
 		};
 
 		//生ポインタとして取得します。
 		//deleteしないように注意してください。
 #if !defined(SLIB_SMTPTR_ASSERTOFF)
 #if defined(SLIB_COMPILER_DEF_GCC) || defined(SLIB_COMPILER_DEF_CLANG)
-	//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
+	//【コンパイル影響無し】取得先でのdeleteに強く注意してください。
 	// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
 		DEF_FORCE_INLINE AllocatorClassType* GetPointer(void) SLIB_CVR_NOEXCEPT __attribute__((warning("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter. \nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it. \n")))
 
 #elif defined(SLIB_COMPILER_DEF_MSVC) 
-	//【コンパイル影響無し】生ポインタの取得がコールされました。取得先でのdeleteに強く注意してください。
+	//【コンパイル影響無し】取得先でのdeleteに強く注意してください。
 	// 警告を無効化するには SLIB_SMTPTR_ASSERTOFF を定義してください。
 		__declspec(deprecated("【No compilation effect】A raw pointer get was called. Be very careful with deletes on the getter.\nPlease define \"SLIB_SMTPTR_ASSERTOFF\" to disable it.\n"))
 			DEF_FORCE_INLINE AllocatorClassType* GetPointer(void) SLIB_CVR_NOEXCEPT
@@ -384,6 +464,15 @@ namespace SonikLib
 
 		template <class PtrTemplateValueType>
 		friend void SmtPtrConvert_UniqueToShared(UniqueSmtPtr<PtrTemplateValueType>& _unique_, SharedSmtPtr<PtrTemplateValueType>& _shared_);
+
+		template <class T, class E>
+		friend bool operator==(T* _p, const SharedSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(T* _p, const SharedSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator==(uint64_t _p, const SharedSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(uint64_t _p, const SharedSmtPtr<T, E>& _rvalue);
 
 		template <class AllocatorClassType>
 		friend class AllocatorSharedSmtPtr;
@@ -548,9 +637,37 @@ namespace SonikLib
 			return (*this);
 		};
 
-		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
 		{
-			return (m_Pointer == _SmtPtr_.m_Pointer) ? true : false;
+			return (m_Pointer == _SmtPtr_.m_Pointer);
+		};
+		DEF_FORCE_INLINE bool operator !=(const SharedSmtPtr<pType>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _SmtPtr_.m_Pointer);
+		};
+
+		//nullptrとの比較
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator ==(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer == _raw_ptr_);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator !=(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer != _raw_ptr_);
+		};
+
+		//リテラル比較
+		DEF_FORCE_INLINE bool operator ==(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer == _literal_);
+		};
+		DEF_FORCE_INLINE bool operator !=(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _literal_);
 		};
 
 		//生ポインタとして取得します。
@@ -769,6 +886,15 @@ namespace SonikLib
 		template <class PtrTemplateValueType>
 		friend void SmtPtrConvert_UniqueToShared(UniqueSmtPtr<PtrTemplateValueType>& _unique_, SharedSmtPtr<PtrTemplateValueType>& _shared_);
 
+		template <class T, class E>
+		friend bool operator==(T* _p, const SharedSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(T* _p, const SharedSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator==(uint64_t _p, const SharedSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(uint64_t _p, const SharedSmtPtr<T, E>& _rvalue);
+
 	protected:
 		pType* m_Pointer;
 		//std::atomic<unsigned int>* m_Count; //もったいないがm_Pointerがnullptrのときもカウント1として領域をnewする。
@@ -925,9 +1051,34 @@ namespace SonikLib
 			return (*this);
 		};
 
-		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
 		{
-			return (m_Pointer == _SmtPtr_.m_Pointer) ? true : false;
+			return (m_Pointer == _SmtPtr_.m_Pointer);
+		};
+		DEF_FORCE_INLINE bool operator !=(const SharedSmtPtr<pType>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _SmtPtr_.m_Pointer);
+		};
+
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator ==(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer == _raw_ptr_);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator !=(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _raw_ptr_);
+		};
+
+		//リテラル比較
+		DEF_FORCE_INLINE bool operator ==(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer == _literal_);
+		};
+		DEF_FORCE_INLINE bool operator !=(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _literal_);
 		};
 
 		//生ポインタとして取得します。
@@ -1020,7 +1171,7 @@ namespace SonikLib
 #if defined(SLIB_ALLOCATOR_V_EXCEPTION)
 			try
 			{
-//				void* l_MemBlock = l_allocate->memal_Exception(sizeof(std::atomic<unsigned int>));
+				//				void* l_MemBlock = l_allocate->memal_Exception(sizeof(std::atomic<unsigned int>));
 				void* l_MemBlock = l_allocate->memal_Exception(sizeof(SonikLib::SonikAtomic<uint32_t>));
 
 			}
@@ -1042,7 +1193,7 @@ namespace SonikLib
 #endif
 
 			//l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
-            l_count = new(l_MemBlock) SonikLib::SonikAtomic(static_cast<uint32_t>(1));
+			l_count = new(l_MemBlock) SonikLib::SonikAtomic(static_cast<uint32_t>(1));
 
 			//出力先へ
 			_out_.m_Pointer = _transfer_managed_pointer_;
@@ -1066,7 +1217,7 @@ namespace SonikLib
 #if defined(SLIB_ALLOCATOR_V_EXCEPTION)
 			try
 			{
-//				void* l_MemBlock = _allocate_->memal_Exception(sizeof(std::atomic<unsigned int>));
+				//				void* l_MemBlock = _allocate_->memal_Exception(sizeof(std::atomic<unsigned int>));
 				void* l_MemBlock = _allocate_->memal_Exception(sizeof(SonikLib::SonikAtomic<uint32_t>));
 			}
 			catch (std::bad_alloc)
@@ -1115,6 +1266,15 @@ namespace SonikLib
 
 		template <class PtrTemplateValueType>
 		friend void SmtPtrConvert_UniqueToShared(UniqueSmtPtr<PtrTemplateValueType[]>& _unique_, SharedSmtPtr<PtrTemplateValueType[]>& _shared_);
+
+		template <class T, class E>
+		friend bool operator==(T* _p, const SharedSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(T* _p, const SharedSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator==(uint64_t _p, const SharedSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(uint64_t _p, const SharedSmtPtr<T[], E>& _rvalue);
 
 	private:
 		pType* m_Pointer;
@@ -1272,11 +1432,36 @@ namespace SonikLib
 			return (*this);
 		};
 
-		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType[]>& _SmtPtr_) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType[]>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
 		{
-			return (m_Pointer == _SmtPtr_.m_Pointer) ? true : false;
+			return (m_Pointer == _SmtPtr_.m_Pointer);
+		};
+		DEF_FORCE_INLINE bool operator !=(const SharedSmtPtr<pType[]>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _SmtPtr_.m_Pointer);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator ==(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer == _raw_ptr_);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator !=(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer != _raw_ptr_);
 		};
 
+		//リテラル比較
+		DEF_FORCE_INLINE bool operator ==(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer == _literal_);
+		};
+		DEF_FORCE_INLINE bool operator !=(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _literal_);
+		};
 		//生ポインタとして取得します。
 //deleteしないように注意してください。
 #if !defined(SLIB_SMTPTR_ASSERTOFF)
@@ -1427,7 +1612,7 @@ namespace SonikLib
 #endif
 
 			//l_count = new(l_MemBlock) std::atomic<unsigned int>(1);
-            l_count = new(l_MemBlock) SonikLib::SonikAtomic(static_cast<uint32_t>(1));
+			l_count = new(l_MemBlock) SonikLib::SonikAtomic(static_cast<uint32_t>(1));
 
 			//出力先へ
 			_out_.m_Pointer = _transfer_managed_pointer_;
@@ -1451,6 +1636,15 @@ namespace SonikLib
 
 		template <class PtrTemplateValueType>
 		friend void SmtPtrConvert_UniqueToShared(UniqueSmtPtr<PtrTemplateValueType[]>& _unique_, SharedSmtPtr<PtrTemplateValueType[]>& _shared_);
+
+		template <class T, class E>
+		friend bool operator==(T* _p, const SharedSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(T* _p, const SharedSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator==(uint64_t _p, const SharedSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(uint64_t _p, const SharedSmtPtr<T[], E>& _rvalue);
 
 	private:
 		pType* m_Pointer;
@@ -1608,9 +1802,36 @@ namespace SonikLib
 			return (*this);
 		};
 
-		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType>& _SmtPtr_) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool operator ==(const SharedSmtPtr<pType[]>& _SmtPtr_) SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == _SmtPtr_.m_Pointer) ? true : false;
+		};
+		DEF_FORCE_INLINE bool operator !=(const SharedSmtPtr<pType[]>& _SmtPtr_) SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _SmtPtr_.m_Pointer) ? true : false;
+		};
+
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator ==(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer == _raw_ptr_);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator !=(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer != _raw_ptr_);
+		};
+
+		//リテラル比較
+		DEF_FORCE_INLINE bool operator ==(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer == _literal_);
+		};
+		DEF_FORCE_INLINE bool operator !=(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _literal_);
 		};
 
 		//生ポインタとして取得します。
@@ -1795,6 +2016,15 @@ namespace SonikLib
 		template <class PtrTemplateValueType>
 		friend void SmtPtrConvert_UniqueToShared(UniqueSmtPtr<PtrTemplateValueType>& _unique_, SharedSmtPtr<PtrTemplateValueType>& _shared_);
 
+		template <class T, class E>
+		friend bool operator==(T* _p, const UniqueSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(T* _p, const UniqueSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator==(uint64_t _p, const UniqueSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(uint64_t _p, const UniqueSmtPtr<T, E>& _rvalue);
+
 	private:
 		pType* m_Pointer;
 		AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> m_Allocate; //アロケータ
@@ -1802,7 +2032,7 @@ namespace SonikLib
 	public:
 		//コンストラクタ
 		DEF_FORCE_INLINE UniqueSmtPtr(void) SLIB_CVR_NOEXCEPT
-			:m_Pointer(nullptr)
+			: m_Pointer(nullptr)
 		{
 			//no process
 		};
@@ -1866,10 +2096,43 @@ namespace SonikLib
 			return (*this);
 		};
 
+		DEF_FORCE_INLINE bool operator ==(const UniqueSmtPtr<pType> _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer == _SmtPtr_.m_Pointer);
+		};
+		DEF_FORCE_INLINE bool operator !=(const UniqueSmtPtr<pType> _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer != _SmtPtr_.m_Pointer);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator ==(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer == _raw_ptr_);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator !=(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer != _raw_ptr_);
+		};
+
+		//リテラル比較
+		DEF_FORCE_INLINE bool operator ==(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer == _literal_);
+		};
+		DEF_FORCE_INLINE bool operator !=(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _literal_);
+		};
+
 		//Null なら True
 		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
-			return (m_Pointer == nullptr) ? true : false;
+			return (m_Pointer == nullptr);
 		};
 
 		//生ポインタとして取得します。
@@ -2005,6 +2268,15 @@ namespace SonikLib
 		template <class PtrTemplateValueType>
 		friend void SmtPtrConvert_UniqueToShared(UniqueSmtPtr<PtrTemplateValueType>& _unique_, SharedSmtPtr<PtrTemplateValueType>& _shared_);
 
+		template <class T, class E>
+		friend bool operator==(T* _p, const UniqueSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(T* _p, const UniqueSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator==(uint64_t _p, const UniqueSmtPtr<T, E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(uint64_t _p, const UniqueSmtPtr<T, E>& _rvalue);
+
 	private:
 		pType* m_Pointer;
 		AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> m_Allocate; //アロケータ
@@ -2012,7 +2284,7 @@ namespace SonikLib
 	public:
 		//コンストラクタ
 		DEF_FORCE_INLINE UniqueSmtPtr(void) SLIB_CVR_NOEXCEPT
-			:m_Pointer(nullptr)
+			: m_Pointer(nullptr)
 		{
 			//no process
 		};
@@ -2076,10 +2348,43 @@ namespace SonikLib
 			return (*this);
 		};
 
+		DEF_FORCE_INLINE bool operator ==(const UniqueSmtPtr<pType>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer == _SmtPtr_.m_Pointer);
+		};
+		DEF_FORCE_INLINE bool operator !=(const UniqueSmtPtr<pType>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer != _SmtPtr_.m_Pointer);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator ==(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer == _raw_ptr_);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator !=(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer != _raw_ptr_);
+		};
+
+		//リテラル比較
+		DEF_FORCE_INLINE bool operator ==(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer == _literal_);
+		};
+		DEF_FORCE_INLINE bool operator !=(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _literal_);
+		};
+
 		//Null なら True
 		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
-			return (m_Pointer == nullptr) ? true : false;
+			return (m_Pointer == nullptr);
 		};
 
 		//生ポインタとして取得します。
@@ -2142,7 +2447,7 @@ namespace SonikLib
 			};
 
 			//l_allocate.m_Count = new(std::nothrow) std::atomic<unsigned int>(1);
-            l_allocate.m_Count = new(std::nothrow) SonikLib::SonikAtomic(static_cast<uint32_t>(1));
+			l_allocate.m_Count = new(std::nothrow) SonikLib::SonikAtomic(static_cast<uint32_t>(1));
 			if (l_allocate.m_Count == nullptr)
 			{
 				delete l_allocate.m_Pointer;
@@ -2185,6 +2490,15 @@ namespace SonikLib
 		template <class PtrTemplateValueType>
 		friend void SmtPtrConvert_UniqueToShared(UniqueSmtPtr<PtrTemplateValueType[]>& _unique_, SharedSmtPtr<PtrTemplateValueType[]>& _shared_);
 
+		template <class T, class E>
+		friend bool operator==(T* _p, const UniqueSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(T* _p, const UniqueSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator==(uint64_t _p, const UniqueSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(uint64_t _p, const UniqueSmtPtr<T[], E>& _rvalue);
+
 	private:
 		pType* m_Pointer;
 		AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> m_Allocate; //アロケータ
@@ -2192,7 +2506,7 @@ namespace SonikLib
 	public:
 		//コンストラクタ
 		DEF_FORCE_INLINE UniqueSmtPtr(void) SLIB_CVR_NOEXCEPT
-			:m_Pointer(nullptr)
+			: m_Pointer(nullptr)
 		{
 			//no process
 		};
@@ -2256,10 +2570,43 @@ namespace SonikLib
 			return (*this);
 		};
 
+		DEF_FORCE_INLINE bool operator ==(const UniqueSmtPtr<pType[]>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer == _SmtPtr_.m_Pointer);
+		};
+		DEF_FORCE_INLINE bool operator !=(const UniqueSmtPtr<pType[]>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer != _SmtPtr_.m_Pointer);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator ==(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer == _raw_ptr_);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator !=(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer != _raw_ptr_);
+		};
+
+		//リテラル比較
+		DEF_FORCE_INLINE bool operator ==(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer == _literal_);
+		};
+		DEF_FORCE_INLINE bool operator !=(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _literal_);
+		};
+
 		//Null なら True
 		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
-			return (m_Pointer == nullptr) ? true : false;
+			return (m_Pointer == nullptr);
 		};
 
 		//生ポインタとして取得します。
@@ -2356,6 +2703,15 @@ namespace SonikLib
 		template <class PtrTemplateValueType>
 		friend void SmtPtrConvert_UniqueToShared(UniqueSmtPtr<PtrTemplateValueType[]>& _unique_, SharedSmtPtr<PtrTemplateValueType[]>& _shared_);
 
+		template <class T, class E>
+		friend bool operator==(T* _p, const UniqueSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(T* _p, const UniqueSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator==(uint64_t _p, const UniqueSmtPtr<T[], E>& _rvalue);
+		template <class T, class E>
+		friend bool operator!=(uint64_t _p, const UniqueSmtPtr<T[], E>& _rvalue);
+
 	private:
 		pType* m_Pointer;
 		AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface > m_Allocate; //アロケータ
@@ -2363,7 +2719,7 @@ namespace SonikLib
 	public:
 		//コンストラクタ
 		DEF_FORCE_INLINE UniqueSmtPtr(void) SLIB_CVR_NOEXCEPT
-			:m_Pointer(nullptr)
+			: m_Pointer(nullptr)
 		{
 			//no process
 		};
@@ -2427,10 +2783,43 @@ namespace SonikLib
 			return (*this);
 		};
 
+		DEF_FORCE_INLINE bool operator ==(const UniqueSmtPtr<pType[]>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer == _SmtPtr_.m_Pointer);
+		};
+		DEF_FORCE_INLINE bool operator !=(const UniqueSmtPtr<pType[]>& _SmtPtr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer != _SmtPtr_.m_Pointer);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator ==(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer == _raw_ptr_);
+		};
+		template <class EqualpType>
+		DEF_FORCE_INLINE bool operator !=(const EqualpType* _raw_ptr_) const SLIB_CVR_NOEXCEPT
+		{
+			// 内部で保持している生のポインタ (m_Pointer) と nullptr を比較している
+			return (m_Pointer != _raw_ptr_);
+		};
+
+		//リテラル比較
+		DEF_FORCE_INLINE bool operator ==(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer == _literal_);
+		};
+		DEF_FORCE_INLINE bool operator !=(uint64_t _literal_) const SLIB_CVR_NOEXCEPT
+		{
+			return (m_Pointer != _literal_);
+		};
+
 		//Null なら True
 		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
 		{
-			return (m_Pointer == nullptr) ? true : false;
+			return (m_Pointer == nullptr);
 		};
 
 		//生ポインタとして取得します。
@@ -2579,17 +2968,23 @@ namespace SonikLib
 	template <class before, class after>
 	DEF_FORCE_INLINE bool UniqueCast_Dynamic(UniqueSmtPtr<before>& _src_, UniqueSmtPtr<after>& _dst_)
 	{
-		after* l_po = dynamic_cast<after*>(_src_.m_pointer);
+		after* l_po = dynamic_cast<after*>(_src_.m_Pointer);
 		if (l_po == nullptr)
 		{
 			return false;
 		};
 
-		_dst_.OwnerRelease();
-		_dst_.m_pointer = l_po;
+		if (_dst_.m_Pointer != nullptr)
+		{
+			// アロケータを使って既存のポインタを破棄
+			_dst_.m_Allocate->memdel(_dst_.m_Pointer);
+		}
+		// ポインタを nullptr にする (次の代入に備える)
+		_dst_.m_Pointer = nullptr;
+		_dst_.m_Pointer = l_po;
 		_dst_.m_Allocate = std::move(_src_.m_Allocate);
 
-		_src_.m_pointer = nullptr;
+		_src_.m_Pointer = nullptr;
 
 		return true;
 	};
@@ -2597,17 +2992,23 @@ namespace SonikLib
 	template <class before, class after>
 	DEF_FORCE_INLINE bool UniqueCast_Dynamic(UniqueSmtPtr<before[]>& _src_, UniqueSmtPtr<after[]>& _dst_)
 	{
-		after* l_po = dynamic_cast<after*>(_src_.m_pointer);
+		after* l_po = dynamic_cast<after*>(_src_.m_Pointer);
 		if (l_po == nullptr)
 		{
 			return false;
 		};
 
-		_dst_.OwnerRelease();
-		_dst_.m_pointer = l_po;
+		if (_dst_.m_Pointer != nullptr)
+		{
+			// アロケータを使って既存のポインタを破棄
+			_dst_.m_Allocate->memdel(_dst_.m_Pointer);
+		}
+		// ポインタを nullptr にする (次の代入に備える)
+		_dst_.m_Pointer = nullptr;
+		_dst_.m_Pointer = l_po;
 		_dst_.m_Allocate = std::move(_src_.m_Allocate);
 
-		_src_.m_pointer = nullptr;
+		_src_.m_Pointer = nullptr;
 
 		return true;
 	};
@@ -2615,21 +3016,33 @@ namespace SonikLib
 	template <class before, class after>
 	DEF_FORCE_INLINE void UniqueCast_Reinterpret(UniqueSmtPtr<before>& _src_, UniqueSmtPtr<after>& _dst_)
 	{
-		_dst_.OwnerRelease();
-		_dst_.m_pointer = reinterpret_cast<after*>(_src_.m_pointer);
+		if (_dst_.m_Pointer != nullptr)
+		{
+			// アロケータを使って既存のポインタを破棄
+			_dst_.m_Allocate->memdel(_dst_.m_Pointer);
+		}
+		// ポインタを nullptr にする (次の代入に備える)
+		_dst_.m_Pointer = nullptr;
+		_dst_.m_Pointer = reinterpret_cast<after*>(_src_.m_Pointer);
 		_dst_.m_Allocate = std::move(_src_.m_Allocate);
 
-		_src_.m_pointer = nullptr;
+		_src_.m_Pointer = nullptr;
 	};
 
 	template <class before, class after>
 	DEF_FORCE_INLINE void UniqueCast_Reinterpret(UniqueSmtPtr<before[]>& _src_, UniqueSmtPtr<after[]>& _dst_)
 	{
-		_dst_.OwnerRelease();
-		_dst_.m_pointer = reinterpret_cast<after*>(_src_.m_pointer);
+		if (_dst_.m_Pointer != nullptr)
+		{
+			// アロケータを使って既存のポインタを破棄
+			_dst_.m_Allocate->memdel(_dst_.m_Pointer);
+		}
+		// ポインタを nullptr にする (次の代入に備える)
+		_dst_.m_Pointer = nullptr;
+		_dst_.m_Pointer = reinterpret_cast<after*>(_src_.m_Pointer);
 		_dst_.m_Allocate = std::move(_src_.m_Allocate);
 
-		_src_.m_pointer = nullptr;
+		_src_.m_Pointer = nullptr;
 	};
 
 	//UniqueからSharedへの変換。片方向変換しかしません。なぜならUniqueへ変換してしまうとSharedの参照カウンタの整合性が取れなくなるからです。
@@ -2649,11 +3062,11 @@ namespace SonikLib
 
 		_shared_.Release();
 
-		_shared_.m_Pointer = _unique_.m_pointer;
+		_shared_.m_Pointer = _unique_.m_Pointer;
 		_shared_.m_Allocate = _unique_.m_Allocate;
 		_shared_.m_Count = l_count;
 
-		_unique_.m_pointer = nullptr;
+		_unique_.m_Pointer = nullptr;
 
 		//正常終了
 	};
@@ -2675,15 +3088,125 @@ namespace SonikLib
 
 		_shared_.Release();
 
-		_shared_.m_Pointer = _unique_.m_pointer;
+		_shared_.m_Pointer = _unique_.m_Pointer;
 		_shared_.m_Allocate = _unique_.m_Allocate;
 		_shared_.m_Count = l_count;
 
-		_unique_.m_pointer = nullptr;
+		_unique_.m_Pointer = nullptr;
 
 		//正常終了
 	};
+
+	//逆比較(例：nullptr == SmtPtr)の場合における比較関数定義===================================================
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator==(T* _p, const SharedSmtPtr<T, E>& _rvalue)
+	{
+		return (_p == _rvalue.m_Pointer);
+	};
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator!=(T* _p, const SharedSmtPtr<T, E>& _rvalue)
+	{
+		return (_p != _rvalue.m_Pointer);
+	};
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator==(uint64_t _p, const SharedSmtPtr<T, E>& _rvalue)
+	{
+		return (_p == _rvalue.m_Pointer);
+	};
+
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator!=(uint64_t _p, const SharedSmtPtr<T, E>& _rvalue)
+	{
+		return (_p != _rvalue.m_Pointer);
+	};
+
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator==(T* _p, const SharedSmtPtr<T[], E>& _rvalue)
+	{
+		return (_p == _rvalue.m_Pointer);
+	};
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator!=(T* _p, const SharedSmtPtr<T[], E>& _rvalue)
+	{
+		return (_p != _rvalue.m_Pointer);
+	};
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator==(uint64_t _p, const SharedSmtPtr<T[], E>& _rvalue)
+	{
+		return (_p == _rvalue.m_Pointer);
+	};
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator!=(uint64_t _p, const SharedSmtPtr<T[], E>& _rvalue)
+	{
+		return (_p != _rvalue.m_Pointer);
+	};
+
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator==(T* _p, const UniqueSmtPtr<T, E>& _rvalue)
+	{
+		return (_p == _rvalue.m_Pointer);
+	};
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator!=(T* _p, const UniqueSmtPtr<T, E>& _rvalue)
+	{
+		return (_p != _rvalue.m_Pointer);
+	};
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator==(uint64_t _p, const UniqueSmtPtr<T, E>& _rvalue)
+	{
+		return (_p == _rvalue.m_Pointer);
+	};
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator!=(uint64_t _p, const UniqueSmtPtr<T, E>& _rvalue)
+	{
+		return (_p != _rvalue.m_Pointer);
+	};
+
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator==(T* _p, const UniqueSmtPtr<T[], E>& _rvalue)
+	{
+		return (_p == _rvalue.m_Pointer);
+	};
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator!=(T* _p, const UniqueSmtPtr<T[], E>& _rvalue)
+	{
+		return (_p != _rvalue.m_Pointer);
+	};
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator==(uint64_t _p, const UniqueSmtPtr<T[], E>& _rvalue)
+	{
+		return (_p == _rvalue.m_Pointer);
+	};
+	template <class T, class E>
+	DEF_FORCE_INLINE bool operator!=(uint64_t _p, const UniqueSmtPtr<T[], E>& _rvalue)
+	{
+		return (_p != _rvalue.m_Pointer);
+	};
+
+	template <class T, class A>
+	DEF_FORCE_INLINE bool operator==(T* _p, const AllocatorSharedSmtPtr<A>& _rvalue)
+	{
+		return (_p == _rvalue.m_Pointer);
+	};
+	template <class T, class A>
+	DEF_FORCE_INLINE bool operator!=(T* _p, const AllocatorSharedSmtPtr<A>& _rvalue)
+	{
+		return (_p != _rvalue.m_Pointer);
+	};
+	template <class T, class A>
+	DEF_FORCE_INLINE bool operator==(uint64_t _p, const AllocatorSharedSmtPtr<A>& _rvalue)
+	{
+		return (_p == _rvalue.m_Pointer);
+	};
+	template <class T, class A>
+	DEF_FORCE_INLINE bool operator!=(uint64_t _p, const AllocatorSharedSmtPtr<A>& _rvalue)
+	{
+		return (_p != _rvalue.m_Pointer);
+	};
+
+
 };
 
 
 #endif /* SMARTPOINTER_SONIK_SMARTPOINTER_HPP_ */
+
