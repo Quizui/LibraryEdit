@@ -1,8 +1,11 @@
-
 #ifndef WORKER_FUNCTOR_DEFINITION_SONIKLIBRARY_
 #define WORKER_FUNCTOR_DEFINITION_SONIKLIBRARY_
 
 #include "FunctionObjectSystemInterface.hpp"
+#include <SmartPointer/SonikSmartPointer.hpp>
+
+#include <CPPGrammarDefines.h>
+#include <CompilersPreProcesser.h>
 
 //引数を10個まで取れるテンプレートクラスを定義します。
 //それぞれクラスのメンバ関数を登録する場合において、ポインタのポインタ型は指定できません。
@@ -25,26 +28,6 @@
 //いずれのクラスもローカル変数として生成し、スレッドに渡されてほしくないため、
 //NEW関数を経由しての作成を強制しています。
 
-namespace __UF_SLIB_FUNCTION_PARAMOBJECT_FU__ //名前横のUF FU は特に意味はない。ユニーク名前でアクセスしづらいようにしたかっただけ。
-{
-	//パラメータのセッターを下記の形でコールしたい場合に使う構造
-	//object<index>(setvalue);
-	template <std::size_t Ind, class SetType>
-	class UF_PARAMSETTER;
-
-	template <class Types>
-	class UF_PARAMSETTER<0, Types>
-	{
-	public:
-		static void UF_FUNC_CHANGED_SETTER(Types& _changed_, Types&& _value_)
-		{
-			_changed_ = std::forward<Types>(_value_);
-		}
-	};
-
-};
-
-
 namespace SonikLib
 {
 	//テンプレート再実装を試みる
@@ -55,11 +38,12 @@ namespace SonikLib
 	template <class Cls_T, class arg_T1 = void, class arg_T2 = void, class arg_T3 = void, class arg_T4 = void, class arg_T5 = void, class arg_T6 = void, class arg_T7 = void, class arg_T8 = void, class arg_T9 = void, class arg_T10 = void>
 	class FunctionObject_ClsMember : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -77,8 +61,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_, arg_T9 _argval9_, arg_T10 _argval10_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_, arg_T9 _argval9_, arg_T10 _argval10_)
+			: BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -92,59 +77,20 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-		template<>
-		inline auto& __In__GetArgument<5>(void) { return m_arg6; };
-		template<>
-		inline auto& __In__GetArgument<6>(void) { return m_arg7; };
-		template<>
-		inline auto& __In__GetArgument<7>(void) { return m_arg8; };
-		template<>
-		inline auto& __In__GetArgument<8>(void) { return m_arg9; };
-		template<>
-		inline auto& __In__GetArgument<9>(void) { return m_arg10; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE ~FunctionObject_ClsMember(void)
 		{
 			if (this->Destroy_ == false)
 			{
 				//オブジェクト削除フラグがfalseなら勝手にdeleteしてはいけないので
-				//ダミーを使ってスマートポインタからオーナー権限を除去し、dummyのdeleteを呼ばない。
-				Cls_T* _dymmy = nullptr;
+				//スマートポインタからオーナー権限を除去
 				m_object.DestroyOwner();
 			};
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			//FuncRetType == voidの場合は戻り値void関数として展開
 			if (m_object.IsNullptr())
@@ -159,10 +105,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(スマートポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newのアロケータを生成
@@ -174,7 +123,7 @@ namespace SonikLib
 			};
 
 			void* l_allocbuffer = l_alloc_obj->memal(sizeof(CreateClsType));
-			if(l_allocbuffer == nullptr)
+			if (l_allocbuffer == nullptr)
 			{
 				delete l_alloc_obj;
 
@@ -186,7 +135,7 @@ namespace SonikLib
 			lp = new(l_allocbuffer) CreateClsType(Val1_, Val2_, Val3_, Val4_, Val5_, Val6_, Val7_, Val8_, Val9_, Val10_);
 
 			SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> l_allocsmtptr;
-			if(!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_alloc_obj, l_allocsmtptr))
+			if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_alloc_obj, l_allocsmtptr))
 			{
 
 				l_alloc_obj->memdel(lp);
@@ -210,10 +159,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(スマートポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -241,10 +193,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(Rawポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -306,10 +261,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(Rawポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -354,13 +312,14 @@ namespace SonikLib
 
 	//引数  9個==================================================================
 	template <class Cls_T, class arg_T1, class arg_T2, class arg_T3, class arg_T4, class arg_T5, class arg_T6, class arg_T7, class arg_T8, class arg_T9>
-	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -377,8 +336,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_, arg_T9 _argval9_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_, arg_T9 _argval9_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -391,57 +351,20 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-		template<>
-		inline auto& __In__GetArgument<5>(void) { return m_arg6; };
-		template<>
-		inline auto& __In__GetArgument<6>(void) { return m_arg7; };
-		template<>
-		inline auto& __In__GetArgument<7>(void) { return m_arg8; };
-		template<>
-		inline auto& __In__GetArgument<8>(void) { return m_arg9; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE ~FunctionObject_ClsMember(void)
 		{
 			if (this->Destroy_ == false)
 			{
 				//オブジェクト削除フラグがfalseなら勝手にdeleteしてはいけないので
-				//ダミーを使ってスマートポインタからオーナー権限を除去し、dummyのdeleteを呼ばない。
-				Cls_T* _dymmy = nullptr;
+				//スマートポインタからオーナー権限を除去
 				m_object.DestroyOwner();
 			};
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			if (m_object.IsNullptr())
 			{
@@ -455,10 +378,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(スマートポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newのアロケータを生成
@@ -506,10 +432,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(スマートポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -537,10 +466,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(Rawポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -602,10 +534,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(Rawポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -650,13 +585,14 @@ namespace SonikLib
 
 	//引数  8個==================================================================
 	template <class Cls_T, class arg_T1, class arg_T2, class arg_T3, class arg_T4, class arg_T5, class arg_T6, class arg_T7, class arg_T8>
-	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -672,8 +608,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -685,55 +622,20 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-		template<>
-		inline auto& __In__GetArgument<5>(void) { return m_arg6; };
-		template<>
-		inline auto& __In__GetArgument<6>(void) { return m_arg7; };
-		template<>
-		inline auto& __In__GetArgument<7>(void) { return m_arg8; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE ~FunctionObject_ClsMember(void)
 		{
 			if (this->Destroy_ == false)
 			{
 				//オブジェクト削除フラグがfalseなら勝手にdeleteしてはいけないので
-				//ダミーを使ってスマートポインタからオーナー権限を除去し、dummyのdeleteを呼ばない。
-				Cls_T* _dymmy = nullptr;
+				//スマートポインタからオーナー権限を除去
 				m_object.DestroyOwner();
 			};
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			if (m_object.IsNullptr())
 			{
@@ -747,10 +649,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(スマートポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newのアロケータを生成
@@ -798,10 +703,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(スマートポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -829,10 +737,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(Rawポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -894,10 +805,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(Rawポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -942,13 +856,14 @@ namespace SonikLib
 
 	//引数  7個==================================================================
 	template <class Cls_T, class arg_T1, class arg_T2, class arg_T3, class arg_T4, class arg_T5, class arg_T6, class arg_T7>
-	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -963,8 +878,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -975,53 +891,20 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-		template<>
-		inline auto& __In__GetArgument<5>(void) { return m_arg6; };
-		template<>
-		inline auto& __In__GetArgument<6>(void) { return m_arg7; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE ~FunctionObject_ClsMember(void)
 		{
 			if (this->Destroy_ == false)
 			{
 				//オブジェクト削除フラグがfalseなら勝手にdeleteしてはいけないので
-				//ダミーを使ってスマートポインタからオーナー権限を除去し、dummyのdeleteを呼ばない。
-				Cls_T* _dymmy = nullptr;
+				//スマートポインタからオーナー権限を除去
 				m_object.DestroyOwner();
 			};
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			if (m_object.IsNullptr())
 			{
@@ -1035,10 +918,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(スマートポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newのアロケータを生成
@@ -1086,10 +972,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(スマートポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -1117,10 +1006,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(Rawポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -1182,10 +1074,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(Rawポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -1230,13 +1125,14 @@ namespace SonikLib
 
 	//引数  6個==================================================================
 	template <class Cls_T, class arg_T1, class arg_T2, class arg_T3, class arg_T4, class arg_T5, class arg_T6>
-	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -1250,8 +1146,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -1261,51 +1158,20 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-		template<>
-		inline auto& __In__GetArgument<5>(void) { return m_arg6; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE ~FunctionObject_ClsMember(void)
 		{
 			if (this->Destroy_ == false)
 			{
 				//オブジェクト削除フラグがfalseなら勝手にdeleteしてはいけないので
-				//ダミーを使ってスマートポインタからオーナー権限を除去し、dummyのdeleteを呼ばない。
-				Cls_T* _dymmy = nullptr;
+				//スマートポインタからオーナー権限を除去
 				m_object.DestroyOwner();
 			};
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			if (m_object.IsNullptr())
 			{
@@ -1319,10 +1185,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(スマートポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newのアロケータを生成
@@ -1370,10 +1239,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(スマートポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -1401,10 +1273,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(Rawポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -1466,10 +1341,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(Rawポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -1514,13 +1392,14 @@ namespace SonikLib
 
 	//引数  5個==================================================================
 	template <class Cls_T, class arg_T1, class arg_T2, class arg_T3, class arg_T4, class arg_T5>
-	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, void, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -1533,8 +1412,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -1543,49 +1423,20 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE ~FunctionObject_ClsMember(void)
 		{
 			if (this->Destroy_ == false)
 			{
 				//オブジェクト削除フラグがfalseなら勝手にdeleteしてはいけないので
-				//ダミーを使ってスマートポインタからオーナー権限を除去し、dummyのdeleteを呼ばない。
-				Cls_T* _dymmy = nullptr;
+				//スマートポインタからオーナー権限を除去
 				m_object.DestroyOwner();
 			};
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			if (m_object.IsNullptr())
 			{
@@ -1599,10 +1450,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(スマートポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newのアロケータを生成
@@ -1650,10 +1504,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(スマートポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -1681,10 +1538,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(Rawポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -1746,10 +1606,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(Rawポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -1794,13 +1657,14 @@ namespace SonikLib
 
 	//引数  4個==================================================================
 	template <class Cls_T, class arg_T1, class arg_T2, class arg_T3, class arg_T4>
-	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4, void, void, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (Cls_T::*)(arg_T1, arg_T2, arg_T3, arg_T4));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -1812,8 +1676,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -1821,47 +1686,20 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE ~FunctionObject_ClsMember(void)
 		{
 			if (this->Destroy_ == false)
 			{
 				//オブジェクト削除フラグがfalseなら勝手にdeleteしてはいけないので
-				//ダミーを使ってスマートポインタからオーナー権限を除去し、dummyのdeleteを呼ばない。
-				Cls_T* _dymmy = nullptr;
+				//スマートポインタからオーナー権限を除去
 				m_object.DestroyOwner();
 			};
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			if (m_object.IsNullptr())
 			{
@@ -1875,10 +1713,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(スマートポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newのアロケータを生成
@@ -1926,10 +1767,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(スマートポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -1957,10 +1801,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(Rawポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -2022,10 +1869,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(Rawポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, arg_T4>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -2070,13 +1920,14 @@ namespace SonikLib
 
 	//引数  3個==================================================================
 	template <class Cls_T, class arg_T1, class arg_T2, class arg_T3>
-	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3, void, void, void, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (Cls_T::*)(arg_T1, arg_T2, arg_T3);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (Cls_T::*)(arg_T1, arg_T2, arg_T3));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -2087,53 +1938,29 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 		{
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE ~FunctionObject_ClsMember(void)
 		{
 			if (this->Destroy_ == false)
 			{
 				//オブジェクト削除フラグがfalseなら勝手にdeleteしてはいけないので
-				//ダミーを使ってスマートポインタからオーナー権限を除去し、dummyのdeleteを呼ばない。
-				Cls_T* _dymmy = nullptr;
+				//スマートポインタからオーナー権限を除去
 				m_object.DestroyOwner();
 			};
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			if (m_object.IsNullptr())
 			{
@@ -2147,10 +1974,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(スマートポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>;;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newのアロケータを生成
@@ -2198,10 +2028,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(スマートポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>;;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -2229,10 +2062,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(Rawポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>;;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -2294,10 +2130,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(Rawポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>;;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, arg_T3>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -2342,13 +2181,14 @@ namespace SonikLib
 
 	//引数  2個==================================================================
 	template <class Cls_T, class arg_T1, class arg_T2>
-	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2, void, void, void, void, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (Cls_T::*)(arg_T1, arg_T2);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (Cls_T::*)(arg_T1, arg_T2));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -2358,51 +2198,28 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_ClsMember(arg_T1 _argval1_, arg_T2 _argval2_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 		{
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE ~FunctionObject_ClsMember(void)
 		{
 			if (this->Destroy_ == false)
 			{
 				//オブジェクト削除フラグがfalseなら勝手にdeleteしてはいけないので
-				//ダミーを使ってスマートポインタからオーナー権限を除去し、dummyのdeleteを呼ばない。
-				Cls_T* _dymmy = nullptr;
+				//スマートポインタからオーナー権限を除去
 				m_object.DestroyOwner();
 			};
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			if (m_object.IsNullptr())
 			{
@@ -2416,10 +2233,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(スマートポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newのアロケータを生成
@@ -2467,10 +2287,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(スマートポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -2498,10 +2321,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(Rawポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -2563,10 +2389,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(Rawポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1, arg_T2>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -2611,13 +2440,14 @@ namespace SonikLib
 
 	//引数  1個==================================================================
 	template <class Cls_T, class arg_T1>
-	class FunctionObject_ClsMember<Cls_T, arg_T1> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_ClsMember<Cls_T, arg_T1, void, void, void, void, void, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (Cls_T::*)(arg_T1);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (Cls_T::*)(arg_T1));
+
 	private:
 		arg_T1 m_arg1;
 
@@ -2626,47 +2456,27 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_ClsMember(arg_T1 _argval1_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_ClsMember(arg_T1 _argval1_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 		{
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE ~FunctionObject_ClsMember(void)
 		{
 			if (this->Destroy_ == false)
 			{
 				//オブジェクト削除フラグがfalseなら勝手にdeleteしてはいけないので
-				//ダミーを使ってスマートポインタからオーナー権限を除去し、dummyのdeleteを呼ばない。
-				Cls_T* _dymmy = nullptr;
+				//スマートポインタからオーナー権限を除去
 				m_object.DestroyOwner();
 			};
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			if (m_object.IsNullptr())
 			{
@@ -2680,10 +2490,14 @@ namespace SonikLib
 		};
 
 		//クリエイタ(スマートポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newのアロケータを生成
@@ -2731,10 +2545,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(スマートポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -2762,10 +2579,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(Rawポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -2827,10 +2647,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(Rawポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, arg_T1 Val1_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T, arg_T1>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -2875,13 +2698,13 @@ namespace SonikLib
 
 	//引数  0個==================================================================
 	template <class Cls_T>
-	class FunctionObject_ClsMember<Cls_T> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_ClsMember<Cls_T, void, void, void, void, void, void, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (Cls_T::*)();
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (Cls_T::*)());
 
 	private:
 		SonikLib::SharedSmtPtr<Cls_T> m_object;
@@ -2889,26 +2712,26 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE FunctionObject_ClsMember(void)
+		:BaseInterfaceCls()
 		{
 			//no process
 		};
 
 	public:
 		//デストラクタ
-		inline ~FunctionObject_ClsMember(void)
+		DEF_FORCE_INLINE ~FunctionObject_ClsMember(void)
 		{
 			if (this->Destroy_ == false)
 			{
 				//オブジェクト削除フラグがfalseなら勝手にdeleteしてはいけないので
-				//ダミーを使ってスマートポインタからオーナー権限を除去し、dummyのdeleteを呼ばない。
-				Cls_T* _dymmy = nullptr;
+				//スマートポインタからオーナー権限を除去
 				m_object.DestroyOwner();
 			};
 		};
 
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			if (m_object.IsNullptr())
 			{
@@ -2922,10 +2745,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(スマートポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newのアロケータを生成
@@ -2973,10 +2799,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(スマートポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(SonikLib::SharedSmtPtr<Cls_T> _SetObj_, FUNCNAMEDEF _set_func_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -3004,10 +2833,13 @@ namespace SonikLib
 		};
 
 		//クリエイタ(Rawポインタ指定(アロケータ無し))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -3069,10 +2901,13 @@ namespace SonikLib
 			return ret_sp;
 		};
 		//クリエイタ(Rawポインタ指定(アロケータ有り))
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(Cls_T* _SetObj_, FUNCNAMEDEF _set_func_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_ClsMember<Cls_T>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_ClsMember<Cls_T>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			if (_SetObj_ == nullptr)
@@ -3123,11 +2958,12 @@ namespace SonikLib
 	template <class arg_T1 = void, class arg_T2 = void, class arg_T3 = void, class arg_T4 = void, class arg_T5 = void, class arg_T6 = void, class arg_T7 = void, class arg_T8 = void, class arg_T9 = void, class arg_T10 = void>
 	class FunctionObject_Global : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -3144,8 +2980,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_, arg_T9 _argval9_, arg_T10 _argval10_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_, arg_T9 _argval9_, arg_T10 _argval10_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -3159,53 +2996,15 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-		template<>
-		inline auto& __In__GetArgument<5>(void) { return m_arg6; };
-		template<>
-		inline auto& __In__GetArgument<6>(void) { return m_arg7; };
-		template<>
-		inline auto& __In__GetArgument<7>(void) { return m_arg8; };
-		template<>
-		inline auto& __In__GetArgument<8>(void) { return m_arg9; };
-		template<>
-		inline auto& __In__GetArgument<9>(void) { return m_arg10; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_Global(void)
+		DEF_FORCE_INLINE ~FunctionObject_Global(void)
 		{
 			//グローバル関数はメンバ関数と違ってオブジェクトは必要ないのでそのまま何もしない。
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			(*m_p_mfunc)(m_arg1, m_arg2, m_arg3, m_arg4, m_arg5, m_arg6, m_arg7, m_arg8, m_arg9, m_arg10);
 			this->MethodStatus = true;
@@ -3215,10 +3014,13 @@ namespace SonikLib
 
 		//クリエイタ(アロケータ無し)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newをするデフォルトアロケータの生成
@@ -3259,10 +3061,13 @@ namespace SonikLib
 		};
 		//クリエイタ(アロケータ有り)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, arg_T10 Val10_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, arg_T10>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -3288,16 +3093,17 @@ namespace SonikLib
 			return ret_sp;
 		};
 	};
-	
+
 	//引数  9個==================================================================
 	template <class arg_T1, class arg_T2, class arg_T3, class arg_T4, class arg_T5, class arg_T6, class arg_T7, class arg_T8, class arg_T9>
-	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -3313,8 +3119,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_, arg_T9 _argval9_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_, arg_T9 _argval9_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -3327,51 +3134,15 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-		template<>
-		inline auto& __In__GetArgument<5>(void) { return m_arg6; };
-		template<>
-		inline auto& __In__GetArgument<6>(void) { return m_arg7; };
-		template<>
-		inline auto& __In__GetArgument<7>(void) { return m_arg8; };
-		template<>
-		inline auto& __In__GetArgument<8>(void) { return m_arg9; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_Global(void)
+		DEF_FORCE_INLINE ~FunctionObject_Global(void)
 		{
 			//グローバル関数はメンバ関数と違ってオブジェクトは必要ないのでそのまま何もしない。
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			(*m_p_mfunc)(m_arg1, m_arg2, m_arg3, m_arg4, m_arg5, m_arg6, m_arg7, m_arg8, m_arg9);
 			this->MethodStatus = true;
@@ -3381,10 +3152,13 @@ namespace SonikLib
 
 		//クリエイタ(アロケータ無し)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newをするデフォルトアロケータの生成
@@ -3425,10 +3199,13 @@ namespace SonikLib
 		};
 		//クリエイタ(アロケータ有り)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, arg_T9 Val9_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, arg_T9>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -3457,13 +3234,14 @@ namespace SonikLib
 
 	//引数  8個==================================================================
 	template <class arg_T1, class arg_T2, class arg_T3, class arg_T4, class arg_T5, class arg_T6, class arg_T7, class arg_T8>
-	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -3478,8 +3256,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_, arg_T8 _argval8_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -3491,49 +3270,15 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-		template<>
-		inline auto& __In__GetArgument<5>(void) { return m_arg6; };
-		template<>
-		inline auto& __In__GetArgument<6>(void) { return m_arg7; };
-		template<>
-		inline auto& __In__GetArgument<7>(void) { return m_arg8; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_Global(void)
+		DEF_FORCE_INLINE ~FunctionObject_Global(void)
 		{
 			//グローバル関数はメンバ関数と違ってオブジェクトは必要ないのでそのまま何もしない。
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			(*m_p_mfunc)(m_arg1, m_arg2, m_arg3, m_arg4, m_arg5, m_arg6, m_arg7, m_arg8);
 			this->MethodStatus = true;
@@ -3543,10 +3288,13 @@ namespace SonikLib
 
 		//クリエイタ(アロケータ無し)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newをするデフォルトアロケータの生成
@@ -3587,10 +3335,13 @@ namespace SonikLib
 		};
 		//クリエイタ(アロケータ有り)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, arg_T8 Val8_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, arg_T8>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -3619,13 +3370,14 @@ namespace SonikLib
 
 	//引数  7個==================================================================
 	template <class arg_T1, class arg_T2, class arg_T3, class arg_T4, class arg_T5, class arg_T6, class arg_T7>
-	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -3639,8 +3391,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_, arg_T7 _argval7_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -3651,47 +3404,15 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-		template<>
-		inline auto& __In__GetArgument<5>(void) { return m_arg6; };
-		template<>
-		inline auto& __In__GetArgument<6>(void) { return m_arg7; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_Global(void)
+		DEF_FORCE_INLINE ~FunctionObject_Global(void)
 		{
 			//グローバル関数はメンバ関数と違ってオブジェクトは必要ないのでそのまま何もしない。
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			(*m_p_mfunc)(m_arg1, m_arg2, m_arg3, m_arg4, m_arg5, m_arg6, m_arg7);
 			this->MethodStatus = true;
@@ -3701,10 +3422,13 @@ namespace SonikLib
 
 		//クリエイタ(アロケータ無し)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newをするデフォルトアロケータの生成
@@ -3745,10 +3469,13 @@ namespace SonikLib
 		};
 		//クリエイタ(アロケータ有り)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, arg_T7 Val7_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, arg_T7>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -3777,13 +3504,14 @@ namespace SonikLib
 
 	//引数  6個==================================================================
 	template <class arg_T1, class arg_T2, class arg_T3, class arg_T4, class arg_T5, class arg_T6>
-	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -3796,8 +3524,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_, arg_T6 _argval6_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -3807,45 +3536,15 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-		template<>
-		inline auto& __In__GetArgument<5>(void) { return m_arg6; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_Global(void)
+		DEF_FORCE_INLINE ~FunctionObject_Global(void)
 		{
 			//グローバル関数はメンバ関数と違ってオブジェクトは必要ないのでそのまま何もしない。
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			(*m_p_mfunc)(m_arg1, m_arg2, m_arg3, m_arg4, m_arg5, m_arg6);
 			this->MethodStatus = true;
@@ -3855,10 +3554,13 @@ namespace SonikLib
 
 		//クリエイタ(アロケータ無し)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newをするデフォルトアロケータの生成
@@ -3899,10 +3601,13 @@ namespace SonikLib
 		};
 		//クリエイタ(アロケータ有り)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, arg_T6 Val6_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, arg_T6>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -3931,13 +3636,14 @@ namespace SonikLib
 
 	//引数  5個==================================================================
 	template <class arg_T1, class arg_T2, class arg_T3, class arg_T4, class arg_T5>
-	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5, void, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (*)(arg_T1, arg_T2, arg_T3, arg_T4, arg_T5));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -3949,8 +3655,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_, arg_T5 _argval5_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -3959,43 +3666,15 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-		template<>
-		inline auto& __In__GetArgument<4>(void) { return m_arg5; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_Global(void)
+		DEF_FORCE_INLINE ~FunctionObject_Global(void)
 		{
 			//グローバル関数はメンバ関数と違ってオブジェクトは必要ないのでそのまま何もしない。
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			(*m_p_mfunc)(m_arg1, m_arg2, m_arg3, m_arg4, m_arg5);
 			this->MethodStatus = true;
@@ -4005,10 +3684,13 @@ namespace SonikLib
 
 		//クリエイタ(アロケータ無し)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newをするデフォルトアロケータの生成
@@ -4049,10 +3731,13 @@ namespace SonikLib
 		};
 		//クリエイタ(アロケータ有り)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, arg_T5 Val5_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, arg_T5>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -4081,13 +3766,14 @@ namespace SonikLib
 
 	//引数  4個==================================================================
 	template <class arg_T1, class arg_T2, class arg_T3, class arg_T4>
-	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4, void, void, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (*)(arg_T1, arg_T2, arg_T3, arg_T4);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (*)(arg_T1, arg_T2, arg_T3, arg_T4));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -4098,8 +3784,9 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_, arg_T4 _argval4_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 			, m_arg4(_argval4_)
@@ -4107,41 +3794,15 @@ namespace SonikLib
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-		template<>
-		inline auto& __In__GetArgument<3>(void) { return m_arg4; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_Global(void)
+		DEF_FORCE_INLINE ~FunctionObject_Global(void)
 		{
 			//グローバル関数はメンバ関数と違ってオブジェクトは必要ないのでそのまま何もしない。
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			(*m_p_mfunc)(m_arg1, m_arg2, m_arg3, m_arg4);
 			this->MethodStatus = true;
@@ -4151,10 +3812,13 @@ namespace SonikLib
 
 		//クリエイタ(アロケータ無し)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+			
 			CreateClsType* lp = nullptr;
 
 			//通常newをするデフォルトアロケータの生成
@@ -4195,10 +3859,13 @@ namespace SonikLib
 		};
 		//クリエイタ(アロケータ有り)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, arg_T4 Val4_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3, arg_T4>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -4227,13 +3894,14 @@ namespace SonikLib
 
 	//引数  3個==================================================================
 	template <class arg_T1, class arg_T2, class arg_T3>
-	class FunctionObject_Global<arg_T1, arg_T2, arg_T3> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_Global<arg_T1, arg_T2, arg_T3, void, void, void, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (*)(arg_T1, arg_T2, arg_T3);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (*)(arg_T1, arg_T2, arg_T3));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -4243,47 +3911,24 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_, arg_T3 _argval3_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 			, m_arg3(_argval3_)
 		{
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-		template<>
-		inline auto& __In__GetArgument<2>(void) { return m_arg3; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_Global(void)
+		DEF_FORCE_INLINE ~FunctionObject_Global(void)
 		{
 			//グローバル関数はメンバ関数と違ってオブジェクトは必要ないのでそのまま何もしない。
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			(*m_p_mfunc)(m_arg1, m_arg2, m_arg3);
 			this->MethodStatus = true;
@@ -4293,10 +3938,13 @@ namespace SonikLib
 
 		//クリエイタ(アロケータ無し)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newをするデフォルトアロケータの生成
@@ -4337,10 +3985,13 @@ namespace SonikLib
 		};
 		//クリエイタ(アロケータ有り)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, arg_T3 Val3_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2, arg_T3>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -4369,13 +4020,14 @@ namespace SonikLib
 
 	//引数  2個==================================================================
 	template <class arg_T1, class arg_T2>
-	class FunctionObject_Global<arg_T1, arg_T2> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_Global<arg_T1, arg_T2, void, void, void, void, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (*)(arg_T1, arg_T2);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (*)(arg_T1, arg_T2));
+
 	private:
 		arg_T1 m_arg1;
 		arg_T2 m_arg2;
@@ -4384,44 +4036,23 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_Global(arg_T1 _argval1_, arg_T2 _argval2_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 			, m_arg2(_argval2_)
 		{
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-		template<>
-		inline auto& __In__GetArgument<1>(void) { return m_arg2; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_Global(void)
+		DEF_FORCE_INLINE ~FunctionObject_Global(void)
 		{
 			//グローバル関数はメンバ関数と違ってオブジェクトは必要ないのでそのまま何もしない。
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			(*m_p_mfunc)(m_arg1, m_arg2);
 			this->MethodStatus = true;
@@ -4431,10 +4062,13 @@ namespace SonikLib
 
 		//クリエイタ(アロケータ無し)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newをするデフォルトアロケータの生成
@@ -4475,10 +4109,13 @@ namespace SonikLib
 		};
 		//クリエイタ(アロケータ有り)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, arg_T2 Val2_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1, arg_T2>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1, arg_T2>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -4507,13 +4144,14 @@ namespace SonikLib
 
 	//引数  1個==================================================================
 	template <class arg_T1>
-	class FunctionObject_Global<arg_T1> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
+	class FunctionObject_Global<arg_T1, void, void, void, void, void, void, void, void, void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (*)(arg_T1);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (*)(arg_T1));
+
 	private:
 		arg_T1 m_arg1;
 
@@ -4521,41 +4159,22 @@ namespace SonikLib
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_Global(arg_T1 _argval1_)
-			:m_arg1(_argval1_)
+		DEF_FORCE_INLINE FunctionObject_Global(arg_T1 _argval1_)
+			:BaseInterfaceCls()
+			, m_arg1(_argval1_)
 		{
 			//no process
 		};
 
-	private:
-		//セッタで使う関数群（実質indexテンプレートゲッタ)
-		template <size_t Ind>
-		inline auto& __In__GetArgument(void) { return; };
-
-		template<>
-		inline auto& __In__GetArgument<0>(void) { return m_arg1; };
-
 	public:
 		//デストラクタ
-		inline ~FunctionObject_Global(void)
+		DEF_FORCE_INLINE ~FunctionObject_Global(void)
 		{
 			//グローバル関数はメンバ関数と違ってオブジェクトは必要ないのでそのまま何もしない。
 		};
 
-		//セッター
-		template <std::size_t Ind, class SetType>
-		inline void SetParam(SetType&& _param_)
-		{
-			if constexpr (Ind >= 10)
-			{
-				return;
-			};
-
-			__UF_SLIB_FUNCTION_PARAMOBJECT_FU__::UF_PARAMSETTER<Ind, SetType>::UF_FUNC_CHANGED_SETTER(__In__GetArgument<Ind>(), std::forward<SetType>(_param_));
-		};
-
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			(*m_p_mfunc)(m_arg1);
 			this->MethodStatus = true;
@@ -4565,10 +4184,13 @@ namespace SonikLib
 
 		//クリエイタ(アロケータ無し)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newをするデフォルトアロケータの生成
@@ -4609,10 +4231,13 @@ namespace SonikLib
 		};
 		//クリエイタ(アロケータ有り)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, arg_T1 Val1_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<arg_T1>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<arg_T1>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<arg_T1>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew
@@ -4643,31 +4268,33 @@ namespace SonikLib
 	template <>
 	class FunctionObject_Global<void> : public SonikFunctionObjectDefines::FunctionObjectSystemInterface
 	{
-		//コンストラクタ継承 using
-		using SonikFunctionObjectDefines::FunctionObjectSystemInterface::FunctionObjectSystemInterface;
-
 		//名前長いので短く！
-		using FUNCNAMEDEF = void (*)(void);
+		//親クラス名
+		SLIB_CVR_USING(BaseInterfaceCls, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+		//関数名
+		SLIB_CVR_USING(FUNCNAMEDEF, void (*)(void));
+
 	private:
 		FUNCNAMEDEF m_p_mfunc;
 
 	private:
 		//コンストラクタ
-		inline FunctionObject_Global(void)
-			:m_p_mfunc(nullptr)
+		DEF_FORCE_INLINE FunctionObject_Global(void)
+			:BaseInterfaceCls()
+			, m_p_mfunc(nullptr)
 		{
 			//no process
 		};
 
 	public:
 		//デストラクタ
-		inline ~FunctionObject_Global(void)
+		DEF_FORCE_INLINE ~FunctionObject_Global(void)
 		{
 			//グローバル関数はメンバ関数と違ってオブジェクトは必要ないのでそのまま何もしない。
 		};
 
 		//関数実行Run
-		inline void Run(void)
+		DEF_FORCE_INLINE void Run(void)
 		{
 			(*m_p_mfunc)();
 			this->MethodStatus = true;
@@ -4677,10 +4304,13 @@ namespace SonikLib
 
 		//クリエイタ(アロケータ無し)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<void>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<void>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<void>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//通常newをするデフォルトアロケータの生成
@@ -4721,10 +4351,13 @@ namespace SonikLib
 		};
 		//クリエイタ(アロケータ有り)
 		//クラスオブジェクトが無いため、スマートポインタ版とRaw版に分ける必要がない。
-		static inline SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		static DEF_FORCE_INLINE SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> New(FUNCNAMEDEF _set_func_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
-			using CreateClsType = SonikLib::FunctionObject_Global<void>;
-			using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			//using CreateClsType = SonikLib::FunctionObject_Global<void>;
+			SLIB_CVR_USING(CreateClsType, SonikLib::FunctionObject_Global<void>);
+			//using RetSmtPtrType = SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>;
+			SLIB_CVR_USING(RetSmtPtrType, SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface>);
+
 			CreateClsType* lp = nullptr;
 
 			//アロケータnew

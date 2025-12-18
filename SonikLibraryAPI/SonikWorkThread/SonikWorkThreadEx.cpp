@@ -4,10 +4,79 @@
 #include <FunctionObject/FunctionObjectSystemInterface.hpp>
 #include <SonikCAS/SonikAtomicLock.h>
 #include <Container/SonikAtomicQueue.hpp>
-#include "./SonikThreadWaitingObject.hpp"
+#include <SonikWorkThread/SonikThreadWaitingObject.hpp>
+#include <PlatFormDefinitions.h>
+#include <CPPGrammarDefines.h>
+#include <CompilersPreProcesser.h>
 
-#include <thread>
 #include <new>
+
+//利用スレッドアーキテクチャ切り替えdefine
+#if defined(SLIB_PLATFORM_DEFS_WINDOWS)
+	// Windows環境
+
+	// MSVCコンパイラの場合
+	#if defined(SLIB_COMPILER_DEF_MSVC)
+		#if (_MSC_VER >= 1900) 
+			// VS2015(1900)以降なら std::thread が安定して使える
+			#define __USE_THREAD_ARCHITECT_STD__
+		#else
+			// それ未満なら Windows CRT (_beginthreadex)
+			#define __USE_THREAD_ARCHITECT_WINDOWS_CRT__
+		#endif
+
+	#else 
+		// MSVC以外のコンパイラ（MinGW/Clang等）の場合
+		#if (__cplusplus >= 201103L)
+			// C++11以上なら std::thread
+			#define __USE_THREAD_ARCHITECT_STD__
+		#else
+			// C++11未満なら、MinGW等でも pthread_create 等を検討
+			#define __USE_THREAD_ARCHITECT_POSIX__ 
+		#endif
+	#endif
+
+#elif defined(SLIB_PLATFORM_DEFS_MAC) || defined(SLIB_PLATFORM_DEFS_POSIX)
+	// MAC or POSIX環境
+	#if (__cplusplus >= 201103L)
+		//C++11以上ならstd
+		#define __USE_THREAD_ARCHITECT_STD__
+	#else
+		//以下ならPOSIX
+		#define __USE_THREAD_ARCHITECT_POSIX__
+	#endif
+
+#else
+	//最終フォールバック
+	//さしあたりstd::thread
+	#define __USE_THREAD_ARCHITECT_STD__
+
+
+#endif
+
+//スレッド利用ヘッダインクルード
+#if defined(__USE_THREAD_ARCHITECT_STD__)
+
+//使用アーキテクチャ：STD
+#include <thread>
+
+#elif defined(__USE_THREAD_ARCHITECT_WINDOWS_CRT__)
+
+//使用アーキテクチャ：CRT(C Runtime Library)
+#include <process.h>
+#include <windows.h>
+
+#define THREAD_WRAPPER_FUNCTYPE unsigned int __stdcall
+
+#elif defined(__USE_THREAD_ARCHITECT_POSIX__)
+
+//使用アーキテクチャ：POSIX Thread
+#include <pthread.h>
+#define THREAD_WRAPPER_FUNCTYPE  void*
+
+#endif
+
+
 
 namespace SonikLib
 {
@@ -17,8 +86,19 @@ namespace SonikLib
 	class WorkThreadEx::pImplEx
 	{
 	private:
+		//スレッドオブジェクトの定義(環境によって切り替え)
+#if defined(__USE_THREAD_ARCHITECT_STD__) 			//使用アーキテクチャ：STD
+		SLIB_CVR_USING(SLibThreadHandle, std::thread);
+
+#elif defined(__USE_THREAD_ARCHITECT_WINDOWS_CRT__)	//使用アーキテクチャ：CRT(C Runtime Library)
+		SLIB_CVR_USING(SLibThreadHandle, HANDLE);
+
+#elif defined(__USE_THREAD_ARCHITECT_POSIX__)		//使用アーキテクチャ：POSIX Thread
+		SLIB_CVR_USING(SLibThreadHandle, pthread_t);
+
+#endif
 		//スレッドオブジェクト
-		std::thread threads_;
+		SLibThreadHandle threads_;
 
 		//実際にコールする関数オブジェクト
 		SonikLib::SharedSmtPtr<SonikLib::SonikFOSInterface> FuncObj_;
@@ -46,7 +126,14 @@ namespace SonikLib
 		bool DetachFlag;
 
 	private:
-		static void SonikWorkThreadMainEx(WorkThreadEx::pImplEx* ClassObject);
+		//スレッドのメイン関数。ここでタスクの実行とタスク待ちが行われる。
+		DEF_FORCE_INLINE static void SonikWorkThreadMainEx(WorkThreadEx::pImplEx* ClassObject);
+		//WindowsやPOSIXのOSスレッドを使う時だけコール規則や戻り値が違うのでラッパ関数経由でコールしないとクラッシュする危険性があるため定義
+#if defined(__USE_THREAD_ARCHITECT_WINDOWS_CRT__) || defined(__USE_THREAD_ARCHITECT_POSIX__) //OSアーキテクチャ使用が有効ならラッパ関数定義
+
+		static THREAD_WRAPPER_FUNCTYPE ThreadMain_Wrapper(void* p); //関数ポインタ経由でCRTからコールされるためinlineしない。しても意味がない。
+
+#endif
 
 	public:
 		//コンストラクタです。
@@ -87,6 +174,24 @@ namespace SonikLib
 		void UnSetFunctionQueue(void);
 
 	};
+
+	//OSスレッド用のラッパ関数実装
+#if defined(__USE_THREAD_ARCHITECT_WINDOWS_CRT__) || defined(__USE_THREAD_ARCHITECT_POSIX__) //OSアーキテクチャ使用が有効ならラッパ関数実装
+
+	THREAD_WRAPPER_FUNCTYPE WorkThreadEx::pImplEx::ThreadMain_Wrapper(void* p)
+	{
+		SonikWorkThreadMainEx(reinterpret_cast<WorkThreadEx::pImplEx*>(p)); //main関数はthisを受け取るのでキャスト。
+
+#if defined(__USE_THREAD_ARCHITECT_WINDOWS_CRT__)
+		return 0;
+
+#else
+		return reinterpret_cast<void*>(0); //nullptr はC++11のキーワードなので。
+#endif
+
+	};
+
+#endif
 
 	//静的メソッドの定義
 	void WorkThreadEx::pImplEx::SonikWorkThreadMainEx(WorkThreadEx::pImplEx* ClassObject)
@@ -197,16 +302,57 @@ namespace SonikLib
 
 	//クラス実装=============================================
 	WorkThreadEx::pImplEx::pImplEx(SonikLib::SharedSmtPtr<SonikLib::WorkerThreadWaitingObject<>>& _cond_, bool DetachThread)
-		:threads_(&WorkThreadEx::pImplEx::SonikWorkThreadMainEx, this)
-		, FuncQueue_()
+		: FuncQueue_()
 		, cond_(_cond_)
 		, ThreadFlag(0)
 		, DetachFlag(DetachThread)
 	{
+
+#if defined(__USE_THREAD_ARCHITECT_STD__)
+
+		//使用アーキテクチャ：STD
+		threads_ = std::thread(&WorkThreadEx::pImplEx::SonikWorkThreadMainEx, this);
 		if (DetachThread)
 		{
 			threads_.detach();
 		};
+
+#elif defined(__USE_THREAD_ARCHITECT_WINDOWS_CRT__)
+
+		//使用アーキテクチャ：CRT(C Runtime Library)
+		threads_ = reinterpret_cast<HANDLE>(_beginthreadex(NULL, 0, WorkThreadEx::pImplEx::ThreadMain_Wrapper, this, 0, NULL));
+		if (threads_ != NULL)
+		{
+			if (DetachThread)
+			{
+				// Detach時はハンドルを閉じて管理から外す
+				CloseHandle(threads_);
+				threads_ = NULL;
+			};
+
+		}else
+		{
+			throw std::exception();
+		};
+
+#elif defined(__USE_THREAD_ARCHITECT_POSIX__)
+
+		//使用アーキテクチャ：POSIX Thread
+		int32_t ret = pthread_create(&threads_, NULL, ThreadMain_Wrapper, this);
+		if (ret == 0)
+		{
+			if (DetachFlag)
+			{
+				pthread_detach(threads_);
+			};
+
+		}else
+		{
+			throw std::exception();
+		};
+
+#endif
+
 	};
 
 	//デストラクタ
@@ -216,11 +362,36 @@ namespace SonikLib
 
 		//完全終了フラグを立たせるためにスレッドを起床させる。
 		cond_->release(1);
-		if (!DetachFlag)
+
+#if defined(__USE_THREAD_ARCHITECT_STD__)
+
+		//使用アーキテクチャ：STD
+		if (!DetachFlag && threads_.joinable())
 		{
 			//終了待ち。
 			threads_.join();
 		};
+
+#elif defined(__USE_THREAD_ARCHITECT_WINDOWS_CRT__)
+
+		//使用アーキテクチャ：CRT(C Runtime Library)
+		if (!DetachFlag && threads_ != NULL)
+		{
+			// スレッドの終了を無限に待機
+			WaitForSingleObject(threads_, INFINITE);
+			// ハンドルを閉じる
+			CloseHandle(threads_);
+			threads_ = NULL;
+		};
+
+#elif defined(__USE_THREAD_ARCHITECT_POSIX__)
+
+		//使用アーキテクチャ：POSIX Thread
+		if (!DetachFlag)
+		{
+			pthread_join(threads_, NULL);
+		};
+#endif
 
 	};
 
@@ -554,3 +725,11 @@ namespace SonikLib
 
 
 }; //end namespace
+
+
+//被りはしないだろうけど念の為依存性を切っておく。
+#undef __USE_THREAD_ARCHITECT_STD__
+#undef __USE_THREAD_ARCHITECT_WINDOWS_CRT__
+#undef __USE_THREAD_ARCHITECT_POSIX__
+#undef THREAD_WRAPPER_FUNCTYPE
+

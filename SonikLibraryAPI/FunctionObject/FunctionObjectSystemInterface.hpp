@@ -3,6 +3,8 @@
 #define WORKER_FUNCTOR_SONIKLIBRARY_
 
 #include <SmartPointer/SonikSmartPointer.hpp>
+#include <CPPGrammarDefines.h>
+#include <CompilersPreProcesser.h>
 
 //前方宣言
 namespace SonikFunctionObjectDefines
@@ -15,7 +17,9 @@ namespace SonikFunctionObjectDefines
 //using
 namespace SonikLib
 {
-	using SonikFOSInterface = SonikFunctionObjectDefines::FunctionObjectSystemInterface;
+	//using SonikFOSInterface = SonikFunctionObjectDefines::FunctionObjectSystemInterface;
+	SLIB_CVR_USING(SonikFOSInterface, SonikFunctionObjectDefines::FunctionObjectSystemInterface);
+	
 	//	template <class Rtype>
 	//	using SonikFOSTemplateInterface = SonikFunctionObjectDefines::FunctionObjectSystemTemplateInterface<Rtype>;
 
@@ -52,7 +56,7 @@ namespace SonikFunctionObjectDefines
 
 	public:
 		//コンストラクタ
-		inline FunctionObjectSystemInterface(void)
+		DEF_FORCE_INLINE FunctionObjectSystemInterface(void)
 			:MethodStatus(false)
 			, MethodPriority(0)
 			, Destroy_(true)
@@ -60,94 +64,94 @@ namespace SonikFunctionObjectDefines
 			//member value initialize only
 		};
 
-		inline virtual ~FunctionObjectSystemInterface(void)
+		DEF_FORCE_INLINE virtual ~FunctionObjectSystemInterface(void)
 		{
 		};
 
 		//弱い依存でnextのタスクを設定します。
-		inline bool SetNext_Weak(FunctionObjectSystemInterface* _SetSmtPtr_)
+		DEF_FORCE_INLINE bool SetNext_Weak(FunctionObjectSystemInterface* _SetSmtPtr_)
 		{
 			return SonikLib::SharedSmtPtr<FunctionObjectSystemInterface>::SmartPointerCreate(_SetSmtPtr_, weak_next, m_allocator);
 		};
 
-		inline bool SetNext_Weak(SonikLib::SharedSmtPtr<FunctionObjectSystemInterface>& _SetSmtPtr_)
+		DEF_FORCE_INLINE bool SetNext_Weak(SonikLib::SharedSmtPtr<FunctionObjectSystemInterface>& _SetSmtPtr_)
 		{
 			weak_next = _SetSmtPtr_;
 			return true;
 		};
 
-		inline bool SetNext_Weak(SonikLib::SharedSmtPtr<FunctionObjectSystemInterface>&& _SetSmtPtr_)
+		DEF_FORCE_INLINE bool SetNext_Weak(SonikLib::SharedSmtPtr<FunctionObjectSystemInterface>&& _SetSmtPtr_)
 		{
 			weak_next = _SetSmtPtr_;
 			return true;
 		};
 
 		//強い依存でnextのタスクを設定します。
-		inline bool SetNext_Strong(FunctionObjectSystemInterface* _SetSmtPtr_)
+		DEF_FORCE_INLINE bool SetNext_Strong(FunctionObjectSystemInterface* _SetSmtPtr_)
 		{
 			return SonikLib::SharedSmtPtr<FunctionObjectSystemInterface>::SmartPointerCreate(_SetSmtPtr_, strong_next, m_allocator);
 		};
 
-		inline bool SetNext_Strong(SonikLib::SharedSmtPtr<FunctionObjectSystemInterface>& _SetSmtPtr_)
+		DEF_FORCE_INLINE bool SetNext_Strong(SonikLib::SharedSmtPtr<FunctionObjectSystemInterface>& _SetSmtPtr_)
 		{
 			strong_next = _SetSmtPtr_;
 			return true;
 		};
 
-		inline bool SetNext_Strong(SonikLib::SharedSmtPtr<FunctionObjectSystemInterface>&& _SetSmtPtr_)
+		DEF_FORCE_INLINE bool SetNext_Strong(SonikLib::SharedSmtPtr<FunctionObjectSystemInterface>&& _SetSmtPtr_)
 		{
 			strong_next = _SetSmtPtr_;
 			return true;
 		};
 
 		//弱い依存のnextタスクを取得します。
-		inline SonikLib::SharedSmtPtr<FunctionObjectSystemInterface> GetNext_weak(void)
+		DEF_FORCE_INLINE SonikLib::SharedSmtPtr<FunctionObjectSystemInterface> GetNext_weak(void)
 		{
 			return weak_next;
 		};
 
 		//強い依存のnextタスクを取得します。
-		inline SonikLib::SharedSmtPtr<FunctionObjectSystemInterface> GetNext_strong(void)
+		DEF_FORCE_INLINE SonikLib::SharedSmtPtr<FunctionObjectSystemInterface> GetNext_strong(void)
 		{
 			return strong_next;
 		};
 
 		//メソッドステータスの取得
-		inline const bool& Get_MethodStatus(void)
+		DEF_FORCE_INLINE const bool& Get_MethodStatus(void)
 		{
 
 			return MethodStatus;
 		};
 
 		//メソッドステータスの状態をオフにします。
-		inline void Set_MethodStatusOff(void)
+		DEF_FORCE_INLINE void Set_MethodStatusOff(void)
 		{
 			MethodStatus = false;
 		};
 
 
 		//メソッドプライオリティの取得
-		inline const unsigned long& Get_MethodPriority(void)
+		DEF_FORCE_INLINE const unsigned long& Get_MethodPriority(void)
 		{
 			return MethodPriority;
 
 		};
 
 		//メソッドプライオリティの変更
-		inline void Set_MethodPriority(unsigned long SetPriority)
+		DEF_FORCE_INLINE void Set_MethodPriority(unsigned long SetPriority)
 		{
 
 			MethodPriority = SetPriority;
 		};
 
 		//保持オブジェクトの破棄フラグ
-		inline void Set_DestroyObjectFlag(bool SetValue)
+		DEF_FORCE_INLINE void Set_DestroyObjectFlag(bool SetValue)
 		{
 			Destroy_ = SetValue;
 
 		};
 
-		inline const bool& Get_DestroyObjectFlag(void)
+		DEF_FORCE_INLINE const bool& Get_DestroyObjectFlag(void)
 		{
 			return Destroy_;
 		}
