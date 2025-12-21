@@ -5,6 +5,7 @@
 #define __SONIK_ASSIGN_FEEE_NUMBER_CLASS_HEADER__
 
 #include <cstdint>
+
 #include <SmartPointer/SonikSmartPointer.hpp>
 #include <SonikCAS/SonikAtomicLock.h>
 
@@ -64,7 +65,7 @@ namespace SonikLib
         static bool CreateObject(SonikLib::SharedSmtPtr<SonikAssignFreeNumber>& _get_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 
         //シングルトンオブジェクトとして生成します。
-        static SonikAssignFreeNumber& SingletonCreate(void);
+        static bool SingletonCreate(SonikLib::SharedSmtPtr<SonikAssignFreeNumber>& _get_);
 
         //空き番号の貸出
         //最大値はint64_t型で0x7FFFFFFFFFFFFFFF(実値:9223372036854775807)
@@ -73,6 +74,16 @@ namespace SonikLib
 
         //空き番号の返還
         void ReturnNumber(int64_t _lendnumber_);
+
+        //指定した番号が空き番号であればそれを使用します。
+        bool AssignNumber(int64_t _number_);
+        
+        //指定した範囲の番号が空き番号であればその範囲を使用済みに設定します。
+        //範囲内に既に使用済み番号が入っている場合は取得失敗となります。
+        bool AssignNumbers(int64_t _start_, int64_t _end_);
+
+        //指定した範囲の使用済み番号を返却します。
+        void ReturnNumbers(int64_t _start_, int64_t _end_);
 
     };
 

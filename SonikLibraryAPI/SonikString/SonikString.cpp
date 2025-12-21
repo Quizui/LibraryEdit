@@ -2764,65 +2764,72 @@ namespace BASED_STRINGCLASS_SONIKLIB
 	DEF_FORCE_INLINE bool SonikStringBase::SonikString_pImpl::Split_Ascii(const char* delim, char*& _outbuffer_, uint64_t& _out_splitcnt_, uint64_t& _out_buffersize_)
 	{
 		this->str_wchar();
-		SonikLib::SonikString delimconvert = delim;
-		const wchar_t* l_delim = delimconvert.str_wchar();
 
-		wchar_t* l_start = reinterpret_cast<wchar_t*>(Stringval_);
-		wchar_t* l_end = nullptr;
+		SonikString_pImpl l_delimconverter(delim, m_allocator);
+		const wchar_t* l_delim = l_delimconverter.str_wchar();
 
-		//確保バッファ数算出のため、１回wcsstrで最後までdelim検索をかける
+		// デリミタの文字数を取得（検索位置を飛ばすために必要）
+		uint64_t l_delim_char_len = wcslen(l_delim);
+		if (l_delim_char_len == 0) return false;
+
+		wchar_t* l_search_ptr = reinterpret_cast<wchar_t*>(Stringval_);
+		wchar_t* l_found_ptr = nullptr;
+
+		// 1回目：カウント用
 		uint64_t l_splitcnt = 0;
-		while ((l_end = wcsstr(l_start, l_delim)) != nullptr)
+		while ((l_found_ptr = wcsstr(l_search_ptr, l_delim)) != nullptr)
 		{
 			++l_splitcnt;
-			l_start = (++l_end);
+			// 見つかった位置 + デリミタの長さ分進める
+			l_search_ptr = l_found_ptr + l_delim_char_len;
 		};
 
-		if (l_splitcnt == 0)
-		{
-			//１個も見つからなければ終了
-			return false;
-		};
+		if (l_splitcnt == 0) return false;
 
-		//splitの数分、null文字と先頭メタ領域にアドレスが必要なのでその分のバッファを確保(split数が0より上なら文字列先頭も必要なのでカウント数 + 1個必要なので加算しておく。またnull文字も必要なので最後に+1)
-		// sizeof(wchar_t) * MaxLength_ + (l_splitcnt + 1) = 文字数分のサイズ + スプリット数分のnull(\0)文字数。
-		// sizeof(uintptr_t) * (l_splitcnt +1) = 先頭メタアドレスタグ領域のサイズ
 		++l_splitcnt;
-		uint64_t l_bufsize = (sizeof(wchar_t) * (MaxLength_ + 1)) + (sizeof(uintptr_t) * l_splitcnt);
+		// メモリ計算（ポインタ配列領域 + 文字列実体領域）
+		uint64_t l_meta_region_size = (sizeof(uintptr_t) * l_splitcnt);
+		uint64_t l_string_region_size = (sizeof(wchar_t) * (MaxLength_ + 1));
+		uint64_t l_total_size = l_meta_region_size + l_string_region_size;
 
-		if(_outbuffer_ == nullptr)
+		if (_outbuffer_ == nullptr)
 		{
-			//必要バッファサイズを返却
-			_out_buffersize_ = l_bufsize - (sizeof(uintptr_t) * l_splitcnt);
+			_out_buffersize_ = l_string_region_size;
 			return true;
 		};
 
-		//書き込み位置設定
+		// 書き込み位置設定
 		uintptr_t* l_meta_write = reinterpret_cast<uintptr_t*>(_outbuffer_);
-		l_start = reinterpret_cast<wchar_t*>(l_meta_write + l_splitcnt);
-		l_end = nullptr;
+		// 文字列のコピー先はポインタ配列のすぐ後ろ
+		wchar_t* l_string_start = reinterpret_cast<wchar_t*>(_outbuffer_ + l_meta_region_size);
 
-		//まず文字列コピー
-		std::memcpy(l_start, Stringval_, MaxLength_ * sizeof(wchar_t));
+		// 文字列を丸ごとコピー
+		std::memcpy(l_string_start, Stringval_, MaxLength_ * sizeof(wchar_t));
+		l_string_start[MaxLength_] = L'\0'; // 念のため終端
 
-		//先頭ポインタを設定
-		(*l_meta_write) = reinterpret_cast<uintptr_t>(l_start);
+		// 2回目：分割本番（コピーしたバッファを書き換える）
+		wchar_t* l_current = l_string_start;
+
+		// 先頭ポインタを記録
+		(*l_meta_write) = reinterpret_cast<uintptr_t>(l_current);
 		++l_meta_write;
 
-		//Split本番
-		while ((l_end = wcsstr(l_start, l_delim)) != nullptr)
+		while ((l_found_ptr = wcsstr(l_current, l_delim)) != nullptr)
 		{
-			//スプリット対象の文字をnull文字に変える。
-			(*l_end) = 0x00;
-			l_start = (++l_end);
+			// デリミタの「先頭」をNULLにする。
+			// ※2文字以上のデリミタでも、先頭をNULLにすれば文字列として区切れる
+			(*l_found_ptr) = L'\0';
 
-			//アドレス記述領域に地点を記載
-			(*l_meta_write) = reinterpret_cast<uintptr_t>(l_start);
+			// 次の文字列の開始位置は「デリミタの終端の次」
+			l_current = l_found_ptr + l_delim_char_len;
+
+			// アドレスを記録
+			(*l_meta_write) = reinterpret_cast<uintptr_t>(l_current);
 			++l_meta_write;
 		};
 
 		_out_splitcnt_ = l_splitcnt;
-		_out_buffersize_ = l_bufsize - (sizeof(uintptr_t) * l_splitcnt);
+		_out_buffersize_ = l_total_size;
 
 		return true;
 	};
@@ -5753,17 +5760,20 @@ namespace BASED_STRINGCLASS_SONIKLIB
 		};
 
 		char* nlp = nullptr;
-		pImpl->Split_Ascii(delim, nlp, _split_.m_splitCnt, _split_.textbuffersize);
+		uint64_t l_full_size = 0; // 全体サイズ用
 
-		void* l_allocbuffer = _split_.m_allocator->memal(_split_.textbuffersize);
-		if (l_allocbuffer == nullptr)
-		{
-			return false;
-		};
+		// 1回目：サイズ取得
+		pImpl->Split_Ascii(delim, nlp, _split_.m_splitCnt, l_full_size);
 
-		_split_.mp_split = new(l_allocbuffer) char[_split_.textbuffersize]{};
+		void* l_allocbuffer = _split_.m_allocator->memal(l_full_size);
+		if (l_allocbuffer == nullptr) return false;
 
-		if (!pImpl->Split_Ascii(delim, nlp, _split_.m_splitCnt, _split_.textbuffersize))
+		// 確保したバッファをセット
+		_split_.mp_split = static_cast<char*>(l_allocbuffer);
+		_split_.textbuffersize = l_full_size; // ここに全体サイズを保持
+
+		// 2回目：書き込み実行 (nlp に確保したアドレスを渡す)
+		if (!pImpl->Split_Ascii(delim, _split_.mp_split, _split_.m_splitCnt, _split_.textbuffersize))
 		{
 			_split_.m_allocator->memdel(_split_.mp_split);
 			_split_.mp_split = nullptr;
@@ -5922,7 +5932,7 @@ namespace SonikLib
 		};
 	};
 
-	bool SonikStringSplitObject::GetStr(uint64_t _splitnum_, SonikString& _getstr_)
+	bool SonikStringSplitObject::GetStr(uint64_t _splitnum_, SonikStringDefault& _getstr_)
 	{
 		if (_splitnum_ >= m_splitCnt || mp_split == nullptr)
 		{
@@ -5930,7 +5940,7 @@ namespace SonikLib
 		};
 
 		uintptr_t* l_ptr = reinterpret_cast<uintptr_t*>(mp_split);
-		_getstr_ = SonikString(reinterpret_cast<wchar_t*>(l_ptr[_splitnum_]), m_allocator);
+		_getstr_ = SonikStringDefault(reinterpret_cast<wchar_t*>(l_ptr[_splitnum_]), m_allocator);
 
 		return true;
 	};
@@ -5992,7 +6002,7 @@ namespace SonikLib
 		};
 
 
-		SonikLib::SonikString l_delimstr = SonikLib::SonikString(_delim_, m_allocator);
+		SonikLib::SonikStringDefault l_delimstr = SonikLib::SonikStringDefault(_delim_, m_allocator);
 		const wchar_t* l_delim = l_delimstr.str_wchar();
 		uint64_t l_splitsize = 0;
 		wchar_t* l_start = reinterpret_cast<wchar_t*>(l_ptr[_splitnum_]);
@@ -6068,7 +6078,7 @@ namespace SonikLib
 	//				SonikString実装
 	//
 	//======================================================================================================================
-	SonikString::SonikString(void)
+	SonikStringDefault::SonikStringDefault(void)
 	{
 		pImpl = nullptr;
 
@@ -6095,7 +6105,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 
@@ -6117,7 +6127,7 @@ namespace SonikLib
 		};
 	};
 
-	SonikString::SonikString(const SonikString& t_his)
+	SonikStringDefault::SonikStringDefault(const SonikStringDefault& t_his)
 	{
 		m_allocator = t_his.m_allocator;
 		pImpl = nullptr;
@@ -6139,7 +6149,7 @@ namespace SonikLib
 		};
 	};
 
-	SonikString::SonikString(const SonikStringWIDE& t_his)
+	SonikStringDefault::SonikStringDefault(const SonikStringWIDE& t_his)
 	{
 		m_allocator = t_his.m_allocator;
 		pImpl = nullptr;
@@ -6161,7 +6171,7 @@ namespace SonikLib
 		};
 	};
 
-	SonikString::SonikString(const SonikStringUTF8& t_his)
+	SonikStringDefault::SonikStringDefault(const SonikStringUTF8& t_his)
 	{
 		m_allocator = t_his.m_allocator;
 		pImpl = nullptr;
@@ -6182,7 +6192,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(const SonikStringUTF16& t_his)
+	SonikStringDefault::SonikStringDefault(const SonikStringUTF16& t_his)
 	{
 		m_allocator = t_his.m_allocator;
 		pImpl = nullptr;
@@ -6204,7 +6214,7 @@ namespace SonikLib
 		};
 	};
 
-	SonikString::SonikString(const char* SetStr)
+	SonikStringDefault::SonikStringDefault(const char* SetStr)
 	{
 		pImpl = nullptr;
 
@@ -6231,7 +6241,7 @@ namespace SonikLib
 		};
 
 	};
-	SonikString::SonikString(const char* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const char* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6254,7 +6264,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const utf16_t* SetStr)
+	SonikStringDefault::SonikStringDefault(const utf16_t* SetStr)
 	{
 		pImpl = nullptr;
 
@@ -6281,7 +6291,7 @@ namespace SonikLib
 		};
 
 	};
-	SonikString::SonikString(const utf16_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const utf16_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6304,7 +6314,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const wchar_t* SetStr)
+	SonikStringDefault::SonikStringDefault(const wchar_t* SetStr)
 	{
 		pImpl = nullptr;
 
@@ -6331,7 +6341,7 @@ namespace SonikLib
 		};
 
 	};
-	SonikString::SonikString(const wchar_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const wchar_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6354,7 +6364,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const utf8_t* SetStr)
+	SonikStringDefault::SonikStringDefault(const utf8_t* SetStr)
 	{
 		pImpl = nullptr;
 
@@ -6381,7 +6391,7 @@ namespace SonikLib
 		};
 
 	};
-	SonikString::SonikString(const utf8_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const utf8_t* SetStr, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6405,7 +6415,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const int8_t SetValue)
+	SonikStringDefault::SonikStringDefault(const int8_t SetValue)
 	{
 		pImpl = 0;
 
@@ -6431,7 +6441,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(const int8_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const int8_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6454,7 +6464,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const uint8_t SetValue)
+	SonikStringDefault::SonikStringDefault(const uint8_t SetValue)
 	{
 		pImpl = 0;
 
@@ -6480,7 +6490,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(const uint8_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const uint8_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6503,7 +6513,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const int16_t SetValue)
+	SonikStringDefault::SonikStringDefault(const int16_t SetValue)
 	{
 		pImpl = 0;
 
@@ -6529,7 +6539,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(const int16_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const int16_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6552,7 +6562,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const uint16_t SetValue)
+	SonikStringDefault::SonikStringDefault(const uint16_t SetValue)
 	{
 		pImpl = 0;
 
@@ -6578,7 +6588,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(const uint16_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const uint16_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6601,7 +6611,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const int32_t SetValue)
+	SonikStringDefault::SonikStringDefault(const int32_t SetValue)
 	{
 		pImpl = 0;
 
@@ -6627,7 +6637,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(const int32_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const int32_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6650,7 +6660,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const uint32_t SetValue)
+	SonikStringDefault::SonikStringDefault(const uint32_t SetValue)
 	{
 		pImpl = 0;
 
@@ -6676,7 +6686,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(const uint32_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const uint32_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6699,7 +6709,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const int64_t SetValue)
+	SonikStringDefault::SonikStringDefault(const int64_t SetValue)
 	{
 		pImpl = 0;
 
@@ -6725,7 +6735,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(const int64_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const int64_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6748,7 +6758,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const uint64_t SetValue)
+	SonikStringDefault::SonikStringDefault(const uint64_t SetValue)
 	{
 		pImpl = 0;
 
@@ -6774,7 +6784,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(const uint64_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const uint64_t SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6797,7 +6807,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const float SetValue)
+	SonikStringDefault::SonikStringDefault(const float SetValue)
 	{
 		pImpl = 0;
 
@@ -6823,7 +6833,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(const float SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const float SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6846,7 +6856,7 @@ namespace SonikLib
 
 	};
 
-	SonikString::SonikString(const double SetValue)
+	SonikStringDefault::SonikStringDefault(const double SetValue)
 	{
 		pImpl = 0;
 
@@ -6872,7 +6882,7 @@ namespace SonikLib
 			throw;
 		};
 	};
-	SonikString::SonikString(const double SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	SonikStringDefault::SonikStringDefault(const double SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		m_allocator = _allocator_;
 		pImpl = nullptr;
@@ -6896,7 +6906,7 @@ namespace SonikLib
 	};
 
 	//ムーヴコンストラクタ
-	SonikString::SonikString(SonikString&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringDefault::SonikStringDefault(SonikStringDefault&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -6904,16 +6914,7 @@ namespace SonikLib
 		//ムーヴ元ポインタをnullptrに
 		_move_.pImpl = nullptr;
 	};
-	SonikString::SonikString(SonikStringWIDE&& _move_) SLIB_CVR_NOEXCEPT
-	{
-		pImpl = _move_.pImpl;//ポインタコピー
-		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
-
-		//ムーヴ元ポインタをnullptrに
-		_move_.pImpl = nullptr;
-	};
-
-	SonikString::SonikString(SonikStringUTF8&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringDefault::SonikStringDefault(SonikStringWIDE&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -6922,7 +6923,16 @@ namespace SonikLib
 		_move_.pImpl = nullptr;
 	};
 
-	SonikString::SonikString(SonikStringUTF16&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringDefault::SonikStringDefault(SonikStringUTF8&& _move_) SLIB_CVR_NOEXCEPT
+	{
+		pImpl = _move_.pImpl;//ポインタコピー
+		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
+
+		//ムーヴ元ポインタをnullptrに
+		_move_.pImpl = nullptr;
+	};
+
+	SonikStringDefault::SonikStringDefault(SonikStringUTF16&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -6932,7 +6942,7 @@ namespace SonikLib
 	};
 
 
-	SonikString::~SonikString(void)
+	SonikStringDefault::~SonikStringDefault(void)
 	{
 		if (pImpl != 0)
 		{
@@ -6945,47 +6955,47 @@ namespace SonikLib
 	};
 
 	//define切り替えのstrゲット
-	const char* SonikString::definition_str(void)
+	const char* SonikStringDefault::definition_str(void)
 	{
 		return pImpl->str_c();
 	};
 
 	//define切り替えのStrCopy
-	uint64_t SonikString::GetCpy_str_definition(char* dstBuffer)
+	uint64_t SonikStringDefault::GetCpy_str_definition(char* dstBuffer)
 	{
 		return pImpl->GetCpy_str_c(dstBuffer);
 	};
 
 	//各入力フォーマットから現在のバッファに変換して代入します。
-	SonikString& SonikString::operator =(const SonikString& t_his)
+	SonikStringDefault& SonikStringDefault::operator =(const SonikStringDefault& t_his)
 	{
 		(*pImpl) = (*(t_his.pImpl));
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const SonikStringWIDE& t_his)
+	SonikStringDefault& SonikStringDefault::operator =(const SonikStringWIDE& t_his)
 	{
 		(*pImpl) = (*(t_his.pImpl));
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const SonikStringUTF8& t_his)
+	SonikStringDefault& SonikStringDefault::operator =(const SonikStringUTF8& t_his)
 	{
 		(*pImpl) = (*(t_his.pImpl));
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const SonikStringUTF16& t_his)
+	SonikStringDefault& SonikStringDefault::operator =(const SonikStringUTF16& t_his)
 	{
 		(*pImpl) = (*(t_his.pImpl));
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(SonikString&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringDefault& SonikStringDefault::operator =(SonikStringDefault&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -6995,7 +7005,7 @@ namespace SonikLib
 
 		return (*this);
 	};
-	SonikString& SonikString::operator =(SonikStringWIDE&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringDefault& SonikStringDefault::operator =(SonikStringWIDE&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -7005,7 +7015,7 @@ namespace SonikLib
 
 		return (*this);
 	};
-	SonikString& SonikString::operator =(SonikStringUTF8&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringDefault& SonikStringDefault::operator =(SonikStringUTF8&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -7015,7 +7025,7 @@ namespace SonikLib
 
 		return (*this);
 	};
-	SonikString& SonikString::operator =(SonikStringUTF16&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringDefault& SonikStringDefault::operator =(SonikStringUTF16&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -7026,98 +7036,98 @@ namespace SonikLib
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const char* Str)
+	SonikStringDefault& SonikStringDefault::operator =(const char* Str)
 	{
 		(*pImpl) = Str;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const utf16_t* w_Str)
+	SonikStringDefault& SonikStringDefault::operator =(const utf16_t* w_Str)
 	{
 		(*pImpl) = w_Str;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const wchar_t* w_Str)
+	SonikStringDefault& SonikStringDefault::operator =(const wchar_t* w_Str)
 	{
 		(*pImpl) = w_Str;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const utf8_t* utf8_Str)
+	SonikStringDefault& SonikStringDefault::operator =(const utf8_t* utf8_Str)
 	{
 		(*pImpl) = utf8_Str;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const int8_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator =(const int8_t SetValue)
 	{
 		(*pImpl) = SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const uint8_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator =(const uint8_t SetValue)
 	{
 		(*pImpl) = SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const int16_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator =(const int16_t SetValue)
 	{
 		(*pImpl) = SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const uint16_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator =(const uint16_t SetValue)
 	{
 		(*pImpl) = SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const int32_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator =(const int32_t SetValue)
 	{
 		(*pImpl) = SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const uint32_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator =(const uint32_t SetValue)
 	{
 		(*pImpl) = SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const int64_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator =(const int64_t SetValue)
 	{
 		(*pImpl) = SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const uint64_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator =(const uint64_t SetValue)
 	{
 		(*pImpl) = SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const float SetValue)
+	SonikStringDefault& SonikStringDefault::operator =(const float SetValue)
 	{
 		(*pImpl) = SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator =(const double SetValue)
+	SonikStringDefault& SonikStringDefault::operator =(const double SetValue)
 	{
 		(*pImpl) = SetValue;
 
@@ -7126,126 +7136,126 @@ namespace SonikLib
 
 	//各入力フォーマットから現在のバッファに変換して結合します。
 	//コピー元とコピー先が同じオブジェクトの場合、そのまま結合します。
-	SonikString& SonikString::operator +=(const SonikString& t_his)
+	SonikStringDefault& SonikStringDefault::operator +=(const SonikStringDefault& t_his)
 	{
 		(*pImpl) += (*(t_his.pImpl));
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const SonikStringWIDE& t_his)
+	SonikStringDefault& SonikStringDefault::operator +=(const SonikStringWIDE& t_his)
 	{
 		(*pImpl) += (*(t_his.pImpl));
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const SonikStringUTF8& t_his)
+	SonikStringDefault& SonikStringDefault::operator +=(const SonikStringUTF8& t_his)
 	{
 		(*pImpl) += (*(t_his.pImpl));
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const SonikStringUTF16& t_his)
+	SonikStringDefault& SonikStringDefault::operator +=(const SonikStringUTF16& t_his)
 	{
 		(*pImpl) += (*(t_his.pImpl));
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const char* Str)
+	SonikStringDefault& SonikStringDefault::operator +=(const char* Str)
 	{
 		(*pImpl) += Str;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const utf16_t* w_Str)
+	SonikStringDefault& SonikStringDefault::operator +=(const utf16_t* w_Str)
 	{
 		(*pImpl) += w_Str;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const wchar_t* w_Str)
+	SonikStringDefault& SonikStringDefault::operator +=(const wchar_t* w_Str)
 	{
 		(*pImpl) += w_Str;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const utf8_t* utf8_Str)
+	SonikStringDefault& SonikStringDefault::operator +=(const utf8_t* utf8_Str)
 	{
 		(*pImpl) += utf8_Str;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const int8_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator +=(const int8_t SetValue)
 	{
 		(*pImpl) += SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const uint8_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator +=(const uint8_t SetValue)
 	{
 		(*pImpl) += SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const int16_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator +=(const int16_t SetValue)
 	{
 		(*pImpl) += SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const uint16_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator +=(const uint16_t SetValue)
 	{
 		(*pImpl) += SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const int32_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator +=(const int32_t SetValue)
 	{
 		(*pImpl) += SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const uint32_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator +=(const uint32_t SetValue)
 	{
 		(*pImpl) += SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const int64_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator +=(const int64_t SetValue)
 	{
 		(*pImpl) += SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const uint64_t SetValue)
+	SonikStringDefault& SonikStringDefault::operator +=(const uint64_t SetValue)
 	{
 		(*pImpl) += SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const float SetValue)
+	SonikStringDefault& SonikStringDefault::operator +=(const float SetValue)
 	{
 		(*pImpl) += SetValue;
 
 		return (*this);
 	};
 
-	SonikString& SonikString::operator +=(const double SetValue)
+	SonikStringDefault& SonikStringDefault::operator +=(const double SetValue)
 	{
 		(*pImpl) += SetValue;
 
@@ -7254,161 +7264,161 @@ namespace SonikLib
 
 	//現在のバッファと入力バッファを結合し、別のオブジェクトとして返却します。
 	//コピー元とコピー先が同じオブジェクトの場合、そのまま結合します。
-	SonikString SonikString::operator +(const SonikString& t_his)
+	SonikStringDefault SonikStringDefault::operator +(const SonikStringDefault& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const SonikStringWIDE& t_his)
+	SonikStringDefault SonikStringDefault::operator +(const SonikStringWIDE& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const SonikStringUTF8& t_his)
+	SonikStringDefault SonikStringDefault::operator +(const SonikStringUTF8& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
 		return str_;
 	};
-	SonikString SonikString::operator +(const SonikStringUTF16& t_his)
+	SonikStringDefault SonikStringDefault::operator +(const SonikStringUTF16& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const char* Str)
+	SonikStringDefault SonikStringDefault::operator +(const char* Str)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + Str;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const utf16_t* w_Str)
+	SonikStringDefault SonikStringDefault::operator +(const utf16_t* w_Str)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + w_Str;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const wchar_t* w_Str)
+	SonikStringDefault SonikStringDefault::operator +(const wchar_t* w_Str)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + w_Str;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const utf8_t* utf8_Str)
+	SonikStringDefault SonikStringDefault::operator +(const utf8_t* utf8_Str)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + utf8_Str;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const int8_t SetValue)
+	SonikStringDefault SonikStringDefault::operator +(const int8_t SetValue)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + SetValue;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const uint8_t SetValue)
+	SonikStringDefault SonikStringDefault::operator +(const uint8_t SetValue)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + SetValue;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const int16_t SetValue)
+	SonikStringDefault SonikStringDefault::operator +(const int16_t SetValue)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + SetValue;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const uint16_t SetValue)
+	SonikStringDefault SonikStringDefault::operator +(const uint16_t SetValue)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + SetValue;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const int32_t SetValue)
+	SonikStringDefault SonikStringDefault::operator +(const int32_t SetValue)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + SetValue;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const uint32_t SetValue)
+	SonikStringDefault SonikStringDefault::operator +(const uint32_t SetValue)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + SetValue;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const int64_t SetValue)
+	SonikStringDefault SonikStringDefault::operator +(const int64_t SetValue)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + SetValue;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const uint64_t SetValue)
+	SonikStringDefault SonikStringDefault::operator +(const uint64_t SetValue)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + SetValue;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const float SetValue)
+	SonikStringDefault SonikStringDefault::operator +(const float SetValue)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + SetValue;
 
 		return str_;
 	};
 
-	SonikString SonikString::operator +(const double SetValue)
+	SonikStringDefault SonikStringDefault::operator +(const double SetValue)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + SetValue;
 
@@ -7418,116 +7428,116 @@ namespace SonikLib
 
 	//c: 文字列同士を比較します。(strcmp)
 	//c: 一致の場合true 不一致の場合 falseを返却します。
-	bool SonikString::operator ==(const SonikString& t_his) const
+	bool SonikStringDefault::operator ==(const SonikStringDefault& t_his) const
 	{
 		return (*pImpl) == (*t_his.pImpl);
 	};
 
-	bool SonikString::operator ==(const SonikStringWIDE& t_his) const
+	bool SonikStringDefault::operator ==(const SonikStringWIDE& t_his) const
 	{
 		return (*pImpl) == (*t_his.pImpl);
 	};
 
-	bool SonikString::operator ==(const SonikStringUTF8& t_his) const
+	bool SonikStringDefault::operator ==(const SonikStringUTF8& t_his) const
 	{
 		return (*pImpl) == (*t_his.pImpl);
 	};
 
-	bool SonikString::operator ==(const SonikStringUTF16& t_his) const
+	bool SonikStringDefault::operator ==(const SonikStringUTF16& t_his) const
 	{
 		return (*pImpl) == (*t_his.pImpl);
 	};
 
 	//c: 文字列同士を比較します。(strcmp)
 	//c: 不一致の場合true　一致の場合 falseを返却します。
-	bool SonikString::operator !=(const SonikString& t_his) const
+	bool SonikStringDefault::operator !=(const SonikStringDefault& t_his) const
 	{
 		return (*pImpl) != (*t_his.pImpl);
 	};
 
-	bool SonikString::operator !=(const SonikStringWIDE& t_his) const
+	bool SonikStringDefault::operator !=(const SonikStringWIDE& t_his) const
 	{
 		return (*pImpl) != (*t_his.pImpl);
 	};
 
-	bool SonikString::operator !=(const SonikStringUTF8& t_his) const
+	bool SonikStringDefault::operator !=(const SonikStringUTF8& t_his) const
 	{
 		return (*pImpl) != (*t_his.pImpl);
 	};
 
-	bool SonikString::operator !=(const SonikStringUTF16& t_his) const
+	bool SonikStringDefault::operator !=(const SonikStringUTF16& t_his) const
 	{
 		return (*pImpl) != (*t_his.pImpl);
 	};
 
 	//小なり
-	bool SonikString::operator <(const SonikString& _Greater_) const
+	bool SonikStringDefault::operator <(const SonikStringDefault& _Greater_) const
 	{
 		return pImpl->Greater(_Greater_.pImpl->str_c());
 	};
-	bool SonikString::operator <(const SonikStringWIDE& _Greater_) const
+	bool SonikStringDefault::operator <(const SonikStringWIDE& _Greater_) const
 	{
 		return pImpl->Greater(_Greater_.pImpl->str_c());
 	};
-	bool SonikString::operator <(const SonikStringUTF8& _Greater_) const
+	bool SonikStringDefault::operator <(const SonikStringUTF8& _Greater_) const
 	{
 		return pImpl->Greater(_Greater_.pImpl->str_c());
 	};
-	bool SonikString::operator <(const SonikStringUTF16& _Greater_) const
+	bool SonikStringDefault::operator <(const SonikStringUTF16& _Greater_) const
 	{
 		return pImpl->Greater(_Greater_.pImpl->str_c());
 	};
 
 	//大なり
-	bool SonikString::operator >(const SonikString& _Less_) const
+	bool SonikStringDefault::operator >(const SonikStringDefault& _Less_) const
 	{
 		return pImpl->Less(_Less_.pImpl->str_c());
 	};
-	bool SonikString::operator >(const SonikStringWIDE& _Less_) const
+	bool SonikStringDefault::operator >(const SonikStringWIDE& _Less_) const
 	{
 		return pImpl->Less(_Less_.pImpl->str_c());
 	};
-	bool SonikString::operator >(const SonikStringUTF8& _Less_) const
+	bool SonikStringDefault::operator >(const SonikStringUTF8& _Less_) const
 	{
 		return pImpl->Less(_Less_.pImpl->str_c());
 	};
-	bool SonikString::operator >(const SonikStringUTF16& _Less_) const
+	bool SonikStringDefault::operator >(const SonikStringUTF16& _Less_) const
 	{
 		return pImpl->Less(_Less_.pImpl->str_c());
 	};
 
 	//小なりイコール
-	bool SonikString::operator <=(const SonikString& _GreaterEqual_) const
+	bool SonikStringDefault::operator <=(const SonikStringDefault& _GreaterEqual_) const
 	{
 		return pImpl->GreaterEqual(_GreaterEqual_.pImpl->str_c());
 	};
-	bool SonikString::operator <=(const SonikStringWIDE& _GreaterEqual_) const
+	bool SonikStringDefault::operator <=(const SonikStringWIDE& _GreaterEqual_) const
 	{
 		return pImpl->GreaterEqual(_GreaterEqual_.pImpl->str_c());
 	};
-	bool SonikString::operator <=(const SonikStringUTF8& _GreaterEqual_) const
+	bool SonikStringDefault::operator <=(const SonikStringUTF8& _GreaterEqual_) const
 	{
 		return pImpl->GreaterEqual(_GreaterEqual_.pImpl->str_c());
 	};
-	bool SonikString::operator <=(const SonikStringUTF16& _GreaterEqual_) const
+	bool SonikStringDefault::operator <=(const SonikStringUTF16& _GreaterEqual_) const
 	{
 		return pImpl->GreaterEqual(_GreaterEqual_.pImpl->str_c());
 	};
 
 	//大なりイコール
-	bool SonikString::operator >=(const SonikString& _LessEqual_) const
+	bool SonikStringDefault::operator >=(const SonikStringDefault& _LessEqual_) const
 	{
 		return pImpl->LessEqual(_LessEqual_.pImpl->str_c());
 	};
-	bool SonikString::operator >=(const SonikStringWIDE& _LessEqual_) const
+	bool SonikStringDefault::operator >=(const SonikStringWIDE& _LessEqual_) const
 	{
 		return pImpl->LessEqual(_LessEqual_.pImpl->str_c());
 	};
-	bool SonikString::operator >=(const SonikStringUTF8& _LessEqual_) const
+	bool SonikStringDefault::operator >=(const SonikStringUTF8& _LessEqual_) const
 	{
 		return pImpl->LessEqual(_LessEqual_.pImpl->str_c());
 	};
-	bool SonikString::operator >=(const SonikStringUTF16& _LessEqual_) const
+	bool SonikStringDefault::operator >=(const SonikStringUTF16& _LessEqual_) const
 	{
 		return pImpl->LessEqual(_LessEqual_.pImpl->str_c());
 	};
@@ -7608,7 +7618,7 @@ namespace SonikLib
 		};
 	};
 
-	SonikStringWIDE::SonikStringWIDE(const SonikString& t_his)
+	SonikStringWIDE::SonikStringWIDE(const SonikStringDefault& t_his)
 	{
 		m_allocator = t_his.m_allocator;
 		pImpl = nullptr;
@@ -8366,7 +8376,7 @@ namespace SonikLib
 	};
 
 	//ムーヴコンストラクタ
-	SonikStringWIDE::SonikStringWIDE(SonikString&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringWIDE::SonikStringWIDE(SonikStringDefault&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -8434,7 +8444,7 @@ namespace SonikLib
 		return (*this);
 	};
 
-	SonikStringWIDE& SonikStringWIDE::operator =(const SonikString& t_his)
+	SonikStringWIDE& SonikStringWIDE::operator =(const SonikStringDefault& t_his)
 	{
 		(*pImpl) = (*(t_his.pImpl));
 
@@ -8455,7 +8465,7 @@ namespace SonikLib
 		return (*this);
 	};
 
-	SonikStringWIDE& SonikStringWIDE::operator =(SonikString&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringWIDE& SonikStringWIDE::operator =(SonikStringDefault&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -8603,7 +8613,7 @@ namespace SonikLib
 		return (*this);
 	};
 
-	SonikStringWIDE& SonikStringWIDE::operator +=(const SonikString& t_his)
+	SonikStringWIDE& SonikStringWIDE::operator +=(const SonikStringDefault& t_his)
 	{
 		(*pImpl) += (*(t_his.pImpl));
 
@@ -8726,16 +8736,16 @@ namespace SonikLib
 	//コピー元とコピー先が同じオブジェクトの場合、そのまま結合します。
 	SonikStringWIDE SonikStringWIDE::operator +(const SonikStringWIDE& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
 		return str_;
 	};
 
-	SonikStringWIDE SonikStringWIDE::operator +(const SonikString& t_his)
+	SonikStringWIDE SonikStringWIDE::operator +(const SonikStringDefault& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
@@ -8744,7 +8754,7 @@ namespace SonikLib
 
 	SonikStringWIDE SonikStringWIDE::operator +(const SonikStringUTF8& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
@@ -8752,7 +8762,7 @@ namespace SonikLib
 	};
 	SonikStringWIDE SonikStringWIDE::operator +(const SonikStringUTF16& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
@@ -8893,7 +8903,7 @@ namespace SonikLib
 		return (*pImpl) == (*t_his.pImpl);
 	};
 
-	bool SonikStringWIDE::operator ==(const SonikString& t_his) const
+	bool SonikStringWIDE::operator ==(const SonikStringDefault& t_his) const
 	{
 		return (*pImpl) == (*t_his.pImpl);
 	};
@@ -8915,7 +8925,7 @@ namespace SonikLib
 		return (*pImpl) != (*t_his.pImpl);
 	};
 
-	bool SonikStringWIDE::operator !=(const SonikString& t_his) const
+	bool SonikStringWIDE::operator !=(const SonikStringDefault& t_his) const
 	{
 		return (*pImpl) != (*t_his.pImpl);
 	};
@@ -8936,7 +8946,7 @@ namespace SonikLib
 		return pImpl->Greater(_Greater_.pImpl->str_c());
 	};
 
-	bool SonikStringWIDE::operator <(const SonikString& _Greater_) const
+	bool SonikStringWIDE::operator <(const SonikStringDefault& _Greater_) const
 	{
 		return pImpl->Greater(_Greater_.pImpl->str_c());
 	};
@@ -8954,7 +8964,7 @@ namespace SonikLib
 	{
 		return pImpl->Less(_Less_.pImpl->str_c());
 	};
-	bool SonikStringWIDE::operator >(const SonikString& _Less_) const
+	bool SonikStringWIDE::operator >(const SonikStringDefault& _Less_) const
 	{
 		return pImpl->Less(_Less_.pImpl->str_c());
 	};
@@ -8973,7 +8983,7 @@ namespace SonikLib
 		return pImpl->GreaterEqual(_GreaterEqual_.pImpl->str_c());
 	};
 
-	bool SonikStringWIDE::operator <=(const SonikString& _GreaterEqual_) const
+	bool SonikStringWIDE::operator <=(const SonikStringDefault& _GreaterEqual_) const
 	{
 		return pImpl->GreaterEqual(_GreaterEqual_.pImpl->str_c());
 	};
@@ -8991,7 +9001,7 @@ namespace SonikLib
 	{
 		return pImpl->LessEqual(_LessEqual_.pImpl->str_c());
 	};
-	bool SonikStringWIDE::operator >=(const SonikString& _LessEqual_) const
+	bool SonikStringWIDE::operator >=(const SonikStringDefault& _LessEqual_) const
 	{
 		return pImpl->LessEqual(_LessEqual_.pImpl->str_c());
 	};
@@ -9080,7 +9090,7 @@ namespace SonikLib
 		};
 	};
 
-	SonikStringUTF8::SonikStringUTF8(const SonikString& t_his)
+	SonikStringUTF8::SonikStringUTF8(const SonikStringDefault& t_his)
 	{
 		m_allocator = t_his.m_allocator;
 		pImpl = nullptr;
@@ -9838,7 +9848,7 @@ namespace SonikLib
 	};
 	
 	//ムーヴコンストラクタ
-	SonikStringUTF8::SonikStringUTF8(SonikString&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringUTF8::SonikStringUTF8(SonikStringDefault&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -9906,7 +9916,7 @@ namespace SonikLib
 		return (*this);
 	};
 
-	SonikStringUTF8& SonikStringUTF8::operator =(const SonikString& t_his)
+	SonikStringUTF8& SonikStringUTF8::operator =(const SonikStringDefault& t_his)
 	{
 		(*pImpl) = (*(t_his.pImpl));
 
@@ -9927,7 +9937,7 @@ namespace SonikLib
 		return (*this);
 	};
 
-	SonikStringUTF8& SonikStringUTF8::operator =(SonikString&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringUTF8& SonikStringUTF8::operator =(SonikStringDefault&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -10075,7 +10085,7 @@ namespace SonikLib
 		return (*this);
 	};
 
-	SonikStringUTF8& SonikStringUTF8::operator +=(const SonikString& t_his)
+	SonikStringUTF8& SonikStringUTF8::operator +=(const SonikStringDefault& t_his)
 	{
 		(*pImpl) += (*(t_his.pImpl));
 
@@ -10198,16 +10208,16 @@ namespace SonikLib
 	//コピー元とコピー先が同じオブジェクトの場合、そのまま結合します。
 	SonikStringUTF8 SonikStringUTF8::operator +(const SonikStringUTF8& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
 		return str_;
 	};
 
-	SonikStringUTF8 SonikStringUTF8::operator +(const SonikString& t_his)
+	SonikStringUTF8 SonikStringUTF8::operator +(const SonikStringDefault& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
@@ -10216,7 +10226,7 @@ namespace SonikLib
 
 	SonikStringUTF8 SonikStringUTF8::operator +(const SonikStringWIDE& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
@@ -10225,7 +10235,7 @@ namespace SonikLib
 
 	SonikStringUTF8 SonikStringUTF8::operator +(const SonikStringUTF16& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
@@ -10365,7 +10375,7 @@ namespace SonikLib
 		return (*pImpl) == (*t_his.pImpl);
 	};
 
-	bool SonikStringUTF8::operator ==(const SonikString& t_his) const
+	bool SonikStringUTF8::operator ==(const SonikStringDefault& t_his) const
 	{
 		return (*pImpl) == (*t_his.pImpl);
 	};
@@ -10387,7 +10397,7 @@ namespace SonikLib
 		return (*pImpl) != (*t_his.pImpl);
 	};
 
-	bool SonikStringUTF8::operator !=(const SonikString& t_his) const
+	bool SonikStringUTF8::operator !=(const SonikStringDefault& t_his) const
 	{
 		return (*pImpl) != (*t_his.pImpl);
 	};
@@ -10408,7 +10418,7 @@ namespace SonikLib
 		return pImpl->Greater(_Greater_.pImpl->str_c());
 	};
 
-	bool SonikStringUTF8::operator <(const SonikString& _Greater_) const
+	bool SonikStringUTF8::operator <(const SonikStringDefault& _Greater_) const
 	{
 		return pImpl->Greater(_Greater_.pImpl->str_c());
 	};
@@ -10429,7 +10439,7 @@ namespace SonikLib
 		return pImpl->Less(_Less_.pImpl->str_c());
 	};
 
-	bool SonikStringUTF8::operator >(const SonikString& _Less_) const
+	bool SonikStringUTF8::operator >(const SonikStringDefault& _Less_) const
 	{
 		return pImpl->Less(_Less_.pImpl->str_c());
 	};
@@ -10450,7 +10460,7 @@ namespace SonikLib
 		return pImpl->GreaterEqual(_GreaterEqual_.pImpl->str_c());
 	};
 
-	bool SonikStringUTF8::operator <=(const SonikString& _GreaterEqual_) const
+	bool SonikStringUTF8::operator <=(const SonikStringDefault& _GreaterEqual_) const
 	{
 		return pImpl->GreaterEqual(_GreaterEqual_.pImpl->str_c());
 	};
@@ -10471,7 +10481,7 @@ namespace SonikLib
 		return pImpl->LessEqual(_LessEqual_.pImpl->str_c());
 	};
 
-	bool SonikStringUTF8::operator >=(const SonikString& _LessEqual_) const
+	bool SonikStringUTF8::operator >=(const SonikStringDefault& _LessEqual_) const
 	{
 		return pImpl->LessEqual(_LessEqual_.pImpl->str_c());
 	};
@@ -10562,7 +10572,7 @@ namespace SonikLib
 		};
 	};
 
-	SonikStringUTF16::SonikStringUTF16(const SonikString& t_his)
+	SonikStringUTF16::SonikStringUTF16(const SonikStringDefault& t_his)
 	{
 		m_allocator = t_his.m_allocator;
 		pImpl = nullptr;
@@ -11320,7 +11330,7 @@ namespace SonikLib
 	};
 
 	//ムーヴコンストラクタ
-	SonikStringUTF16::SonikStringUTF16(SonikString&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringUTF16::SonikStringUTF16(SonikStringDefault&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -11388,7 +11398,7 @@ namespace SonikLib
 		return (*this);
 	};
 
-	SonikStringUTF16& SonikStringUTF16::operator =(const SonikString& t_his)
+	SonikStringUTF16& SonikStringUTF16::operator =(const SonikStringDefault& t_his)
 	{
 		(*pImpl) = (*(t_his.pImpl));
 
@@ -11409,7 +11419,7 @@ namespace SonikLib
 		return (*this);
 	};
 
-	SonikStringUTF16& SonikStringUTF16::operator =(SonikString&& _move_) SLIB_CVR_NOEXCEPT
+	SonikStringUTF16& SonikStringUTF16::operator =(SonikStringDefault&& _move_) SLIB_CVR_NOEXCEPT
 	{
 		pImpl = _move_.pImpl;//ポインタコピー
 		m_allocator = std::move(_move_.m_allocator); //アロケータムーヴ
@@ -11557,7 +11567,7 @@ namespace SonikLib
 		return (*this);
 	};
 
-	SonikStringUTF16& SonikStringUTF16::operator +=(const SonikString& t_his)
+	SonikStringUTF16& SonikStringUTF16::operator +=(const SonikStringDefault& t_his)
 	{
 		(*pImpl) += (*(t_his.pImpl));
 
@@ -11680,16 +11690,16 @@ namespace SonikLib
 	//コピー元とコピー先が同じオブジェクトの場合、そのまま結合します。
 	SonikStringUTF16 SonikStringUTF16::operator +(const SonikStringUTF16& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
 		return str_;
 	};
 
-	SonikStringUTF16 SonikStringUTF16::operator +(const SonikString& t_his)
+	SonikStringUTF16 SonikStringUTF16::operator +(const SonikStringDefault& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
@@ -11698,7 +11708,7 @@ namespace SonikLib
 
 	SonikStringUTF16 SonikStringUTF16::operator +(const SonikStringWIDE& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
@@ -11707,7 +11717,7 @@ namespace SonikLib
 
 	SonikStringUTF16 SonikStringUTF16::operator +(const SonikStringUTF8& t_his)
 	{
-		SonikString str_;
+		SonikStringDefault str_;
 
 		(*(str_.pImpl)) = (*pImpl) + (*(t_his.pImpl));
 
@@ -11848,7 +11858,7 @@ namespace SonikLib
 		return (*pImpl) == (*t_his.pImpl);
 	};
 
-	bool SonikStringUTF16::operator ==(const SonikString& t_his) const
+	bool SonikStringUTF16::operator ==(const SonikStringDefault& t_his) const
 	{
 		return (*pImpl) == (*t_his.pImpl);
 	};
@@ -11870,7 +11880,7 @@ namespace SonikLib
 		return (*pImpl) != (*t_his.pImpl);
 	};
 
-	bool SonikStringUTF16::operator !=(const SonikString& t_his) const
+	bool SonikStringUTF16::operator !=(const SonikStringDefault& t_his) const
 	{
 		return (*pImpl) != (*t_his.pImpl);
 	};
@@ -11891,7 +11901,7 @@ namespace SonikLib
 		return pImpl->Greater(_Greater_.pImpl->str_c());
 	};
 
-	bool SonikStringUTF16::operator <(const SonikString& _Greater_) const
+	bool SonikStringUTF16::operator <(const SonikStringDefault& _Greater_) const
 	{
 		return pImpl->Greater(_Greater_.pImpl->str_c());
 	};
@@ -11912,7 +11922,7 @@ namespace SonikLib
 		return pImpl->Less(_Less_.pImpl->str_c());
 	};
 
-	bool SonikStringUTF16::operator >(const SonikString& _Less_) const
+	bool SonikStringUTF16::operator >(const SonikStringDefault& _Less_) const
 	{
 		return pImpl->Less(_Less_.pImpl->str_c());
 	};
@@ -11933,7 +11943,7 @@ namespace SonikLib
 		return pImpl->GreaterEqual(_GreaterEqual_.pImpl->str_c());
 	};
 
-	bool SonikStringUTF16::operator <=(const SonikString& _GreaterEqual_) const
+	bool SonikStringUTF16::operator <=(const SonikStringDefault& _GreaterEqual_) const
 	{
 		return pImpl->GreaterEqual(_GreaterEqual_.pImpl->str_c());
 	};
@@ -11954,7 +11964,7 @@ namespace SonikLib
 		return pImpl->LessEqual(_LessEqual_.pImpl->str_c());
 	};
 
-	bool SonikStringUTF16::operator >=(const SonikString& _LessEqual_) const
+	bool SonikStringUTF16::operator >=(const SonikStringDefault& _LessEqual_) const
 	{
 		return pImpl->LessEqual(_LessEqual_.pImpl->str_c());
 	};

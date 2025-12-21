@@ -1,5 +1,6 @@
 
 #include "SonikFileSystems.h"
+
 #include <Container/SonikAtomicQueue.hpp>
 
 #if defined(_WIN64)
@@ -16,7 +17,7 @@ namespace SonikLibFileSystems
 	namespace FileSystemGlobal
 	{
 		//指定したフォルダにあるファイル数を取得します。(サブディレクトリ及び、サブディレクトリ内のファイルはカウントに含まれません。
-		uint64_t GetDirectoryInFileCount(SonikLib::SonikString  _directoryPath_)
+		uint64_t GetDirectoryInFileCount(SonikLib::SonikStringDefault  _directoryPath_)
 		{
 			//環境依存していない共通カウント変数
 			uint64_t l_cnt = 0;
@@ -59,7 +60,7 @@ namespace SonikLibFileSystems
 		};
 
 		//指定したフォルダにあるファイル名を列挙します。
-		bool GetDirectoryInFileNameEnumeration(SonikLib::SonikString  _directoryPath_, SonikLib::Container::SonikAtomicQueue<SonikLib::SonikString>& retEnums)
+		bool GetDirectoryInFileNameEnumeration(SonikLib::SonikStringDefault  _directoryPath_, SonikLib::Container::SonikAtomicQueue<SonikLib::SonikStringDefault>& retEnums)
 		{
 #if defined(_WIN64)
 			//WindowsAPIFunction
@@ -75,7 +76,7 @@ namespace SonikLibFileSystems
 				return false;
 			};
 
-			SonikLib::SonikString l_filename;
+			SonikLib::SonikStringDefault l_filename;
 			l_filename = l_data.cFileName;
 
 			retEnums.EnQueue(l_filename);
@@ -102,7 +103,7 @@ namespace SonikLibFileSystems
 
 			return true;
 		};
-		bool GetDirectoryInFileNameEnumeration(SonikLib::SonikString  _directoryPath_, SonikLib::Container::SonikAtomicQueue<SonikLib::SonikString>& retEnums, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+		bool GetDirectoryInFileNameEnumeration(SonikLib::SonikStringDefault  _directoryPath_, SonikLib::Container::SonikAtomicQueue<SonikLib::SonikStringDefault>& retEnums, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 		{
 #if defined(_WIN64)
 			//WindowsAPIFunction
@@ -118,7 +119,7 @@ namespace SonikLibFileSystems
 				return false;
 			};
 
-			SonikLib::SonikString l_filename(_allocator_);
+			SonikLib::SonikStringDefault l_filename(_allocator_);
 			l_filename = l_data.cFileName;
 
 			retEnums.EnQueue(l_filename);

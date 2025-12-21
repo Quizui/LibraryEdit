@@ -145,8 +145,8 @@ namespace SonikLib
             static bool CreateFileController(SFileSystemController& _out_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 
             //FileOpen
-            bool OpenFile(SonikLib::SonikString _filepath_, FileSystem::FILEOPENSWITCH _open_switch_);
-            bool OpenFile(SonikLib::SonikString _filepath_, FileSystem::FILEOPENSWITCH _open_switch_, SonikLib::FileSystem::FILEERROR& _errcode_); //out ErrorCode Version
+            bool OpenFile(SonikLib::SonikStringDefault _filepath_, FileSystem::FILEOPENSWITCH _open_switch_);
+            bool OpenFile(SonikLib::SonikStringDefault _filepath_, FileSystem::FILEOPENSWITCH _open_switch_, SonikLib::FileSystem::FILEERROR& _errcode_); //out ErrorCode Version
             //FileClose
             void CloseFile(void);
 
@@ -177,19 +177,19 @@ namespace SonikLib
             //SonikStringの吐き出し方法で分けています。
             //テキストモードでオープンした状態だとファイル内の文字のエンコーディングがUTF-8に代わるといったことはありません。
             //バイナリで、追記以外...つまりすべての文字を再出力..となった場合は変換されるかもしれません。
-            void Write_char(SonikLib::SonikString _writevalue_, bool isLargeUsed = false);
-            void Write_char(SonikLib::SonikString _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed = false);
-            void Write_UTF8(SonikLib::SonikString _writevalue_, bool isLargeUsed = false);
-            void Write_UTF8(SonikLib::SonikString _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed = false);
-            void Write_UTF16(SonikLib::SonikString _writevalue_, bool isLargeUsed = false);
-            void Write_UTF16(SonikLib::SonikString _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed = false);
+            void Write_char(SonikLib::SonikStringDefault _writevalue_, bool isLargeUsed = false);
+            void Write_char(SonikLib::SonikStringDefault _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed = false);
+            void Write_UTF8(SonikLib::SonikStringDefault _writevalue_, bool isLargeUsed = false);
+            void Write_UTF8(SonikLib::SonikStringDefault _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed = false);
+            void Write_UTF16(SonikLib::SonikStringDefault _writevalue_, bool isLargeUsed = false);
+            void Write_UTF16(SonikLib::SonikStringDefault _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed = false);
 
             //テキストモード専用　指定された行数文TEXTを読み込みます。
-            void ReadText_Line(SonikLib::SonikString& _str_, uint64_t GetRowCnt = 1, bool isLargeUsed = false);
-            void ReadText_Line(SonikLib::SonikString& _str_, SonikLib::FileSystem::FILEERROR& _errcode_, uint64_t GetRowCnt = 1, bool isLargeUsed = false);
+            void ReadText_Line(SonikLib::SonikStringDefault& _str_, uint64_t GetRowCnt = 1, bool isLargeUsed = false);
+            void ReadText_Line(SonikLib::SonikStringDefault& _str_, SonikLib::FileSystem::FILEERROR& _errcode_, uint64_t GetRowCnt = 1, bool isLargeUsed = false);
             //テキストモード専用　指定された行数文TEXTを読み込ます。改行は削除され、改行で分割されたQueueとして取得します。
-            void ReadText_LineQueue(SonikLib::Container::SonikAtomicQueue<SonikString>& _GetLineQueue_, uint64_t GetRowCnt = 1, bool isLargeUsed = false);
-            void ReadText_LineQueue(SonikLib::Container::SonikAtomicQueue<SonikString>& _GetLineQueue_, SonikLib::FileSystem::FILEERROR& _errcode_, uint64_t GetRowCnt = 1, bool isLargeUsed = false);
+            void ReadText_LineQueue(SonikLib::Container::SonikAtomicQueue<SonikStringDefault>& _GetLineQueue_, uint64_t GetRowCnt = 1, bool isLargeUsed = false);
+            void ReadText_LineQueue(SonikLib::Container::SonikAtomicQueue<SonikStringDefault>& _GetLineQueue_, SonikLib::FileSystem::FILEERROR& _errcode_, uint64_t GetRowCnt = 1, bool isLargeUsed = false);
 
         };
 

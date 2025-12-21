@@ -1,5 +1,3 @@
-#pragma once //有効ではないコンパイラの場合は無視される。
-
 #ifndef SONIKDLLACCESSMANAGER_H_
 #define SONIKDLLACCESSMANAGER_H_
 
@@ -7,6 +5,7 @@
 #include <SmartPointer/SonikSmartPointer.hpp>
 #include <SonikCAS/SonikAtomicLock.h>
 #include <CPPGrammarDefines.h>
+#include <SonikString/TypePermissibleTemplate.hpp>
 
 #if defined(__linux__)
 SLIB_CVR_USING(SONIK_DLL_ACCESS_MANAGER_POINTER, void*);
@@ -44,7 +43,8 @@ namespace SonikDllOptions
 
 		//pure functions
 		virtual uintptr_t GetDllProcAddress(const char* ProcName) = 0;
-		virtual uintptr_t GetDllProcAddress(const char16_t* ProcName) = 0;
+		virtual uintptr_t GetDllProcAddress(const utf8_t* ProcName) = 0;
+		virtual uintptr_t GetDllProcAddress(const utf16_t* ProcName) = 0;
 		virtual uintptr_t GetDllProcAddress(const wchar_t* ProcName) = 0;
 	};
 
@@ -74,30 +74,31 @@ namespace SonikLib
 	private:
 		//constructor
 		inline SonikDllHandleManager(void)
-		:DllHandleList(nullptr)
-		,SentinelNode_Start(nullptr)
-		,SentinelNode_End(nullptr)
-		,DllHandleListCnt(0)
-		{/*no process*/};
-	#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
-    	//コピーと代入の禁止
+			:DllHandleList(nullptr)
+			, SentinelNode_Start(nullptr)
+			, SentinelNode_End(nullptr)
+			, DllHandleListCnt(0)
+		{/*no process*/
+		};
+#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
+		//コピーと代入の禁止
 		SonikDllHandleManager(const SonikDllHandleManager& _copy_) = delete;
 		SonikDllHandleManager(SonikDllHandleManager&& _move_) = delete;
 		SonikDllHandleManager& operator =(const SonikDllHandleManager& _copy_) = delete;
 		SonikDllHandleManager& operator =(SonikDllHandleManager&& _move_) = delete;
 
-   	#else //C++ 11 以下
-        //コピーと代入の禁止
+#else //C++ 11 以下
+		//コピーと代入の禁止
 		SonikDllHandleManager(const SonikDllHandleManager& _copy_);
 		SonikDllHandleManager& operator =(const SonikDllHandleManager& _copy_);
 
-        #if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
-           	//MSVC2010ならmove可能なので定義だけしておく。
-           	SonikDllHandleManager(SonikDllHandleManager&& _copy_);
-           	SonikDllHandleManager& operator =(SSonikDllHandleManager&& _copy_);
+	#if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
+		//MSVC2010ならmove可能なので定義だけしておく。
+		SonikDllHandleManager(SonikDllHandleManager&& _copy_);
+		SonikDllHandleManager& operator =(SSonikDllHandleManager&& _copy_);
 
-        #endif
-    #endif
+	#endif
+#endif
 
 	public:
 		//Destructor
@@ -110,20 +111,24 @@ namespace SonikLib
 		//マネージャ自体が管理しないため、この関数後にGetHandleをしてもnullptrが帰ります。（というかそもそも読み込み番号返さないから引数が指定できないんだけどね)
 		static bool DllGetLoad(const char* _DllPath_, SDllHandle& _GetDllObject_);
 		static bool DllGetLoad(const char* _DllPath_, SDllHandle& _GetDllObject_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
-		static bool DllGetLoad(const char16_t* _DllPath_, SDllHandle& _GetDllObject_);
-		static bool DllGetLoad(const char16_t* _DllPath_, SDllHandle& _GetDllObject_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
+		static bool DllGetLoad(const utf8_t* _DllPath_, SDllHandle& _GetDllObject_);
+		static bool DllGetLoad(const utf8_t* _DllPath_, SDllHandle& _GetDllObject_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
+		static bool DllGetLoad(const utf16_t* _DllPath_, SDllHandle& _GetDllObject_);
+		static bool DllGetLoad(const utf16_t* _DllPath_, SDllHandle& _GetDllObject_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		static bool DllGetLoad(const wchar_t* _DllPath_, SDllHandle& _GetDllObject_);
 		static bool DllGetLoad(const wchar_t* _DllPath_, SDllHandle& _GetDllObject_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 
 
 		bool DllLoad(const char* _DllPath_, uint64_t& _out_dll_reg_number_);
-		bool DllLoad(const char16_t* _DllPath_, uint64_t& _out_dll_reg_number_);
+		bool DllLoad(const utf8_t* _DllPath_, uint64_t& _out_dll_reg_number_);
+		bool DllLoad(const utf16_t* _DllPath_, uint64_t& _out_dll_reg_number_);
 		bool DllLoad(const wchar_t* _DllPath_, uint64_t& _out_dll_reg_number_);
 
 		void FreeDll(uint64_t _reg_number_);
 
 		uintptr_t GetDllProcAddress(const SONIK_DLL_ACCESS_MANAGER_POINTER dllhandle, const char* ProcName);
-		uintptr_t GetDllProcAddress(const SONIK_DLL_ACCESS_MANAGER_POINTER dllhandle, const char16_t* ProcName);
+		uintptr_t GetDllProcAddress(const SONIK_DLL_ACCESS_MANAGER_POINTER dllhandle, const utf8_t* ProcName);
+		uintptr_t GetDllProcAddress(const SONIK_DLL_ACCESS_MANAGER_POINTER dllhandle, const utf16_t* ProcName);
 		uintptr_t GetDllProcAddress(const SONIK_DLL_ACCESS_MANAGER_POINTER dllhandle, const wchar_t* ProcName);
 
 		SONIK_DLL_ACCESS_MANAGER_POINTER GetHandle(uint64_t _reg_number_);

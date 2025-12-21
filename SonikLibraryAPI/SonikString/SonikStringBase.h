@@ -10,7 +10,7 @@ namespace SonikLib
 {	//スプリット用クラス(Stringクラスそのままコピーはマルチスレッドアクセスでのnewでロックがかかってしまって遅くなるので..。
 	class SonikStringSplitObject;
 	//スプリットクラスで使う用のクラスの前方宣言
-	class SonikString;
+	class SonikStringDefault;
 	class SonikStringWIDE;
 	class SonikStringUTF8;
 	class SonikStringUTF16;
@@ -163,7 +163,7 @@ namespace SonikLib
 		SonikStringSplitObject(SonikLib::AllocatorSharedSmtPtr<SLibAllocateInterface> _allocator_);
 		~SonikStringSplitObject(void);
 
-		bool GetStr(uint64_t _splitnum_, SonikString& _getstr_);
+		bool GetStr(uint64_t _splitnum_, SonikStringDefault& _getstr_);
 		bool GetStr(uint64_t _splitnum_, SonikStringWIDE& _getstr_);
 		bool GetStr(uint64_t _splitnum_, SonikStringUTF8& _getstr_);
 		bool GetStr(uint64_t _splitnum_, SonikStringUTF16& _getstr_);

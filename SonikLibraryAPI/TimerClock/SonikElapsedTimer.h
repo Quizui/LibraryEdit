@@ -1,14 +1,14 @@
-/*
- * SonikElapsedTimer.h
- *
- *  Created on: 2016/03/03
- *      Author: SONIK
- */
 
 #ifndef TIMERCLOCK_SONIKELAPSEDTIMER_H_
 #define TIMERCLOCK_SONIKELAPSEDTIMER_H_
 
-//C++11以降でしか使用できません。
+//時間計測と一時的な処理中断を行えるクラスです。
+//Windows環境の場合のみ winmm.lib を先にリンクさせる必要があります。(内部でtimeBeginPeriodを使っていてそれがwinmmに依存します。)
+
+//timeBeginPeriodはWindows環境でのIntervalSleep関数を使うのに使用されています。
+//これを使わないとスリープ時間の最低値が15ms~17msくらいになるため、スリープ時間を最低の1msにしています。
+//逆にいえばWindows環境においてはIntervalSleep関数においてのみ精度が1ms以下にならず、マイクロ秒クラスを使っても一番の最高解像度が1msとなる点に注意してください。
+//それ以外の関数については記載どおりマイクロ秒単位で計測可能です。
 
 #include <cstdint>
 
@@ -24,8 +24,25 @@ namespace SonikLib
 		uint64_t IntervalTime;
 
 	private:
-		//代入演算子
-		SonikElapsedTimer& operator =(SonikElapsedTimer& t_his);
+#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
+		//コピーと代入の禁止
+		SonikElapsedTimer(const SonikElapsedTimer& _copy_) = delete;
+		SonikElapsedTimer(SonikElapsedTimer&& _move_) = delete;
+		SonikElapsedTimer& operator =(const SonikElapsedTimer& _copy_) = delete;
+		SonikElapsedTimer& operator =(SonikElapsedTimer&& _move_) = delete;
+
+#else //C++ 11 以下
+		//コピーと代入の禁止
+		SonikElapsedTimer(const SonikElapsedTimer& _copy_);
+		SonikElapsedTimer& operator =(const SonikElapsedTimer& _copy_);
+
+	#if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
+		//MSVC2010ならmove可能なので定義だけしておく。
+		SonikElapsedTimer(SonikElapsedTimer&& _move_);
+		SonikElapsedTimer& operator =(SonikElapsedTimer&& _move_);
+
+	#endif
+#endif
 
 	public:
 		//コンストラクタ
@@ -68,8 +85,25 @@ namespace SonikLib
 		uint64_t IntervalTime;
 
 	private:
-		//代入演算子
-		SonikElapsedTimerMicro& operator =(SonikElapsedTimerMicro& t_his);
+#if defined(__cplusplus) && __cplusplus >= 201103L //C++ 11 以上
+		//コピーと代入の禁止
+		SonikElapsedTimerMicro(const SonikElapsedTimerMicro& _copy_) = delete;
+		SonikElapsedTimerMicro(SonikElapsedTimerMicro&& _move_) = delete;
+		SonikElapsedTimerMicro& operator =(const SonikElapsedTimerMicro& _copy_) = delete;
+		SonikElapsedTimerMicro& operator =(SonikElapsedTimerMicro&& _move_) = delete;
+
+#else //C++ 11 以下
+		//コピーと代入の禁止
+		SonikElapsedTimerMicro(const SonikElapsedTimerMicro& _copy_);
+		SonikElapsedTimerMicro& operator =(const SonikElapsedTimerMicro& _copy_);
+
+	#if defined(SLIB_COMPILER_DEF_MSVC) && _MSC_VER >= 1600
+		//MSVC2010ならmove可能なので定義だけしておく。
+		SonikElapsedTimerMicro(SonikElapsedTimerMicro&& _move_);
+		SonikElapsedTimerMicro& operator =(SonikElapsedTimerMicro&& _move_);
+
+	#endif
+#endif
 
 	public:
 		//コンストラクタ

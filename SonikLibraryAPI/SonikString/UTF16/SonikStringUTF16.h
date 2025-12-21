@@ -2,7 +2,7 @@
 #ifndef __SONIKLIB_SONIKSTRING_UTF16_H__
 #define __SONIKLIB_SONIKSTRING_UTF16_H__
 
-#include "../SonikStringBase.h"
+#include <SonikString/SonikStringBase.h>
 
  //前方宣言===================================
 namespace SonikLib
@@ -13,7 +13,7 @@ namespace SonikLib
 		class SonikVariableArrayContainer;
 	};
 
-	class SonikString;
+	class SonikStringDefault;
 	class SonikStringWIDE;
 	class SonikStringUTF8;
 };
@@ -24,7 +24,7 @@ namespace SonikLib
 {
 	class SonikStringUTF16 : public BASED_STRINGCLASS_SONIKLIB::SonikStringBase
 	{
-		friend class SonikString;
+		friend class SonikStringDefault;
 		friend class SonikStringWIDE;
 		friend class SonikStringUTF8;
 
@@ -32,7 +32,7 @@ namespace SonikLib
 		SonikStringUTF16(void);
 		SonikStringUTF16(SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 		SonikStringUTF16(const SonikStringUTF16& t_his);
-		SonikStringUTF16(const SonikString& t_his);
+		SonikStringUTF16(const SonikStringDefault& t_his);
 		SonikStringUTF16(const SonikStringWIDE& t_his);
 		SonikStringUTF16(const SonikStringUTF8& t_his);
 		SonikStringUTF16(const char* SetStr);
@@ -65,7 +65,7 @@ namespace SonikLib
 		SonikStringUTF16(const double SetValue, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_);
 
 		//ムーヴコンストラクタ
-		SonikStringUTF16(SonikString&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringUTF16(SonikStringDefault&& _move_) SLIB_CVR_NOEXCEPT;
 		SonikStringUTF16(SonikStringWIDE&& _move_) SLIB_CVR_NOEXCEPT;
 		SonikStringUTF16(SonikStringUTF8&& _move_) SLIB_CVR_NOEXCEPT;
 		SonikStringUTF16(SonikStringUTF16&& _move_) SLIB_CVR_NOEXCEPT;
@@ -81,10 +81,10 @@ namespace SonikLib
 
 		//各入力フォーマットから現在のバッファに変換して代入します。
 		SonikStringUTF16& operator =(const SonikStringUTF16& t_his);
-		SonikStringUTF16& operator =(const SonikString& t_his);
+		SonikStringUTF16& operator =(const SonikStringDefault& t_his);
 		SonikStringUTF16& operator =(const SonikStringWIDE& t_his);
 		SonikStringUTF16& operator =(const SonikStringUTF8& t_his);
-		SonikStringUTF16& operator =(SonikString&& _move_) SLIB_CVR_NOEXCEPT;
+		SonikStringUTF16& operator =(SonikStringDefault&& _move_) SLIB_CVR_NOEXCEPT;
 		SonikStringUTF16& operator =(SonikStringWIDE&& _move_) SLIB_CVR_NOEXCEPT;
 		SonikStringUTF16& operator =(SonikStringUTF8&& _move_) SLIB_CVR_NOEXCEPT;
 		SonikStringUTF16& operator =(SonikStringUTF16&& _move_) SLIB_CVR_NOEXCEPT;
@@ -107,7 +107,7 @@ namespace SonikLib
 		//各入力フォーマットから現在のバッファに変換して結合します。
 		//コピー元とコピー先が同じオブジェクトの場合、そのまま結合します。
 		SonikStringUTF16& operator +=(const SonikStringUTF16& t_his);
-		SonikStringUTF16& operator +=(const SonikString& t_his);
+		SonikStringUTF16& operator +=(const SonikStringDefault& t_his);
 		SonikStringUTF16& operator +=(const SonikStringWIDE& t_his);
 		SonikStringUTF16& operator +=(const SonikStringUTF8& t_his);
 		SonikStringUTF16& operator +=(const char* Str);
@@ -128,7 +128,7 @@ namespace SonikLib
 		//現在のバッファと入力バッファを結合し、別のオブジェクトとして返却します。
 		//コピー元とコピー先が同じオブジェクトの場合、そのまま結合します。
 		SonikStringUTF16 operator +(const SonikStringUTF16& t_his);
-		SonikStringUTF16 operator +(const SonikString& t_his);
+		SonikStringUTF16 operator +(const SonikStringDefault& t_his);
 		SonikStringUTF16 operator +(const SonikStringWIDE& t_his);
 		SonikStringUTF16 operator +(const SonikStringUTF8& t_his);
 		SonikStringUTF16 operator +(const char* Str);
@@ -149,38 +149,38 @@ namespace SonikLib
 		//c: 文字列同士を比較します。(strcmp)
 		//c: 一致の場合true 不一致の場合 falseを返却します。
 		bool operator ==(const SonikStringUTF16& t_his) const;
-		bool operator ==(const SonikString& t_his) const;
+		bool operator ==(const SonikStringDefault& t_his) const;
 		bool operator ==(const SonikStringWIDE& t_his) const;
 		bool operator ==(const SonikStringUTF8& t_his) const;
 
 		//c: 文字列同士を比較します。(strcmp)
 		//c: 不一致の場合true　一致の場合 falseを返却します。
 		bool operator !=(const SonikStringUTF16& t_his) const;
-		bool operator !=(const SonikString& t_his) const;
+		bool operator !=(const SonikStringDefault& t_his) const;
 		bool operator !=(const SonikStringWIDE& t_his) const;
 		bool operator !=(const SonikStringUTF8& t_his) const;
 
 		//小なり
 		bool operator <(const SonikStringUTF16& _Greater_) const;
-		bool operator <(const SonikString& _Greater_) const;
+		bool operator <(const SonikStringDefault& _Greater_) const;
 		bool operator <(const SonikStringWIDE& _Greater_) const;
 		bool operator <(const SonikStringUTF8& _Greater_) const;
 
 		//大なり
 		bool operator >(const SonikStringUTF16& _Less_) const;
-		bool operator >(const SonikString& _Less_) const;
+		bool operator >(const SonikStringDefault& _Less_) const;
 		bool operator >(const SonikStringWIDE& _Less_) const;
 		bool operator >(const SonikStringUTF8& _Less_) const;
 
 		//小なりイコール
 		bool operator <=(const SonikStringUTF16& _GreaterEqual_) const;
-		bool operator <=(const SonikString& _GreaterEqual_) const;
+		bool operator <=(const SonikStringDefault& _GreaterEqual_) const;
 		bool operator <=(const SonikStringWIDE& _GreaterEqual_) const;
 		bool operator <=(const SonikStringUTF8& _GreaterEqual_) const;
 
 		//大なりイコール
 		bool operator >=(const SonikStringUTF16& _LessEqual_) const;
-		bool operator >=(const SonikString& _LessEqual_) const;
+		bool operator >=(const SonikStringDefault& _LessEqual_) const;
 		bool operator >=(const SonikStringWIDE& _LessEqual_) const;
 		bool operator >=(const SonikStringUTF8& _LessEqual_) const;
 

@@ -1,8 +1,9 @@
 #include "SonikFileController.h"
-#include "../Container/SonikAtomicQueue.hpp"
-#include "../Container/RangedForContainer.hpp"
-#include "../SonikString/SonikStringConvert.hpp"
-#include "../CPPGrammarDefines.h"
+
+#include <Container/SonikAtomicQueue.hpp>
+#include <Container/RangedForContainer.hpp>
+#include <SonikString/SonikStringConvert.hpp>
+#include <CPPGrammarDefines.h>
 
 #include <cstdint>
 #include <new>
@@ -36,6 +37,9 @@ namespace SonikLib
         //Linux, Unix, Apple Implemets
         DEF_FORCE_INLINE SLIB_CVR_CONSTEXPR FileSystem::FILEERROR FILEERROR_ENUM_CONVERT_APIERROR_TO_FERR(uint64_t _errorcode_) SLIB_CVR_NOEXCEPT;
 #endif
+
+        static const uint64_t SLIB_FILECONTROLLER_FUNCTION_READ_WRITE_LIMITMEMORYSIZE = (8ULL << 30);
+
         //FileSystemFunctionsで使うパラメータボックス
         class SonikFileSystemController::FSF_ParamBox
         {
@@ -47,10 +51,10 @@ namespace SonikLib
             int64_t  arg1;  //offsetとかsizeとか。
             uint64_t arg2;  //メモリ使用上限とか。
             uint64_t arg3;  //取得行数とか。
-            SonikLib::SonikString* str; //read格納先やwrite書き出し元
+            SonikLib::SonikStringDefault* str; //read格納先やwrite書き出し元
             SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> allocator; //アロケータ
             bool isLargeUseOk;  //メモリ使用上限突破許容フラグ
-            SonikLib::Container::SonikAtomicQueue<SonikString>* queue; //行取得時のQueueとか。
+            SonikLib::Container::SonikAtomicQueue<SonikStringDefault>* queue; //行取得時のQueueとか。
             unsigned char* buffer; //書き込み元バッファ/読み込み保存先バッファとか。
         };
 
@@ -708,7 +712,7 @@ namespace SonikLib
         //任意行読み込んでSonikString型のQueueへ１行単位でキューイングします。
         DEF_FORCE_INLINE void SonikFileSystemController::FileSystemFunctions::OP_ReadText_LineQueue(FSF_ParamBox& argbox)
         {
-            SonikLib::SonikString l_getstr(argbox.allocator);
+            SonikLib::SonikStringDefault l_getstr(argbox.allocator);
             uint64_t loopcnt = argbox.arg3;
 
             argbox.str = &l_getstr;
@@ -1337,7 +1341,7 @@ namespace SonikLib
 
 
         //FileOpen
-        bool SonikFileSystemController::OpenFile(SonikLib::SonikString _filepath_, FileSystem::FILEOPENSWITCH _open_switch_)
+        bool SonikFileSystemController::OpenFile(SonikLib::SonikStringDefault _filepath_, FileSystem::FILEOPENSWITCH _open_switch_)
         {
             m_lock.lock();
 
@@ -1516,7 +1520,7 @@ namespace SonikLib
             return true;
         };
 
-        bool SonikFileSystemController::OpenFile(SonikLib::SonikString _filepath_, FileSystem::FILEOPENSWITCH _open_switch_, SonikLib::FileSystem::FILEERROR& _errcode_)
+        bool SonikFileSystemController::OpenFile(SonikLib::SonikStringDefault _filepath_, FileSystem::FILEOPENSWITCH _open_switch_, SonikLib::FileSystem::FILEERROR& _errcode_)
         {
             m_lock.lock();
 
@@ -1913,7 +1917,7 @@ namespace SonikLib
         //SonikStringの吐き出し方法で分けています。
         //テキストモードでオープンした状態だとファイル内の文字のエンコーディングがUTF-8に代わるといったことはありません。
         //バイナリで、追記以外...つまりすべての文字を再出力..となった場合は変換されるかもしれません。
-        void SonikFileSystemController::Write_char(SonikLib::SonikString _writevalue_, bool isLargeUsed)
+        void SonikFileSystemController::Write_char(SonikLib::SonikStringDefault _writevalue_, bool isLargeUsed)
         {
             m_lock.lock();
 
@@ -1927,7 +1931,7 @@ namespace SonikLib
             return;
 
         };
-        void SonikFileSystemController::Write_char(SonikLib::SonikString _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed)
+        void SonikFileSystemController::Write_char(SonikLib::SonikStringDefault _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed)
         {
             m_lock.lock();
 
@@ -1943,7 +1947,7 @@ namespace SonikLib
             return;
         };
 
-        void SonikFileSystemController::SonikFileSystemController::Write_UTF8(SonikLib::SonikString _writevalue_, bool isLargeUsed)
+        void SonikFileSystemController::SonikFileSystemController::Write_UTF8(SonikLib::SonikStringDefault _writevalue_, bool isLargeUsed)
         {
             m_lock.lock();
 
@@ -1957,7 +1961,7 @@ namespace SonikLib
             return;
 
         };
-        void SonikFileSystemController::SonikFileSystemController::Write_UTF8(SonikLib::SonikString _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed)
+        void SonikFileSystemController::SonikFileSystemController::Write_UTF8(SonikLib::SonikStringDefault _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed)
         {
             m_lock.lock();
 
@@ -1973,7 +1977,7 @@ namespace SonikLib
             return;
         };
 
-        void SonikFileSystemController::Write_UTF16(SonikLib::SonikString _writevalue_, bool isLargeUsed)
+        void SonikFileSystemController::Write_UTF16(SonikLib::SonikStringDefault _writevalue_, bool isLargeUsed)
         {
             m_lock.lock();
 
@@ -1987,7 +1991,7 @@ namespace SonikLib
             return;
 
         };
-        void SonikFileSystemController::Write_UTF16(SonikLib::SonikString _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed)
+        void SonikFileSystemController::Write_UTF16(SonikLib::SonikStringDefault _writevalue_, SonikLib::FileSystem::FILEERROR& _errcode_, bool isLargeUsed)
         {
             m_lock.lock();
 
@@ -2004,7 +2008,7 @@ namespace SonikLib
         };
 
         //テキストモード専用　指定された行数文TEXTを読み込みます。
-        void SonikFileSystemController::ReadText_Line(SonikLib::SonikString& _str_, uint64_t GetRowCnt, bool isLargeUsed)
+        void SonikFileSystemController::ReadText_Line(SonikLib::SonikStringDefault& _str_, uint64_t GetRowCnt, bool isLargeUsed)
         {
             m_lock.lock();
 
@@ -2018,7 +2022,7 @@ namespace SonikLib
 
             return;
         };
-        void SonikFileSystemController::ReadText_Line(SonikLib::SonikString& _str_, SonikLib::FileSystem::FILEERROR& _errcode_, uint64_t GetRowCnt, bool isLargeUsed)
+        void SonikFileSystemController::ReadText_Line(SonikLib::SonikStringDefault& _str_, SonikLib::FileSystem::FILEERROR& _errcode_, uint64_t GetRowCnt, bool isLargeUsed)
         {
             m_lock.lock();
 
@@ -2036,9 +2040,9 @@ namespace SonikLib
         };
 
         //テキストモード専用　指定された行数文TEXTを読み込ます。改行は削除され、改行で分割されたQueueとして取得します。
-        void SonikFileSystemController::ReadText_LineQueue(SonikLib::Container::SonikAtomicQueue<SonikString>& _GetLineQueue_, uint64_t GetRowCnt, bool isLargeUsed)
+        void SonikFileSystemController::ReadText_LineQueue(SonikLib::Container::SonikAtomicQueue<SonikStringDefault>& _GetLineQueue_, uint64_t GetRowCnt, bool isLargeUsed)
         {
-            SonikLib::SonikString local_strarea;
+            SonikLib::SonikStringDefault local_strarea;
 
             m_lock.lock();
 
@@ -2052,9 +2056,9 @@ namespace SonikLib
 
             return;
         };
-        void SonikFileSystemController::ReadText_LineQueue(SonikLib::Container::SonikAtomicQueue<SonikString>& _GetLineQueue_, SonikLib::FileSystem::FILEERROR& _errcode_, uint64_t GetRowCnt, bool isLargeUsed)
+        void SonikFileSystemController::ReadText_LineQueue(SonikLib::Container::SonikAtomicQueue<SonikStringDefault>& _GetLineQueue_, SonikLib::FileSystem::FILEERROR& _errcode_, uint64_t GetRowCnt, bool isLargeUsed)
         {
-            SonikLib::SonikString local_strarea;
+            SonikLib::SonikStringDefault local_strarea;
 
             m_lock.lock();
 

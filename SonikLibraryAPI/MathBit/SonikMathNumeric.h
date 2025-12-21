@@ -172,6 +172,59 @@ namespace SonikMath
     bool DFT(const SLIB_SAMPLINGLIST in_Sampling, SLIB_SAMPLINGLIST& out_Sampling);
     bool IDFT(const SLIB_SAMPLINGLIST in_Sampling, SLIB_SAMPLINGLIST& out_Sampling);
 
+    // 指定されたサンプリング領域全体を一括FFT/IFFT処理するための関数ポインタを取得します。
+    // 第1引数：入力サンプリング配列のサイズを指定します。
+    // 第2引数：入力サイズに基づいて選択された一括処理用FFT関数（FullRangeFFT）への関数ポインタを受け取る変数を指定します。
+    // 第3引数：入力サイズに基づいて選択された一括処理用IFFT関数（FullRangeIFFT）への関数ポインタを受け取る変数を指定します。
+    // 第4引数：入力サイズに対して自動選択された最適処理レベル（NLevel）を受け取る変数を指定します。
+    // ※取得した FFT/IFFT 関数を呼び出す際は、この NLevel を FFT/IFFT 関数の第3引数として必ず指定してください。
+    //   指定しなかった場合の動作は未定義です。
+    // ※この関数で取得した関数ポインタは「取得時に指定した入力サイズ」に対して最適化されています。
+    //   取得時と異なるサイズの配列を使用した場合、動作は保証されません（同一サイズであれば問題ありません）。
+    // ※FullRangeFFT / FullRangeIFFT の内部で、入力配列に対して最適化のための拡張処理（ゼロパディング）が行われます。
+    //   出力用コンテナ（第2引数）はサイズ0の作成直後の状態を指定して問題ありません。
+    // ※FullRangeFFT / FullRangeIFFT のout拡張処理前(どの条件においても通過します)に、出力コンテナに対して
+    //   Clearが発行されます。
+    // 本関数及び取得できるFFT. IFFTは内部で窓関数は適用しません。別途関数で入力前に適用してください。
+    SLIB_CVR_USING(FFTFullFunctionP, bool(*)(const SLIB_SAMPLINGLIST, SLIB_SAMPLINGLIST, uint32_t));
+    DEF_PRE_NO_DISCARD bool Get_FullRange_FFTFunction(uint64_t inSamplingsize, FFTFullFunctionP& out_Full_FFT_funcptr, FFTFullFunctionP& out_Full_IFFT_funcptr, uint32_t& out_NLevel) DEF_POST_NO_DISCARD;
+
+    // 指定されたサンプリング配列に対して、必要に応じて固定長処理に適した
+    // サイズ（baseN の倍数）へ拡張（ゼロパディング）を行い、
+    // その結果に対応する固定長 FFT / IFFT 関数ポインタを取得します。
+    // 第1引数：固定長処理を行いたいサンプリング配列を指定します。
+    //           ※スマートポインタのため、拡張が発生した場合は inSampling が更新されます。
+    // 第2引数：第4引数で指定した固定長処理レベルに対応する FFT 関数へのポインタを受け取る変数を指定します。
+    // 第3引数：第4引数で指定した固定長処理レベルに対応する IFFT 関数へのポインタを受け取る変数を指定します。
+    // 第4引数：任意の固定長処理レベル（NLevel）を指定します。
+    //           NLevel = 0 → 512 サンプル
+    //           NLevel = 1 → 1024 サンプル
+    //           NLevel = 2 → 2048 サンプル
+    //           NLevel = 3 → 4096 サンプル
+    //           上記以外の値を指定した場合、本関数は false を返します。
+    // ※入力サイズがすでに baseN の倍数である場合、拡張処理は行われません。
+    // ※取得した FFT / IFFT 関数は、第3引数（idx）を使用することで、
+    //   同じ配列に対して連続的・継続的に固定長処理を行うことが可能です。
+    // 本関数は内部で窓関数は適用しません。別途関数で入力前に適用してください。
+    SLIB_CVR_USING(FFTFixedFuntionP, bool(*)(const SLIB_SAMPLINGLIST, SLIB_SAMPLINGLIST, uint64_t&));
+    DEF_PRE_NO_DISCARD bool Get_FixedRange_FFTFuncction(SLIB_SAMPLINGLIST inSampling, FFTFixedFuntionP& out_Fixed_FFT_funcptr, FFTFixedFuntionP& out_Fixed_IFFT_funcptr, uint32_t NLevel) DEF_POST_NO_DISCARD;
+
+    //窓関数
+    //窓関数ロジック：ハニング
+    void ApplyWindow_Hann(SLIB_SAMPLINGLIST inSampling);
+    //窓関数ロジック：ハミング
+    void ApplyWindow_Hamming(SLIB_SAMPLINGLIST inSampling);
+    //窓関数ロジック：ブラックマン
+    void ApplyWindow_Blackman(SLIB_SAMPLINGLIST inSampling);
+
+    // サンプリングレート変換を行います。
+    // 第1引数：入力データ (FFTおよび窓関数が適用されます)
+    // 第2引数：出力データ格納先
+    // 第3引数：変換元レートを指定します。(例: 44100.0)
+    // 第4引数：変換先レートを指定します。(例: 48000.0)
+    // アップサンプリング例: currentRate = 44100.0, targetRate = 48000.0
+    // ダウンサンプリング例: currentRate = 96000.0, targetRate = 44100.0
+    bool ReSamplingTransform(SLIB_SAMPLINGLIST in_Sampling, SLIB_SAMPLINGLIST out_Resampled, double currentRate, double targetRate);
 
 #ifdef _DEBUG
 

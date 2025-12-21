@@ -1,5 +1,3 @@
-#pragma once
-
  //一つのstring型で取得する文字列の型を変更したいときに使います。
  //それぞれのstringを直接同時にincludeしても型が違うので競合はしません。
  //そのため、例えばUTF-8を基準にしたいが、一部ではsjisで取りたい等あっても普通に別々include可能ですし、
@@ -13,54 +11,53 @@
 #include <CPPGrammarDefines.h>
 
 #if defined(SONIKSTRING_USED_UTF8)
-#if defined(SONIKSTRING_USED_UTF16) || defined(SONIKSTRING_USED_WIDE)
-	//default
-#include "./SonikString.h"
-namespace SonikLib
-{
-	SLIB_CVR_USING(SonikString, SonikLib::SonikString);
-};
+	#if defined(SONIKSTRING_USED_UTF16) || defined(SONIKSTRING_USED_WIDE)
+		//default
+		#include "./SonikString.h"
+		namespace SonikLib
+		{
+			SLIB_CVR_USING(SonikString, SonikLib::SonikStringDefault);
+		};
 
+	#else
+		#include <SonikString/UTF8/SonikStringUTF8.h>
+		namespace SonikLib
+		{
+			SLIB_CVR_USING(SonikString, SonikLib::SonikStringUTF8);
+		};
 
-#else
-#include "./UTF8/SonikStringUTF8.h"
-namespace SonikLib
-{
-	SLIB_CVR_USING(SonikString, SonikLib::SonikStringUTF8);
-};
-
-#endif
+	#endif
 
 #elif defined(SONIKSTRING_USED_UTF16)
-#if defined(SONIKSTRING_USED_UTF8) || defined(SONIKSTRING_USED_WIDE)
-#include "./SonikString.h"
-namespace SonikLib
-{
-	SLIB_CVR_USING(SonikString, SonikLib::SonikString);
-};
+	#if defined(SONIKSTRING_USED_UTF8) || defined(SONIKSTRING_USED_WIDE)
+		#include "./SonikString.h"
+		namespace SonikLib
+		{
+			SLIB_CVR_USING(SonikString, SonikLib::SonikStringDefault);
+		};
 
-#else
-#include "./UTF16/SonikStringUTF16.h"
-namespace SonikLib
-{
-	SLIB_CVR_USING(SonikString, SonikLib::SonikStringUTF16);
-};
+	#else
+		#include <SonikString/UTF16/SonikStringUTF16.h>
+		namespace SonikLib
+		{
+			SLIB_CVR_USING(SonikString, SonikLib::SonikStringUTF16);
+		};
 
-#endif
+	#endif
 
 #elif defined(SONIKSTRING_USED_WIDE)
-#include "./WIDE/SonikStringWIDE.h"
-namespace SonikLib
-{
-	SLIB_CVR_USING(SonikString, SonikLib::SonikStringWIDE);
-};
+		#include <SonikString/WIDE/SonikStringWIDE.h>
+		namespace SonikLib
+		{
+			SLIB_CVR_USING(SonikString, SonikLib::SonikStringWIDE);
+		};
 
 #else
-#include "./SonikString.h"
-namespace SonikLib
-{
-	SLIB_CVR_USING(SonikString, SonikLib::SonikString);
-};
+	#include "./SonikString.h"
+	namespace SonikLib
+	{
+		SLIB_CVR_USING(SonikString, SonikLib::SonikStringDefault);
+	};
 
 #endif
 

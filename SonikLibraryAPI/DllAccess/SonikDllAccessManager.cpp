@@ -1,8 +1,11 @@
+
+#include <map>
+
 #include "SonikDllAccessManager.h"
 #include "SonikDllLoader.h"
 
-#include <SonikAssignFreeNumber/SonikAssignFreeNumber.h>
 #include <SonikString/SonikString.h>
+#include <SonikAssignFreeNumber/SonikAssignFreeNumber.h>
 
 namespace SonikLib
 {
@@ -38,21 +41,28 @@ namespace SonikLib
 		//PureFunctions
 		uintptr_t GetDllProcAddress(const char* ProcName)
 		{
-			SonikLib::SonikString str(ProcName, m_allocator);
+			SonikLib::SonikStringDefault str(ProcName, m_allocator);
 
 			return reinterpret_cast<uintptr_t>(SonikLibLoderProcAddress(m_handle, str.str_c()));
 		};
 
-		uintptr_t GetDllProcAddress(const char16_t* ProcName)
+		uintptr_t GetDllProcAddress(const utf8_t* ProcName)
 		{
-			SonikLib::SonikString str(ProcName, m_allocator);
+			SonikLib::SonikStringDefault str(ProcName, m_allocator);
+
+			return reinterpret_cast<uintptr_t>(SonikLibLoderProcAddress(m_handle, str.str_c()));
+		}
+
+		uintptr_t GetDllProcAddress(const utf16_t* ProcName)
+		{
+			SonikLib::SonikStringDefault str(ProcName, m_allocator);
 
 			return reinterpret_cast<uintptr_t>(SonikLibLoderProcAddress(m_handle, str.str_c()));
 		}
 
 		uintptr_t GetDllProcAddress(const wchar_t* ProcName)
 		{
-			SonikLib::SonikString str(ProcName, m_allocator);
+			SonikLib::SonikStringDefault str(ProcName, m_allocator);
 
 			return reinterpret_cast<uintptr_t>(SonikLibLoderProcAddress(m_handle, str.str_c()));
 		}
@@ -64,7 +74,7 @@ namespace SonikLib
 	{
 	public:
 		int64_t KeyNumber;
-		SonikLib::SonikString dllpath;
+		SonikLib::SonikStringDefault dllpath;
 		SONIK_DLL_ACCESS_MANAGER_POINTER dllhandle;
 
 		DllPairState* next;
@@ -89,7 +99,7 @@ namespace SonikLib
 		{
 			//no process
 		};
-		inline DllPairState(SonikLib::SonikString& _str_, int64_t _key_ = -1, SONIK_DLL_ACCESS_MANAGER_POINTER _handle_ = nullptr, DllPairState* _next_ = nullptr, DllPairState* _prev_ = nullptr)
+		inline DllPairState(SonikLib::SonikStringDefault& _str_, int64_t _key_ = -1, SONIK_DLL_ACCESS_MANAGER_POINTER _handle_ = nullptr, DllPairState* _next_ = nullptr, DllPairState* _prev_ = nullptr)
 		:KeyNumber(_key_)
 		,dllpath(_str_)
 		,dllhandle(_handle_)
@@ -276,7 +286,7 @@ namespace SonikLib
 		};
 
 		//Dllパスを汎用文字列処理クラスに。
-		SonikLib::SonikString dll_str(_DllPath_, l_allocSmtPtr);
+		SonikLib::SonikStringDefault dll_str(_DllPath_, l_allocSmtPtr);
 		//dll_str = _DllPath_;
 
 		//DllObjectImple用領域の確保。ライブラリロード前にしておかないとエラー時ライブラリのフリーが必要になりそちらのほうがコストかかりそうなので..。
@@ -312,7 +322,7 @@ namespace SonikLib
 		SONIK_DLL_ACCESS_MANAGER_POINTER handles_;
 
 		//Dllパスを汎用文字列処理クラスに。
-		SonikLib::SonikString dll_str(_DllPath_, _allocator_);
+		SonikLib::SonikStringDefault dll_str(_DllPath_, _allocator_);
 		//dll_str = _DllPath_;
 		
 		//DllObjectImple用領域の確保。ライブラリロード前にしておかないとエラー時ライブラリのフリーが必要になりそちらのほうがコストかかりそうなので..。
@@ -341,7 +351,7 @@ namespace SonikLib
 		return true;
 	};
 
-	bool SonikDllHandleManager::DllGetLoad(const char16_t* _DllPath_, SDllHandle& _GetDllObject_)
+	bool SonikDllHandleManager::DllGetLoad(const utf8_t* _DllPath_, SDllHandle& _GetDllObject_)
 	{
 		SONIK_DLL_ACCESS_MANAGER_POINTER handles_;
 
@@ -359,7 +369,7 @@ namespace SonikLib
 		};
 
 		//Dllパスを汎用文字列処理クラスに。
-		SonikLib::SonikString dll_str(_DllPath_, l_allocSmtPtr);
+		SonikLib::SonikStringDefault dll_str(_DllPath_, l_allocSmtPtr);
 		//dll_str = _DllPath_;
 
 		//DllObjectImple用領域の確保。ライブラリロード前にしておかないとエラー時ライブラリのフリーが必要になりそちらのほうがコストかかりそうなので..。
@@ -389,13 +399,96 @@ namespace SonikLib
 
 		return true;
 	};
-	bool SonikDllHandleManager::DllGetLoad(const char16_t* _DllPath_, SDllHandle& _GetDllObject_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	bool SonikDllHandleManager::DllGetLoad(const utf8_t* _DllPath_, SDllHandle& _GetDllObject_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
 	{
 		//アロケータ指定バージョン
 		SONIK_DLL_ACCESS_MANAGER_POINTER handles_;
 
 		//Dllパスを汎用文字列処理クラスに。
-		SonikLib::SonikString dll_str(_DllPath_, _allocator_);
+		SonikLib::SonikStringDefault dll_str(_DllPath_, _allocator_);
+		//dll_str = _DllPath_;
+
+		//DllObjectImple用領域の確保。ライブラリロード前にしておかないとエラー時ライブラリのフリーが必要になりそちらのほうがコストかかりそうなので..。
+		void* l_allocbuffer = _allocator_->memal(sizeof(DllObjectImple));
+		if (l_allocbuffer == 0)
+		{
+			return false;
+		};
+
+		//とりあえずANSI形式で文字列を指定
+		handles_ = SonikLibLoder(dll_str.str_c(), SonikDllLoader::LibLoderFlag::LOAD_DEFAULT);
+		if (handles_ == 0)
+		{
+			return false;
+		};
+
+		DllObjectImple* l_imple = new(l_allocbuffer) DllObjectImple(handles_, _allocator_);
+
+		if (!SDllHandle::SmartPointerCreate(l_imple, _GetDllObject_, _allocator_))
+		{
+			l_imple->~DllObjectImple();
+			_allocator_->memdel(l_imple);
+			return false;
+		};
+
+		return true;
+	};
+
+	bool SonikDllHandleManager::DllGetLoad(const utf16_t* _DllPath_, SDllHandle& _GetDllObject_)
+	{
+		SONIK_DLL_ACCESS_MANAGER_POINTER handles_;
+
+		SonikLib::SLibAllocateInterface* l_defalloc = new(std::nothrow) SonikLib::SLibAllocateInterface;
+		if (l_defalloc == nullptr)
+		{
+			return false;
+		};
+
+		SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> l_allocSmtPtr;
+		if (!SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface>::SmartPointerCreate(l_defalloc, l_allocSmtPtr))
+		{
+			delete l_defalloc;
+			return false;
+		};
+
+		//Dllパスを汎用文字列処理クラスに。
+		SonikLib::SonikStringDefault dll_str(_DllPath_, l_allocSmtPtr);
+		//dll_str = _DllPath_;
+
+		//DllObjectImple用領域の確保。ライブラリロード前にしておかないとエラー時ライブラリのフリーが必要になりそちらのほうがコストかかりそうなので..。
+		void* l_allocbuffer = l_defalloc->memal(sizeof(DllObjectImple));
+		if (l_allocbuffer == nullptr)
+		{
+			return false;
+		};
+
+
+		//とりあえずANSI形式で文字列を指定
+		handles_ = SonikLibLoder(dll_str.str_c(), SonikDllLoader::LibLoderFlag::LOAD_DEFAULT);
+		if (handles_ == 0)
+		{
+			l_defalloc->memdel(l_allocbuffer);
+			return false;
+		};
+
+		DllObjectImple* l_imple = new(l_allocbuffer) DllObjectImple(handles_, l_allocSmtPtr);
+
+		if (!SDllHandle::SmartPointerCreate(l_imple, _GetDllObject_))
+		{
+			l_imple->~DllObjectImple();
+			l_defalloc->memdel(l_imple);
+			return false;
+		};
+
+		return true;
+	};
+	bool SonikDllHandleManager::DllGetLoad(const utf16_t* _DllPath_, SDllHandle& _GetDllObject_, SonikLib::AllocatorSharedSmtPtr<SonikLib::SLibAllocateInterface> _allocator_)
+	{
+		//アロケータ指定バージョン
+		SONIK_DLL_ACCESS_MANAGER_POINTER handles_;
+
+		//Dllパスを汎用文字列処理クラスに。
+		SonikLib::SonikStringDefault dll_str(_DllPath_, _allocator_);
 		//dll_str = _DllPath_;
 
 		//DllObjectImple用領域の確保。ライブラリロード前にしておかないとエラー時ライブラリのフリーが必要になりそちらのほうがコストかかりそうなので..。
@@ -442,7 +535,7 @@ namespace SonikLib
 		};
 
 		//Dllパスを汎用文字列処理クラスに。
-		SonikLib::SonikString dll_str(_DllPath_, l_allocSmtPtr);
+		SonikLib::SonikStringDefault dll_str(_DllPath_, l_allocSmtPtr);
 		//dll_str = _DllPath_;
 
 		//DllObjectImple用領域の確保。ライブラリロード前にしておかないとエラー時ライブラリのフリーが必要になりそちらのほうがコストかかりそうなので..。
@@ -479,7 +572,7 @@ namespace SonikLib
 		SONIK_DLL_ACCESS_MANAGER_POINTER handles_;
 
 		//Dllパスを汎用文字列処理クラスに。
-		SonikLib::SonikString dll_str(_DllPath_, _allocator_);
+		SonikLib::SonikStringDefault dll_str(_DllPath_, _allocator_);
 		//dll_str = _DllPath_;
 
 		//DllObjectImple用領域の確保。ライブラリロード前にしておかないとエラー時ライブラリのフリーが必要になりそちらのほうがコストかかりそうなので..。
@@ -511,7 +604,7 @@ namespace SonikLib
 	bool SonikDllHandleManager::DllLoad(const char* _DllPath_, uint64_t& _out_dll_reg_number_)
 	{
 		SONIK_DLL_ACCESS_MANAGER_POINTER handles_;
-		SonikLib::SonikString findstr(_DllPath_, m_allocator);
+		SonikLib::SonikStringDefault findstr(_DllPath_, m_allocator);
 		//findstr = _DllPath_;
 		
 		DllPairState* l_CheckPoint = SentinelNode_Start->next;
@@ -573,11 +666,77 @@ namespace SonikLib
 		return true;
 	};
 
-	bool SonikDllHandleManager::DllLoad(const char16_t* _DllPath_, uint64_t& _out_dll_reg_number_)
+	bool SonikDllHandleManager::DllLoad(const utf8_t* _DllPath_, uint64_t& _out_dll_reg_number_)
+	{
+		SONIK_DLL_ACCESS_MANAGER_POINTER handles_;
+		SonikLib::SonikStringDefault findstr(_DllPath_, m_allocator);
+		//findstr = _DllPath_;
+
+		DllPairState* l_CheckPoint = SentinelNode_Start->next;
+		DllPairState* l_EndPoint = SentinelNode_End;
+
+		m_lock.lock();
+
+		//重複チェック
+		while (l_CheckPoint != l_EndPoint)
+		{
+			if (l_CheckPoint->dllpath == findstr)
+			{
+				//重複しているため読み込まず重複しているアイテムの番号を返却する
+				//ロードはしていないが、すでにロード済みの番号を返せているので結果的にはtrue。
+				_out_dll_reg_number_ = static_cast<uint64_t>(l_CheckPoint->KeyNumber);
+				m_lock.unlock();
+				return true;
+			};
+
+			l_CheckPoint = l_CheckPoint->next;
+		};
+
+		//重複無しのためロード処理
+		handles_ = SonikLibLoder(findstr.str_c(), SonikDllLoader::LibLoderFlag::LOAD_DEFAULT);
+		if (handles_ == 0)
+		{
+			m_lock.unlock();
+			return false;
+		};
+
+		int64_t l_lendnum = m_asigned->LendNumber();
+		if ((l_lendnum < 0))
+		{
+			//借用番号がマイナス値なら借用失敗。
+			SonikLibLoderFree(handles_);
+			m_lock.unlock();
+			return false;
+
+		}
+		else if (static_cast<uint64_t>(l_lendnum) > (DllHandleListCnt - 1))
+		{
+			//借用番号が配列数を超えていたら失敗(一旦返す)
+			m_asigned->ReturnNumber(l_lendnum);
+			SonikLibLoderFree(handles_);
+			m_lock.unlock();
+			return false;
+		};
+
+		//領域を使ってオブジェクト生成
+		DllPairState* l_obj = new(DllHandleList + static_cast<uint64_t>(l_lendnum)) DllPairState(findstr, l_lendnum, handles_, SentinelNode_Start->next, SentinelNode_Start);
+
+		//双方向リストの調整。追加オブジェクトはコンストラクタで調整済みなので番兵からの宛先のみ調整
+		//常に番兵のとなりに挿入。新しいものほどS側に近い。
+		SentinelNode_Start->next->prev = l_obj;
+		SentinelNode_Start->next = l_obj;
+
+		_out_dll_reg_number_ = static_cast<uint64_t>(l_lendnum);
+
+		m_lock.unlock();
+		return true;
+	};
+
+	bool SonikDllHandleManager::DllLoad(const utf16_t* _DllPath_, uint64_t& _out_dll_reg_number_)
 	{
 		SONIK_DLL_ACCESS_MANAGER_POINTER handles_;
 		
-		SonikLib::SonikString findstr(_DllPath_, m_allocator);
+		SonikLib::SonikStringDefault findstr(_DllPath_, m_allocator);
 		//findstr = _DllPath_;
 
 		DllPairState* l_CheckPoint = SentinelNode_Start->next;
@@ -644,7 +803,7 @@ namespace SonikLib
 	{
 		SONIK_DLL_ACCESS_MANAGER_POINTER handles_;
 		
-		SonikLib::SonikString findstr(_DllPath_, m_allocator);
+		SonikLib::SonikStringDefault findstr(_DllPath_, m_allocator);
 		//findstr = _DllPath_;
 
 		DllPairState* l_CheckPoint = SentinelNode_Start->next;
@@ -734,21 +893,28 @@ namespace SonikLib
 
 	uintptr_t SonikDllHandleManager::GetDllProcAddress(SONIK_DLL_ACCESS_MANAGER_POINTER dllhandle, const char* ProcName)
 	{
-		SonikLib::SonikString str(ProcName, m_allocator);
+		SonikLib::SonikStringDefault str(ProcName, m_allocator);
+
+		return reinterpret_cast<uintptr_t>(SonikLibLoderProcAddress(dllhandle, str.str_c()));
+	};
+	
+	uintptr_t SonikDllHandleManager::GetDllProcAddress(SONIK_DLL_ACCESS_MANAGER_POINTER dllhandle, const utf8_t* ProcName)
+	{
+		SonikLib::SonikStringDefault str(ProcName, m_allocator);
 
 		return reinterpret_cast<uintptr_t>(SonikLibLoderProcAddress(dllhandle, str.str_c()));
 	};
 
-	uintptr_t SonikDllHandleManager::GetDllProcAddress(SONIK_DLL_ACCESS_MANAGER_POINTER dllhandle, const char16_t* ProcName)
+	uintptr_t SonikDllHandleManager::GetDllProcAddress(SONIK_DLL_ACCESS_MANAGER_POINTER dllhandle, const utf16_t* ProcName)
 	{
-		SonikLib::SonikString str(ProcName, m_allocator);
+		SonikLib::SonikStringDefault str(ProcName, m_allocator);
 
 		return reinterpret_cast<uintptr_t>(SonikLibLoderProcAddress(dllhandle, str.str_c()));
 	};
 
 	uintptr_t SonikDllHandleManager::GetDllProcAddress(SONIK_DLL_ACCESS_MANAGER_POINTER dllhandle, const wchar_t* ProcName)
 	{
-		SonikLib::SonikString str(ProcName, m_allocator);
+		SonikLib::SonikStringDefault str(ProcName, m_allocator);
 
 		return reinterpret_cast<uintptr_t>(SonikLibLoderProcAddress(dllhandle, str.str_c()));
 	};

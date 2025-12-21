@@ -473,7 +473,7 @@ namespace SonikAudioLoadFunction
 	bool Load_WaveFile(const char16_t* LoadFilePass, SonikAudio::SAudioFormat& RefGet_, SonikAudio::SCVType ConvertType, bool ConvertAudioFlg)
 	{
 		std::ifstream ifs_;
-		SonikLib::SonikString sonikstr_;
+		SonikLib::SonikStringDefault sonikstr_;
 
 		sonikstr_ = LoadFilePass;
 

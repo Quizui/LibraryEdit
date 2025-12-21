@@ -1,5 +1,3 @@
-#pragma once
-
 #ifndef MATH_BIT_COMMON_HEADER_
 #define MATH_BIT_COMMON_HEADER_
 
@@ -28,12 +26,13 @@
 #endif
 
 #include <CompilersPreProcesser.h>
+#include <CPPGrammarDefines.h>
 
 
 namespace SonikMathBit
 {
     //立っているビットの数をカウントします。
-    DEF_FORCE_INLINE uint16_t OnBitCount(uint8_t BitValue) noexcept
+    DEF_FORCE_INLINE uint16_t OnBitCount(uint8_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -58,7 +57,7 @@ namespace SonikMathBit
 
 #endif
     };
-    DEF_FORCE_INLINE uint16_t OnBitCount(uint16_t BitValue) noexcept
+    DEF_FORCE_INLINE uint16_t OnBitCount(uint16_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -83,7 +82,7 @@ namespace SonikMathBit
         return (BitValue & 0x00FF) + ((BitValue >> 8) & 0x00FF);
 #endif
     };
-    DEF_FORCE_INLINE uint16_t OnBitCount(uint32_t BitValue) noexcept
+    DEF_FORCE_INLINE uint16_t OnBitCount(uint32_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -109,7 +108,7 @@ namespace SonikMathBit
         return (BitValue & 0x0000FFFF) + ((BitValue >> 16) & 0x0000FFFF);
 #endif
     };
-    DEF_FORCE_INLINE uint16_t OnBitCount(uint64_t BitValue) noexcept
+    DEF_FORCE_INLINE uint16_t OnBitCount(uint64_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -139,7 +138,7 @@ namespace SonikMathBit
 
 
     //立っているビット中一番最上位のビットの位置を取得します。(0~カウント)
-    DEF_FORCE_INLINE int16_t GetMSB(uint8_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetMSB(uint8_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -168,7 +167,7 @@ namespace SonikMathBit
         return bit;
 #endif
     };
-    DEF_FORCE_INLINE int16_t GetMSB(uint16_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetMSB(uint16_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -199,7 +198,7 @@ namespace SonikMathBit
 
 #endif
     };
-    DEF_FORCE_INLINE int16_t GetMSB(uint32_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetMSB(uint32_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -230,7 +229,7 @@ namespace SonikMathBit
         return bit;
 #endif
     };
-    DEF_FORCE_INLINE int16_t GetMSB(uint64_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetMSB(uint64_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -264,7 +263,7 @@ namespace SonikMathBit
     };
 
     //立っていないビット中一番最上位のビットの位置を取得します。(0~カウント)
-    DEF_FORCE_INLINE int16_t GetZEROMSB(uint8_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetZEROMSB(uint8_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0xFF)
         {
@@ -294,7 +293,7 @@ namespace SonikMathBit
         return bit;
 #endif
     };
-    DEF_FORCE_INLINE int16_t GetZEROMSB(uint16_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetZEROMSB(uint16_t BitValue) SLIB_CVR_NOEXCEPT
     {
 
 
@@ -327,7 +326,7 @@ namespace SonikMathBit
         return bit;
 #endif
     };
-    DEF_FORCE_INLINE int16_t GetZEROMSB(uint32_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetZEROMSB(uint32_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0xFFFFFFFF)
         {
@@ -359,7 +358,7 @@ namespace SonikMathBit
         return bit;
 #endif
     };
-    DEF_FORCE_INLINE int16_t GetZEROMSB(uint64_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetZEROMSB(uint64_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0xFFFFFFFFFFFFFFFF)
         {
@@ -394,7 +393,7 @@ namespace SonikMathBit
     };
 
     //立っているビット中一番最下位のビットの位置を取得します。(0~カウント)
-    DEF_FORCE_INLINE int16_t GetLSB(uint8_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetLSB(uint8_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -424,7 +423,7 @@ namespace SonikMathBit
         return bit;
 #endif
     };
-    DEF_FORCE_INLINE int16_t GetLSB(uint16_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetLSB(uint16_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -455,7 +454,7 @@ namespace SonikMathBit
 #endif
 
     };
-    DEF_FORCE_INLINE int16_t GetLSB(uint32_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetLSB(uint32_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -486,7 +485,7 @@ namespace SonikMathBit
         return bit;
 #endif
     };
-    DEF_FORCE_INLINE int16_t GetLSB(uint64_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetLSB(uint64_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0)
         {
@@ -520,7 +519,7 @@ namespace SonikMathBit
     };
 
     //立っていないビット中一番最下位のビットの位置を取得します。(0~カウント)
-    DEF_FORCE_INLINE int16_t GetZEROLSB(uint8_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetZEROLSB(uint8_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0xFF)
         {
@@ -552,7 +551,7 @@ namespace SonikMathBit
         return bit;
 #endif
     };
-    DEF_FORCE_INLINE int16_t GetZEROLSB(uint16_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetZEROLSB(uint16_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0xFFFF)
         {
@@ -584,7 +583,7 @@ namespace SonikMathBit
         return bit;
 #endif
     };
-    DEF_FORCE_INLINE int16_t GetZEROLSB(uint32_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetZEROLSB(uint32_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0xFFFFFFFF)
         {
@@ -617,7 +616,7 @@ namespace SonikMathBit
         return bit;
 #endif
     };
-    DEF_FORCE_INLINE int16_t GetZEROLSB(uint64_t BitValue) noexcept
+    DEF_FORCE_INLINE int16_t GetZEROLSB(uint64_t BitValue) SLIB_CVR_NOEXCEPT
     {
         if (BitValue == 0xFFFFFFFFFFFFFFFF)
         {
@@ -653,14 +652,14 @@ namespace SonikMathBit
     };
 
     //ビットの並びを反転させます。
-    DEF_FORCE_INLINE uint8_t BitSwap(uint8_t BitValue) noexcept
+    DEF_FORCE_INLINE uint8_t BitSwap(uint8_t BitValue) SLIB_CVR_NOEXCEPT
     {
         BitValue = ((BitValue & 0x55) << 1) | ((BitValue & 0xAA) >> 1);
         BitValue = ((BitValue & 0x33) << 2) | ((BitValue & 0xCC) >> 2);
 
         return ((BitValue & 0x0F) << 4) | ((BitValue & 0xF0) >> 4);
     };
-    DEF_FORCE_INLINE uint16_t BitSwap(uint16_t BitValue) noexcept
+    DEF_FORCE_INLINE uint16_t BitSwap(uint16_t BitValue) SLIB_CVR_NOEXCEPT
     {
         BitValue = ((BitValue & 0x5555) << 1) | ((BitValue & 0xAAAA) >> 1);
         BitValue = ((BitValue & 0x3333) << 2) | ((BitValue & 0xCCCC) >> 2);
@@ -668,7 +667,7 @@ namespace SonikMathBit
 
         return ((BitValue & 0x00FF) << 8) | ((BitValue & 0xFF00) >> 8);
     };
-    DEF_FORCE_INLINE uint32_t BitSwap(uint32_t BitValue) noexcept
+    DEF_FORCE_INLINE uint32_t BitSwap(uint32_t BitValue) SLIB_CVR_NOEXCEPT
     {
 #if defined(__SONIKLIB_MATHBIT_BITFUNCTION_GCC_OTHER__)
         return __builtin_bswap32(BitValue);
@@ -685,7 +684,7 @@ namespace SonikMathBit
         return ((BitValue & 0x0000FFFF) << 16) | ((BitValue & 0xFFFF0000) >> 16);
 #endif
     };
-    DEF_FORCE_INLINE uint64_t BitSwap(uint64_t BitValue) noexcept
+    DEF_FORCE_INLINE uint64_t BitSwap(uint64_t BitValue) SLIB_CVR_NOEXCEPT
     {
 #if defined(__SONIKLIB_MATHBIT_BITFUNCTION_GCC_OTHER__)
         return __builtin_bswap64(BitValue);
@@ -705,7 +704,7 @@ namespace SonikMathBit
     };
 
     //エンディアン変換を行います。
-    DEF_FORCE_INLINE void EndianConvertFor2Byte(char* _data_, uint64_t _datasize_) noexcept
+    DEF_FORCE_INLINE void EndianConvertFor2Byte(char* _data_, uint64_t _datasize_) SLIB_CVR_NOEXCEPT
     {
         uint64_t l_loop = static_cast<uint64_t>(_datasize_ * 0.5); //_datasize_ / sizeof(int16_t)
         uint16_t* lp_data = reinterpret_cast<uint16_t*>(_data_);
@@ -715,7 +714,7 @@ namespace SonikMathBit
             lp_data[i] = (lp_data[i] << 8) | ((lp_data[i] >> 8) & 0xFF);
         };
     };
-    DEF_FORCE_INLINE void EndianConvertFor4Byte(char* _data_, uint64_t _datasize_) noexcept
+    DEF_FORCE_INLINE void EndianConvertFor4Byte(char* _data_, uint64_t _datasize_) SLIB_CVR_NOEXCEPT
     {
         uint64_t l_loop = static_cast<uint64_t>(_datasize_ * 0.25); //_datasize_ / sizeof(int32_t)
         uint32_t* lp_data = reinterpret_cast<uint32_t*>(_data_);
@@ -728,7 +727,7 @@ namespace SonikMathBit
                 | ((lp_data[i] & 0xFF000000) >> 24);
         };
     };
-    DEF_FORCE_INLINE void EndianConvertFor8Byte(char* _data_, uint64_t _datasize_) noexcept
+    DEF_FORCE_INLINE void EndianConvertFor8Byte(char* _data_, uint64_t _datasize_) SLIB_CVR_NOEXCEPT
     {
         uint64_t l_loop = static_cast<uint64_t>(_datasize_ * 0.125); //_datasize_ / sizeof(int64_t)
         uint64_t* lp_data = reinterpret_cast<uint64_t*>(_data_);

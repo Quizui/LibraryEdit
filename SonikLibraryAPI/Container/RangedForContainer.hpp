@@ -473,6 +473,37 @@ namespace SonikLib
 				return;
 			};
 
+			//copy実装
+			//引数のアイテム情報を自身へコピーします。
+			//自身のAllocSizeが引数コンテナのAllocSizeより下ならReserveしてコピーします。
+			//拡張によるメモリ的なエラーが発生した場合falseを返却します。基本的にはtrueが返ります。
+			//スマートポインタでカウンタ参照管理が入るので参照せずコピーを使う(constはスマートポインタ経由で値が変えられてしまうのでつける)
+			DEF_PRE_NO_DISCARD DEF_FORCE_INLINE bool Copy(const SonikLib::SharedSmtPtr<SonikVariableArrayContainer<T>> _copy_) DEF_POST_NO_DISCARD
+			{
+				//サイズチェック
+				if(AllocCount < _copy_->AllocCount)
+				{
+					//RESIZEする。
+					if(!__RESIZE__(_copy_->AllocCount))
+					{
+						return false;
+					};
+				};
+
+				//ループコピー
+				//この関数を抜けるまではスマートポインタのおかげでポインタ先が消えることはないので
+				//生ポインタを取得して、->オーバーロードアクセス演算子のオーバーヘッドを減らす。
+				SonikVariableArrayContainer<T>* l_pointer = _copy_.GetPointer();
+				uint64_t l_copysize = l_pointer->AllocCount;
+				T* l_ary = l_pointer->AllocAreaPtr;
+				for(uint64_t i = 0; i < l_copysize; ++i)
+				{
+					AllocAreaPtr[i] = l_ary[i];
+				};
+
+				return true;
+			};
+
 			DEF_FORCE_INLINE const T& operator[](uint64_t _index_) const
 			{
 				return AllocAreaPtr[_index_];

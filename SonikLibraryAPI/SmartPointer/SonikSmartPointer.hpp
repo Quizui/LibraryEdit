@@ -363,6 +363,11 @@ namespace SonikLib
 			return m_Pointer;
 		};
 
+		DEF_FORCE_INLINE AllocatorClassType* GetPointer(void) const SLIB_CVR_NOEXCEPT
+		{
+			return m_Pointer;
+		};
+
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
 		DEF_FORCE_INLINE AllocatorClassType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
@@ -384,9 +389,9 @@ namespace SonikLib
 		};
 
 		//NullptrならTrue
-		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool IsNullptr(void) const SLIB_CVR_NOEXCEPT
 		{
-			return (m_Pointer == nullptr) ? true : false;
+			return (m_Pointer == nullptr);
 		};
 
 		DEF_FORCE_INLINE AllocatorClassType* operator ->(void)
@@ -692,6 +697,11 @@ namespace SonikLib
 			return m_Pointer;
 		};
 
+		DEF_FORCE_INLINE pType* GetPointer(void) const SLIB_CVR_NOEXCEPT
+		{
+			return m_Pointer;
+		};
+
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
 		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
@@ -713,9 +723,9 @@ namespace SonikLib
 		};
 
 		//NullptrならTrue
-		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool IsNullptr(void) const SLIB_CVR_NOEXCEPT
 		{
-			return (m_Pointer == nullptr) ? true : false;
+			return (m_Pointer == nullptr);
 		};
 
 		DEF_FORCE_INLINE pType* operator ->(void)
@@ -1103,6 +1113,11 @@ namespace SonikLib
 			return m_Pointer;
 		};
 
+		DEF_FORCE_INLINE pType* GetPointer(void) const SLIB_CVR_NOEXCEPT
+		{
+			return m_Pointer;
+		};
+
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
 		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
@@ -1124,7 +1139,7 @@ namespace SonikLib
 		};
 
 		//NullptrならTrue
-		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool IsNullptr(void) const SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -1484,6 +1499,11 @@ namespace SonikLib
 			return m_Pointer;
 		};
 
+		DEF_FORCE_INLINE pType* GetPointer(void) const SLIB_CVR_NOEXCEPT
+		{
+			return m_Pointer;
+		};
+
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
 		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
@@ -1505,7 +1525,7 @@ namespace SonikLib
 		};
 
 		//NullptrならTrue
-		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool IsNullptr(void) const SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -1856,6 +1876,11 @@ namespace SonikLib
 			return m_Pointer;
 		};
 
+		DEF_FORCE_INLINE pType* GetPointer(void) const SLIB_CVR_NOEXCEPT
+		{
+			return m_Pointer;
+		};
+
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
 		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
@@ -1877,7 +1902,7 @@ namespace SonikLib
 		};
 
 		//NullptrならTrue
-		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool IsNullptr(void) const SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr) ? true : false;
 		};
@@ -2130,7 +2155,7 @@ namespace SonikLib
 		};
 
 		//Null なら True
-		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool IsNullptr(void) const SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr);
 		};
@@ -2152,6 +2177,11 @@ namespace SonikLib
 #else
 		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
+		{
+			return m_Pointer;
+		};
+
+		DEF_FORCE_INLINE pType* GetPointer(void) const SLIB_CVR_NOEXCEPT
 		{
 			return m_Pointer;
 		};
@@ -2382,7 +2412,7 @@ namespace SonikLib
 		};
 
 		//Null なら True
-		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool IsNullptr(void) const SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr);
 		};
@@ -2404,6 +2434,11 @@ namespace SonikLib
 #else
 		DEF_FORCE_INLINE pType* GetPointer(void) SLIB_CVR_NOEXCEPT
 #endif
+		{
+			return m_Pointer;
+		};
+
+		DEF_FORCE_INLINE pType* GetPointer(void) const SLIB_CVR_NOEXCEPT
 		{
 			return m_Pointer;
 		};
@@ -2604,7 +2639,7 @@ namespace SonikLib
 		};
 
 		//Null なら True
-		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool IsNullptr(void) const SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr);
 		};
@@ -2630,6 +2665,11 @@ namespace SonikLib
 			return m_Pointer;
 		};
 
+		DEF_FORCE_INLINE pType* GetPointer(void) const SLIB_CVR_NOEXCEPT
+		{
+			return m_Pointer;
+		};
+		
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
 		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
@@ -2817,7 +2857,7 @@ namespace SonikLib
 		};
 
 		//Null なら True
-		DEF_FORCE_INLINE bool IsNullptr(void) SLIB_CVR_NOEXCEPT
+		DEF_FORCE_INLINE bool IsNullptr(void) const SLIB_CVR_NOEXCEPT
 		{
 			return (m_Pointer == nullptr);
 		};
@@ -2843,6 +2883,11 @@ namespace SonikLib
 			return m_Pointer;
 		};
 
+		DEF_FORCE_INLINE pType* GetPointer(void) const SLIB_CVR_NOEXCEPT
+		{
+			return m_Pointer;
+		};
+		
 		//持っているポインタの所有権のみを破棄します。
 		//外部で責任をもって破棄してください。
 		DEF_FORCE_INLINE pType* DestroyOwner(void) SLIB_CVR_NOEXCEPT
